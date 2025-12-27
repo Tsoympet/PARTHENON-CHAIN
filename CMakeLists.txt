@@ -9,6 +9,7 @@ option(DRACHMA_BUILD_TESTS "Build Drachma test executables" ON)
 option(DRACHMA_BUILD_GUI "Build the Qt desktop wallet" OFF)
 
 find_package(OpenSSL REQUIRED)
+find_package(Boost REQUIRED COMPONENTS system)
 
 # Layer 1: consensus-critical primitives
 add_library(drachma_layer1
@@ -43,6 +44,7 @@ add_library(drachma_layer2
     layer2-services/policy/policy.cpp
     layer2-services/net/p2p.cpp
     layer2-services/wallet/keystore/keystore.cpp
+    layer2-services/wallet/wallet.cpp
     layer2-services/index/txindex.cpp
     layer2-services/crosschain/bridge/bridge_manager.cpp
     layer2-services/crosschain/relayer/relayer.cpp
@@ -60,6 +62,7 @@ target_include_directories(drachma_layer2
 
 target_link_libraries(drachma_layer2
     PUBLIC drachma_layer1
+    PUBLIC Boost::system
 )
 
 # Miners
