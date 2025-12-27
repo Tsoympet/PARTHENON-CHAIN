@@ -21,6 +21,7 @@ static Params mainParams {
     0x1e0fffff,        // initial difficulty
     0,                 // mined later if not provided
     "DRACHMA: Proof before trust",
+    {},                // checkpoints
     DEFAULT_THRESHOLD,
     DEFAULT_WINDOW,
     { VBDeployment{28, -1, -1} }
@@ -37,6 +38,7 @@ static Params testParams {
     0x1f00ffff,
     0,
     "DRACHMA TESTNET",
+    {},
     DEFAULT_THRESHOLD,
     DEFAULT_WINDOW,
     { VBDeployment{28, -1, -1} }

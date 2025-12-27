@@ -53,11 +53,11 @@ RetargetMetrics CalculateAdaptiveNextWork(
     const auto powLimitWork = CalculateBlockWork(params.nGenesisBits);
     auto anchorWork = CalculateBlockWork(anchorBits);
     auto proposedWork = CalculateBlockWork(next);
-    auto upperBound = anchorWork.value + (anchorWork.value / 4);
-    auto lowerBound = anchorWork.value - (anchorWork.value / 4);
-    if (proposedWork.value > upperBound && upperBound < powLimitWork)
+    auto upperBound = anchorWork + (anchorWork / 4);
+    auto lowerBound = anchorWork - (anchorWork / 4);
+    if (proposedWork > upperBound && upperBound < powLimitWork)
         next = CalculateNextWorkRequired(anchorBits, params.nPowTargetTimespan + params.nPowTargetTimespan / 4, params);
-    else if (proposedWork.value < lowerBound)
+    else if (proposedWork < lowerBound)
         next = CalculateNextWorkRequired(anchorBits, params.nPowTargetTimespan - params.nPowTargetTimespan / 4, params);
 
     return RetargetMetrics{next, averageTimespan, anchorBits};

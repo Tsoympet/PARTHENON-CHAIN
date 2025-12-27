@@ -49,6 +49,7 @@ public:
     void AddPeerAddress(const std::string& address);
     void Start();
     void Stop();
+    uint16_t ListenPort() const;
     void Broadcast(const Message& msg);
     void SendTo(const std::string& peerId, const Message& msg);
     std::vector<PeerInfo> Peers() const;

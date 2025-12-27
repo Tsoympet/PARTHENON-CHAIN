@@ -77,7 +77,12 @@ target_include_directories(drachma_layer2
 target_link_libraries(drachma_layer2
     PUBLIC drachma_layer1
     PUBLIC Boost::system
+    PUBLIC leveldb
 )
+
+if(LevelDB_FOUND)
+    target_link_libraries(drachma_layer2 PUBLIC LevelDB::LevelDB)
+endif()
 
 # Miners
 add_executable(drachma_cpu_miner miners/cpu/main.cpp miners/stratum.cpp)
@@ -134,6 +139,10 @@ if(DRACHMA_BUILD_TESTS)
     target_link_libraries(difficulty_gtest PRIVATE drachma_layer1 GTest::gtest_main)
     gtest_discover_tests(difficulty_gtest)
 
+    add_executable(pow_check_gtest tests/pow/pow_check_gtest.cpp)
+    target_link_libraries(pow_check_gtest PRIVATE drachma_layer1 GTest::gtest_main)
+    gtest_discover_tests(pow_check_gtest)
+
     add_executable(difficulty_adjust_test tests/pow/difficulty_adjust_test.cpp)
     target_link_libraries(difficulty_adjust_test PRIVATE drachma_layer1)
     add_test(NAME difficulty_adjust_test COMMAND difficulty_adjust_test)
@@ -158,6 +167,10 @@ if(DRACHMA_BUILD_TESTS)
     target_link_libraries(mempool_stress_test PRIVATE drachma_layer2 GTest::gtest_main)
     gtest_discover_tests(mempool_stress_test)
 
+    add_executable(wallet_sign_gtest tests/wallet/wallet_sign_gtest.cpp)
+    target_link_libraries(wallet_sign_gtest PRIVATE drachma_layer2 GTest::gtest_main)
+    gtest_discover_tests(wallet_sign_gtest)
+
     add_executable(block_validation_tests tests/validation/block_validation_tests.cpp)
     target_link_libraries(block_validation_tests PRIVATE drachma_layer1)
     add_test(NAME block_validation_tests COMMAND block_validation_tests)
@@ -169,6 +182,14 @@ if(DRACHMA_BUILD_TESTS)
     add_executable(p2p_dos_sim_test tests/net/p2p_dos_sim_test.cpp)
     target_link_libraries(p2p_dos_sim_test PRIVATE drachma_layer2 GTest::gtest_main)
     gtest_discover_tests(p2p_dos_sim_test)
+
+    add_executable(p2p_multinode_gtest tests/net/p2p_multinode_gtest.cpp)
+    target_link_libraries(p2p_multinode_gtest PRIVATE drachma_layer2 GTest::gtest_main)
+    gtest_discover_tests(p2p_multinode_gtest)
+
+    add_executable(bloom_filter_gtest tests/net/bloom_filter_gtest.cpp)
+    target_link_libraries(bloom_filter_gtest PRIVATE drachma_layer2 GTest::gtest_main)
+    gtest_discover_tests(bloom_filter_gtest)
 
     add_executable(anti_dos_tests tests/validation/anti_dos_tests.cpp)
     target_link_libraries(anti_dos_tests PRIVATE drachma_layer1)
@@ -186,63 +207,33 @@ if(DRACHMA_BUILD_TESTS)
     target_link_libraries(regtest_mode_test PRIVATE GTest::gtest_main)
     gtest_discover_tests(regtest_mode_test)
 
+    add_executable(regtest_private_chain_test tests/integration/regtest_private_chain_test.cpp)
+    target_link_libraries(regtest_private_chain_test PRIVATE drachma_layer1 GTest::gtest_main)
+    gtest_discover_tests(regtest_private_chain_test)
+
+    function(drachma_add_fuzz_target target source)
+        add_executable(${target} ${source})
+        if(ARGC GREATER 2)
+            target_link_libraries(${target} PRIVATE ${ARGN})
+        else()
+            target_link_libraries(${target} PRIVATE drachma_layer1)
+        endif()
+        if(DRACHMA_BUILD_FUZZ)
+            target_compile_options(${target} PRIVATE -fsanitize=fuzzer,address)
+            target_link_options(${target} PRIVATE -fsanitize=fuzzer,address)
+        endif()
+    endfunction()
+
     if(DRACHMA_BUILD_FUZZ)
-        add_executable(fuzz_schnorr tests/crypto/fuzz_schnorr.cpp)
-        target_link_libraries(fuzz_schnorr PRIVATE drachma_layer1)
-        target_compile_options(fuzz_schnorr PRIVATE -fsanitize=fuzzer,address)
-        target_link_options(fuzz_schnorr PRIVATE -fsanitize=fuzzer,address)
-
-        add_executable(fuzz_tagged_hash tests/crypto/fuzz_tagged_hash.cpp)
-        target_link_libraries(fuzz_tagged_hash PRIVATE drachma_layer1)
-        target_compile_options(fuzz_tagged_hash PRIVATE -fsanitize=fuzzer,address)
-        target_link_options(fuzz_tagged_hash PRIVATE -fsanitize=fuzzer,address)
-
-        add_executable(fuzz_validation tests/validation/fuzz_validation.cpp)
-        target_link_libraries(fuzz_validation PRIVATE drachma_layer1)
-        target_compile_options(fuzz_validation PRIVATE -fsanitize=fuzzer,address)
-        target_link_options(fuzz_validation PRIVATE -fsanitize=fuzzer,address)
-
-        add_executable(fuzz_fork_resolution tests/consensus/fuzz_fork_resolution.cpp)
-        target_link_libraries(fuzz_fork_resolution PRIVATE drachma_layer1)
-        target_compile_options(fuzz_fork_resolution PRIVATE -fsanitize=fuzzer,address)
-        target_link_options(fuzz_fork_resolution PRIVATE -fsanitize=fuzzer,address)
-
-        add_executable(fuzz_difficulty tests/pow/fuzz_difficulty.cpp)
-        target_link_libraries(fuzz_difficulty PRIVATE drachma_layer1)
-        target_compile_options(fuzz_difficulty PRIVATE -fsanitize=fuzzer,address)
-        target_link_options(fuzz_difficulty PRIVATE -fsanitize=fuzzer,address)
-
-        add_executable(fuzz_merkle tests/merkle/fuzz_merkle.cpp)
-        target_link_libraries(fuzz_merkle PRIVATE drachma_layer1)
-        target_compile_options(fuzz_merkle PRIVATE -fsanitize=fuzzer,address)
-        target_link_options(fuzz_merkle PRIVATE -fsanitize=fuzzer,address)
-    else()
-        add_executable(fuzz_schnorr tests/crypto/fuzz_schnorr.cpp)
-        target_link_libraries(fuzz_schnorr PRIVATE drachma_layer1)
-
-        add_executable(fuzz_tagged_hash tests/crypto/fuzz_tagged_hash.cpp)
-        target_link_libraries(fuzz_tagged_hash PRIVATE drachma_layer1)
-
-        add_executable(fuzz_validation tests/validation/fuzz_validation.cpp)
-        target_link_libraries(fuzz_validation PRIVATE drachma_layer1)
-
-        add_executable(fuzz_fork_resolution tests/consensus/fuzz_fork_resolution.cpp)
-        target_link_libraries(fuzz_fork_resolution PRIVATE drachma_layer1)
-
-        add_executable(fuzz_difficulty tests/pow/fuzz_difficulty.cpp)
-        target_link_libraries(fuzz_difficulty PRIVATE drachma_layer1)
-
-        add_executable(fuzz_merkle tests/merkle/fuzz_merkle.cpp)
-        target_link_libraries(fuzz_merkle PRIVATE drachma_layer1)
+        drachma_add_fuzz_target(fuzz_schnorr tests/crypto/fuzz_schnorr.cpp)
+        drachma_add_fuzz_target(fuzz_tagged_hash tests/crypto/fuzz_tagged_hash.cpp)
+        drachma_add_fuzz_target(fuzz_validation tests/validation/fuzz_validation.cpp)
+        drachma_add_fuzz_target(fuzz_fork_resolution tests/consensus/fuzz_fork_resolution.cpp)
+        drachma_add_fuzz_target(fuzz_difficulty tests/pow/fuzz_difficulty.cpp)
+        drachma_add_fuzz_target(fuzz_merkle tests/merkle/fuzz_merkle.cpp)
+        drachma_add_fuzz_target(fuzz_wallet_sign tests/crypto/fuzz_wallet_sign.cpp drachma_layer2)
+        drachma_add_fuzz_target(fuzz_block_header tests/validation/fuzz_block_header.cpp)
     endif()
-    add_executable(fuzz_schnorr tests/crypto/fuzz_schnorr.cpp)
-    target_link_libraries(fuzz_schnorr PRIVATE drachma_layer1)
-
-    add_executable(fuzz_tagged_hash tests/crypto/fuzz_tagged_hash.cpp)
-    target_link_libraries(fuzz_tagged_hash PRIVATE drachma_layer1)
-
-    add_executable(fuzz_merkle tests/merkle/fuzz_merkle.cpp)
-    target_link_libraries(fuzz_merkle PRIVATE drachma_layer1)
 endif()
 
 # Install rules

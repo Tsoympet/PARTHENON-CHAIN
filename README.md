@@ -1,6 +1,7 @@
 # DRACHMA Blockchain (DRM)
 
 [![CI](https://github.com/Tsoympet/BlockChainDrachma/actions/workflows/ci.yml/badge.svg)](https://github.com/Tsoympet/BlockChainDrachma/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/Tsoympet/BlockChainDrachma/graph/badge.svg)](https://codecov.io/gh/Tsoympet/BlockChainDrachma)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![GitHub Stars](https://img.shields.io/github/stars/Tsoympet/BlockChainDrachma?style=social)](https://github.com/Tsoympet/BlockChainDrachma/stargazers)
 [![GitHub Forks](https://img.shields.io/github/forks/Tsoympet/BlockChainDrachma?style=social)](https://github.com/Tsoympet/BlockChainDrachma/network/members)

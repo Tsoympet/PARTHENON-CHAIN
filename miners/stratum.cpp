@@ -180,3 +180,37 @@ std::optional<MinerJob> StratumClient::HandleNotify(const boost::property_tree::
     }
 }
 
+StratumPool::StratumPool(Options opts)
+    : opts_(std::move(opts)),
+      legacyClient_(opts_.url, opts_.user, opts_.pass, opts_.allowRemote)
+{
+}
+
+StratumPool::~StratumPool() = default;
+
+void StratumPool::Connect()
+{
+    legacyClient_.Connect();
+    difficulty_ = legacyClient_.CurrentDifficulty();
+}
+
+std::optional<MinerJob> StratumPool::AwaitJob()
+{
+    return legacyClient_.AwaitJob();
+}
+
+void StratumPool::SubmitResult(const MinerJob& job, uint32_t nonce)
+{
+    legacyClient_.SubmitResult(job, nonce);
+}
+
+double StratumPool::CurrentDifficulty() const
+{
+    return legacyClient_.CurrentDifficulty();
+}
+
+void StratumPool::SendKeepalive()
+{
+    legacyClient_.SendKeepalive();
+}
+

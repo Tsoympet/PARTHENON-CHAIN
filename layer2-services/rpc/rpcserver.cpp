@@ -8,12 +8,44 @@
 #include <regex>
 #include <sstream>
 #include <stdexcept>
+#include <cstring>
 
 #include "rpcserver.h"
 
 namespace http = boost::beast::http;
 
 namespace rpc {
+
+static Block DeserializeBlock(const std::vector<uint8_t>& buf)
+{
+    Block block{};
+    if (buf.size() < sizeof(BlockHeader)) return block;
+
+    std::memcpy(&block.header, buf.data(), sizeof(BlockHeader));
+    size_t offset = sizeof(BlockHeader);
+
+    if (offset + sizeof(uint32_t) > buf.size()) return block;
+    uint32_t txCount{0};
+    std::memcpy(&txCount, buf.data() + offset, sizeof(txCount));
+    offset += sizeof(txCount);
+
+    block.transactions.reserve(txCount);
+    for (uint32_t i = 0; i < txCount && offset < buf.size(); ++i) {
+        if (offset + sizeof(uint32_t) > buf.size()) break;
+        uint32_t len{0};
+        std::memcpy(&len, buf.data() + offset, sizeof(len));
+        offset += sizeof(len);
+        if (offset + len > buf.size()) break;
+        std::vector<uint8_t> txBytes(buf.begin() + offset, buf.begin() + offset + len);
+        offset += len;
+        try {
+            block.transactions.push_back(DeserializeTransaction(txBytes));
+        } catch (...) {
+            break;
+        }
+    }
+    return block;
+}
 
 RPCServer::RPCServer(boost::asio::io_context& io, const std::string& user, const std::string& pass, uint16_t port)
     : m_io(io), m_acceptor(io, {boost::asio::ip::tcp::v4(), port}), m_user(user), m_pass(pass)
@@ -54,7 +86,7 @@ void RPCServer::AttachCoreHandlers(mempool::Mempool& pool, wallet::WalletBackend
         if (!index.Lookup(hash, height)) return std::string("null");
         auto blk = ReadBlock(height);
         if (!blk) return std::string("null");
-        for (const auto& tx : blk->vtx) {
+        for (const auto& tx : blk->transactions) {
             if (tx.GetHash() == hash) {
                 ss << '"' << HexEncode(Serialize(tx)) << '"';
                 return ss.str();
@@ -186,7 +218,9 @@ bool RPCServer::CheckAuth(const std::string& header) const
     auto encoded = header.substr(6);
     std::string decoded;
     try {
-        decoded = boost::beast::detail::base64_decode(encoded);
+        decoded.resize(boost::beast::detail::base64::decoded_size(encoded.size()));
+        auto len = boost::beast::detail::base64::decode(&decoded[0], encoded.data(), encoded.size());
+        decoded.resize(len.first);
     } catch (...) {
         return false;
     }

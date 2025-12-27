@@ -124,6 +124,13 @@ void P2PNode::Stop()
     m_peers.clear();
 }
 
+uint16_t P2PNode::ListenPort() const
+{
+    boost::system::error_code ec;
+    auto ep = m_acceptor.local_endpoint(ec);
+    return ec ? 0 : ep.port();
+}
+
 void P2PNode::Broadcast(const Message& msg)
 {
     std::lock_guard<std::mutex> g(m_mutex);
