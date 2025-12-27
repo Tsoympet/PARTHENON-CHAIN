@@ -1,27 +1,31 @@
 #include "merkle.h"
+#include <cstring>
+#include <stdexcept>
 
-uint256 ComputeMerkleRoot(const std::vector<Transaction>& txs) {
-    if (txs.empty()) return uint256::Zero();
+uint256 ComputeMerkleRoot(const std::vector<Transaction>& txs)
+{
+    if (txs.empty())
+        return uint256{};
 
     std::vector<uint256> layer;
-    for (const auto& tx : txs)
-        layer.push_back(TaggedHash("TX", (const uint8_t*)&tx, sizeof(tx)));
+    layer.reserve(txs.size());
+    for (const auto& tx : txs) {
+        layer.push_back(TransactionHash(tx));
+    }
 
     while (layer.size() > 1) {
         if (layer.size() % 2 != 0)
             layer.push_back(layer.back());
 
         std::vector<uint256> next;
+        next.reserve(layer.size() / 2);
         for (size_t i = 0; i < layer.size(); i += 2) {
-            next.push_back(
-                TaggedHash("MERKLE",
-                    layer[i].data(),
-                    layer[i].size() + layer[i+1].size()
-                )
-            );
+            uint8_t concat[64];
+            std::memcpy(concat, layer[i].data(), 32);
+            std::memcpy(concat + 32, layer[i + 1].data(), 32);
+            next.push_back(TaggedHash("MERKLE", concat, sizeof(concat)));
         }
-        layer = next;
+        layer.swap(next);
     }
-    return layer[0];
+    return layer.front();
 }
-

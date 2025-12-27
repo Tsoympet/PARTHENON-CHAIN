@@ -1,6 +1,7 @@
 #pragma once
 #include <array>
 #include <cstdint>
+#include <cstddef>
 
 using Hash256 = std::array<uint8_t, 32>;
 
