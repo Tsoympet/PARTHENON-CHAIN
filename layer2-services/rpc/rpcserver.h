@@ -9,10 +9,10 @@
 #include <unordered_map>
 #include <vector>
 
+#include "../index/txindex.h"
 #include "../mempool/mempool.h"
 #include "../net/p2p.h"
 #include "../wallet/wallet.h"
-#include "../index/txindex.h"
 #include "../../layer1-core/block/block.h"
 #include "../../layer1-core/tx/transaction.h"
 
@@ -36,8 +36,10 @@ public:
 private:
     void Accept();
     void HandleSession(boost::asio::ip::tcp::socket socket);
-    boost::beast::http::response<boost::beast::http::string_body> Process(const boost::beast::http::request<boost::beast::http::string_body>& req);
+    boost::beast::http::response<boost::beast::http::string_body> Process(const boost::beast::http::request<boost::beast::http::string_body>& req, const std::string& remote);
     bool CheckAuth(const std::string& header) const;
+    bool CheckToken(const boost::beast::http::request<boost::beast::http::string_body>& req) const;
+    bool RateLimit(const std::string& remote);
     Handler GetHandler(const std::string& name);
     static std::string HexEncode(const std::vector<uint8_t>& data);
     std::optional<Block> ReadBlock(uint32_t height);
@@ -53,6 +55,8 @@ private:
     std::unordered_map<std::string, Handler> m_handlers;
     mutable std::mutex m_mutex;
     std::string m_blockPath{"mainnet/blocks.dat"};
+    std::unordered_map<std::string, std::pair<size_t, std::chrono::steady_clock::time_point>> m_rate;
+    std::string m_token{"drachma-token"};
 };
 
 } // namespace rpc

@@ -11,6 +11,27 @@ Mempool::Mempool(const policy::FeePolicy& policy)
     m_lookup = [](const OutPoint&) { return std::optional<TxOut>{}; };
 }
 
+bool Mempool::MaybeReplace(const Transaction& tx, uint64_t fee, uint64_t feeRate)
+{
+    // Simple RBF: require every input to already be spent by a mempool tx and higher fee rate
+    std::vector<uint256> conflicts;
+    for (const auto& in : tx.vin) {
+        auto it = m_spent.find(in.prevout);
+        if (it == m_spent.end()) return false; // not replaceable
+        conflicts.push_back(it->second);
+    }
+
+    // ensure all conflicts signal replaceability
+    for (const auto& h : conflicts) {
+        auto entIt = m_entries.find(h);
+        if (entIt == m_entries.end() || !entIt->second.replaceable) return false;
+        if (feeRate <= entIt->second.feeRate) return false;
+    }
+
+    Remove(conflicts);
+    return true;
+}
+
 bool Mempool::Accept(const Transaction& tx, uint64_t fee)
 {
     std::function<void(const Transaction&)> callback;
@@ -28,39 +49,30 @@ bool Mempool::Accept(const Transaction& tx, uint64_t fee)
             if (!ValidateTransactions(batch, *m_params, m_chainHeight, m_lookup)) return false;
         }
 
+        bool replace = false;
         for (const auto& in : tx.vin) {
-            if (m_spent.count(in.prevout)) return false; // double spend
+            if (in.sequence < 0xfffffffe) { replace = true; break; }
+        }
+        for (const auto& in : tx.vin) {
+            if (m_spent.count(in.prevout)) {
+                if (!MaybeReplace(tx, fee, feeRate)) return false;
+                replace = true;
+                break;
+            }
         }
 
         if (m_entries.size() >= m_policy.MaxEntries()) EvictOne();
+        EvictExpired();
 
-        MempoolEntry entry{tx, fee, feeRate, std::chrono::steady_clock::now()};
+        MempoolEntry entry{tx, fee, feeRate, std::chrono::steady_clock::now(), replace};
         m_arrival.push_back(hash);
         m_byFeeRate.emplace(feeRate, hash);
         m_entries.emplace(hash, std::move(entry));
-        for (const auto& in : tx.vin) m_spent.emplace(in.prevout, hash);
+        for (const auto& in : tx.vin) m_spent[in.prevout] = hash;
         callback = m_onAccept;
         txCopy = tx;
     }
     if (callback) callback(txCopy);
-    std::lock_guard<std::mutex> g(m_mutex);
-    const auto ser = Serialize(tx);
-    const uint64_t feeRate = (ser.size() ? (fee * 1000 / ser.size()) : fee * 1000);
-    uint256 hash = tx.GetHash();
-    if (m_entries.count(hash)) return false;
-    if (!m_policy.IsFeeAcceptable(tx, fee)) return false;
-
-    for (const auto& in : tx.vin) {
-        if (m_spent.count(in.prevout)) return false; // double spend
-    }
-
-    if (m_entries.size() >= m_policy.MaxEntries()) EvictOne();
-
-    MempoolEntry entry{tx, fee, feeRate, std::chrono::steady_clock::now()};
-    m_arrival.push_back(hash);
-    m_byFeeRate.emplace(feeRate, hash);
-    m_entries.emplace(hash, std::move(entry));
-    for (const auto& in : tx.vin) m_spent.emplace(in.prevout, hash);
     return true;
 }
 
@@ -82,12 +94,14 @@ std::vector<Transaction> Mempool::Snapshot() const
     std::vector<Transaction> out;
     out.reserve(m_entries.size());
     for (const auto& kv : m_entries) out.push_back(kv.second.tx);
+    std::sort(out.begin(), out.end(), [](const Transaction& a, const Transaction& b) {
+        return a.GetHash() < b.GetHash();
+    });
     return out;
 }
 
 void Mempool::Remove(const std::vector<uint256>& hashes)
 {
-    std::lock_guard<std::mutex> g(m_mutex);
     for (const auto& h : hashes) {
         auto it = m_entries.find(h);
         if (it != m_entries.end()) {
@@ -115,6 +129,7 @@ void Mempool::RemoveForBlock(const std::vector<Transaction>& blockTxs)
     std::vector<uint256> hashes;
     hashes.reserve(blockTxs.size());
     for (const auto& tx : blockTxs) hashes.push_back(tx.GetHash());
+    std::lock_guard<std::mutex> g(m_mutex);
     Remove(hashes);
 }
 
@@ -197,4 +212,27 @@ void Mempool::EvictOne()
     }
 }
 
+void Mempool::EvictExpired()
+{
+    auto now = std::chrono::steady_clock::now();
+    const auto maxAge = std::chrono::hours(72);
+    std::vector<uint256> expired;
+    for (const auto& kv : m_entries) {
+        if (now - kv.second.added > maxAge) expired.push_back(kv.first);
+    }
+    if (!expired.empty()) Remove(expired);
+
+    size_t approxSize = 0;
+    for (const auto& kv : m_entries) approxSize += Serialize(kv.second.tx).size();
+    while (approxSize > m_targetBytes && !m_byFeeRate.empty()) {
+        auto victim = m_byFeeRate.begin()->second;
+        auto entryIt = m_entries.find(victim);
+        size_t vsize = 0;
+        if (entryIt != m_entries.end()) vsize = Serialize(entryIt->second.tx).size();
+        Remove({victim});
+        if (approxSize >= vsize) approxSize -= vsize; else break;
+    }
+}
+
 } // namespace mempool
+

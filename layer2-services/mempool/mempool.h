@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../../layer1-core/tx/transaction.h"
 #include "../../layer1-core/consensus/params.h"
+#include "../../layer1-core/tx/transaction.h"
 #include "../../layer1-core/validation/validation.h"
 #include "../policy/policy.h"
 #include <chrono>
@@ -21,6 +21,7 @@ struct MempoolEntry {
     uint64_t fee{0};
     uint64_t feeRate{0};
     std::chrono::steady_clock::time_point added;
+    bool replaceable{false};
 };
 
 class Mempool {
@@ -51,6 +52,8 @@ private:
     };
 
     void EvictOne();
+    void EvictExpired();
+    bool MaybeReplace(const Transaction& tx, uint64_t fee, uint64_t feeRate);
 
     policy::FeePolicy m_policy;
     std::unordered_map<uint256, MempoolEntry, ArrayHasher> m_entries;
@@ -62,6 +65,7 @@ private:
     UTXOLookup m_lookup;
     std::function<void(const Transaction&)> m_onAccept;
     mutable std::mutex m_mutex;
+    const size_t m_targetBytes{5 * 1024 * 1024};
 };
 
 } // namespace mempool

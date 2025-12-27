@@ -1,29 +1,40 @@
 #pragma once
 
 #include <boost/asio.hpp>
-#include "../../layer1-core/crypto/tagged_hash.h"
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <chrono>
 #include <functional>
-#include <optional>
 #include <mutex>
+#include <optional>
 #include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
+#include "../../layer1-core/crypto/tagged_hash.h"
+
 namespace net {
 
 struct Message {
-    std::string command;
-    std::vector<uint8_t> payload;
+    std::string command;           // 12 byte command string (ASCII, null padded)
+    std::vector<uint8_t> payload;  // raw payload
 };
 
 struct PeerInfo {
-    std::string id;
-    std::string address;
+    std::string id;      // host:port
+    std::string address; // ip string
     bool inbound{false};
+};
+
+struct BloomFilter {
+    std::vector<uint8_t> bits;
+    uint32_t nHashFuncs{0};
+    uint32_t tweak{0};
+    bool full{true};
+
+    bool Empty() const { return bits.empty(); }
+    bool Match(const uint256& h) const;
 };
 
 class P2PNode {
@@ -48,6 +59,7 @@ public:
 
 private:
     struct PeerState;
+
     void AcceptLoop();
     void ConnectSeeds();
     void LoadDNSSeeds();
@@ -58,7 +70,7 @@ private:
     void Dispatch(const PeerState& peer, const Message& msg);
     bool RateLimit(PeerState& peer);
     void SendVersion(const std::shared_ptr<PeerState>& peer);
-    void CompleteHandshake(const std::shared_ptr<PeerState>& peer, uint32_t remoteHeight);
+    void CompleteHandshake(const std::shared_ptr<PeerState>& peer, uint32_t remoteHeight, const std::string& remoteId);
     void DropPeer(const std::string& id);
     void Ban(const std::string& address);
     bool IsBanned(const std::string& address) const;
@@ -66,9 +78,8 @@ private:
     void SendInv(const std::shared_ptr<PeerState>& peer, const std::vector<uint256>& invs, uint8_t type);
     void SendGetData(const std::shared_ptr<PeerState>& peer, const std::vector<uint256>& hashes, uint8_t type);
     void SendPayload(const std::shared_ptr<PeerState>& peer, const std::string& cmd, const std::vector<uint8_t>& payload);
-    void SendInv(const std::shared_ptr<PeerState>& peer, const std::vector<uint256>& invs);
-    void SendGetData(const std::shared_ptr<PeerState>& peer, const std::vector<uint256>& hashes);
     void ScheduleHeartbeat();
+    bool ApplyBloom(const PeerState& peer, const uint256& hash) const;
 
     boost::asio::io_context& m_io;
     boost::asio::ip::tcp::acceptor m_acceptor;
