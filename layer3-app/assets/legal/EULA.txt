@@ -1,3 +1,38 @@
 END USER LICENSE AGREEMENT
 
-TODO: Final legal text.
+This End User License Agreement ("EULA") governs your use of the Drachma Core
+software (the "Software"). By running the Software you agree to the terms below.
+If you do not agree, do not use the Software.
+
+1. GRANT OF LICENSE
+   You are granted a non-exclusive, worldwide, royalty-free license to run,
+   study, and modify the Software for your own use. Redistribution is permitted
+   under the same terms, provided this EULA and attribution notices remain
+   intact.
+
+2. NO WARRANTY
+   THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO MERCHANTABILITY, FITNESS FOR A
+   PARTICULAR PURPOSE, AND NON-INFRINGEMENT. YOU ASSUME ALL RISKS ARISING FROM
+   USE OF THE SOFTWARE.
+
+3. LIMITATION OF LIABILITY
+   IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+   DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR
+   OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE
+   USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+4. SECURITY AND CONSENSUS
+   Operating a node or wallet entails security responsibilities. You are solely
+   responsible for safeguarding keys, backups, and systems. The Software does
+   not provide custodial services and does not include governance or admin
+   backdoors.
+
+5. LAW AND ARBITRATION
+   This EULA is governed by the laws of the jurisdiction in which you reside,
+   excluding conflict of law principles. Any disputes shall be resolved through
+   binding arbitration where permitted.
+
+6. ACCEPTANCE
+   By using the Software you acknowledge that you have read and understood this
+   EULA and agree to its terms.
