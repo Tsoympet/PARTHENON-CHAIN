@@ -23,7 +23,7 @@ By participating, you agree to abide by the [Code of Conduct](CODE_OF_CONDUCT.md
 
 ## Review Expectations
 
-- **Layer 1 (Consensus):** Requires multiple reviewers, explicit ACKs/NACKs, and thorough test coverage. Avoid sweeping refactors that obscure logic. Backward compatibility and determinism are mandatory.
+- **Layer 1 (Consensus):** Requires multiple reviewers, explicit ACKs/NACKs, and thorough test coverage. Avoid sweeping refactors that obscure logic. Backward compatibility and determinism are mandatory. Changes that affect block/transaction validity, network handshake, or mempool policy must call out risk analysis and migration plans.
 - **Layer 2 (Services):** Changes must not alter consensus behavior. Focus on robustness, P2P safety, and DoS resistance.
 - **Layer 3 (Desktop):** Prioritize UX clarity and user safety. Avoid adding implicit trust assumptions.
 - **Scripts/Miners/Docs:** Ensure transparency and reproducibility. Avoid opaque binaries or vendor-specific dependencies without justification.
@@ -31,13 +31,17 @@ By participating, you agree to abide by the [Code of Conduct](CODE_OF_CONDUCT.md
 ## Coding Style
 
 - **Language Standard:** C++17 for core components. Use modern idioms conservatively and prefer clarity over cleverness.
-- **Formatting:** Follow existing conventions; prefer clang-format where available. Keep line lengths reasonable (≤ 100 columns when practical).
-- **Safety:** Avoid global mutable state. Handle errors explicitly; never swallow exceptions or errors silently. Do not wrap imports in try/catch blocks.
-- **Dependencies:** Minimize new dependencies. Any new third-party library requires justification and license compatibility.
+- **File Layout:** One class per file when practical; keep headers minimal and include only what you use. Prefer `#pragma once` where supported.
+- **Naming:** Use `CamelCase` for classes/types, `snake_case` for functions and variables, `ALL_CAPS` for macros/constants. Avoid Hungarian notation.
+- **Formatting:** Follow existing conventions; prefer clang-format where available. Keep line lengths reasonable (≤ 100 columns when practical). Brace style matches the surrounding code (generally `K&R`).
+- **Safety:** Avoid global mutable state. Handle errors explicitly; never swallow exceptions or errors silently. Do not wrap imports in try/catch blocks. Avoid implicit conversions; favor `explicit` constructors and `override` where appropriate.
+- **Concurrency:** Minimize shared mutable state. Favor RAII for locks; avoid holding locks across network or disk operations when possible. Document lock ordering to prevent deadlocks.
+- **Dependencies:** Minimize new dependencies. Any new third-party library requires justification, license compatibility, and deterministic builds.
+- **Documentation:** Public APIs and consensus-relevant functions should include comments describing assumptions, preconditions, and failure modes.
 
 ## Testing
 
-- Add unit or integration tests alongside code changes (see `tests/`).
+- Add unit or integration tests alongside code changes (see `tests/`). For consensus logic, include regression vectors and edge cases.
 - Run the full test suite and relevant sanitizers when available:
   ```bash
   cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
@@ -45,12 +49,26 @@ By participating, you agree to abide by the [Code of Conduct](CODE_OF_CONDUCT.md
   ctest --test-dir build --output-on-failure
   ```
 - For networking or miner changes, include reproducible test vectors or pcap/log snippets when possible.
+- Document any platform-specific test coverage (e.g., macOS/Windows/Linux) and simulator/emulator use.
 
 ## Commit Guidelines
 
 - Use descriptive commit messages (e.g., `layer1: tighten block header checks`).
 - Reference issues when applicable: `Fixes #123`.
 - Avoid commits that break bisectability or introduce formatting-only changes mixed with behavior changes.
+- **Signing:** Sign commits and tags with a trusted key when possible. Ensure the email matches your GitHub account for verification.
+
+## Pull Requests
+
+- Fill out the PR template completely, including risk assessment and test evidence. State explicitly whether the change is consensus-critical.
+- Keep diffs focused; split apart unrelated changes. Large rewrites should be discussed in an issue first.
+- CI must pass before merge. If CI is failing for unrelated reasons, note it in the PR and provide local test evidence.
+- Maintainers may request additional reviewers for cryptography, consensus, networking, or wallet changes.
+
+## Issue Reporting
+
+- Use issue templates and label the area (Layer 1/2/3, docs, tests, tooling). Include environment details, stack traces, and minimal repro steps.
+- Do not report security issues publicly; follow [SECURITY.md](SECURITY.md).
 
 ## Security & Consensus Safety
 

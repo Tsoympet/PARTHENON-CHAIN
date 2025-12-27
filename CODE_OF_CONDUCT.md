@@ -36,9 +36,9 @@ This Code of Conduct applies within all community spaces, and also applies when 
 
 ## Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the community leaders responsible for enforcement at **security@drachma.org**. All complaints will be reviewed and investigated promptly and fairly.
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the community leaders responsible for enforcement at **security@drachma.org**. Reports may also be submitted via GitHub Security Advisories if anonymity is required. All complaints will be reviewed and investigated promptly and fairly.
 
-All community leaders are obligated to respect the privacy and security of the reporter of any incident.
+All community leaders are obligated to respect the privacy and security of the reporter of any incident. Reports will be acknowledged within five business days, and outcomes will include an explanation of any actions taken.
 
 ## Enforcement Guidelines
 
