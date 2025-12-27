@@ -28,6 +28,7 @@ add_library(drachma_layer1
     layer1-core/storage/blockstore.cpp
     layer1-core/tx/transaction.cpp
     layer1-core/validation/validation.cpp
+    layer1-core/validation/anti_dos.cpp
 )
 
 target_include_directories(drachma_layer1
@@ -123,6 +124,10 @@ if(DRACHMA_BUILD_TESTS)
     target_link_libraries(p2p_integration_test PRIVATE drachma_layer2)
     add_test(NAME p2p_integration_test COMMAND p2p_integration_test)
 
+    add_executable(anti_dos_tests tests/validation/anti_dos_tests.cpp)
+    target_link_libraries(anti_dos_tests PRIVATE drachma_layer1)
+    add_test(NAME anti_dos_tests COMMAND anti_dos_tests)
+
     if(DRACHMA_BUILD_FUZZ)
         add_executable(fuzz_schnorr tests/crypto/fuzz_schnorr.cpp)
         target_link_libraries(fuzz_schnorr PRIVATE drachma_layer1)
@@ -138,6 +143,16 @@ if(DRACHMA_BUILD_TESTS)
         target_link_libraries(fuzz_validation PRIVATE drachma_layer1)
         target_compile_options(fuzz_validation PRIVATE -fsanitize=fuzzer,address)
         target_link_options(fuzz_validation PRIVATE -fsanitize=fuzzer,address)
+
+        add_executable(fuzz_fork_resolution tests/consensus/fuzz_fork_resolution.cpp)
+        target_link_libraries(fuzz_fork_resolution PRIVATE drachma_layer1)
+        target_compile_options(fuzz_fork_resolution PRIVATE -fsanitize=fuzzer,address)
+        target_link_options(fuzz_fork_resolution PRIVATE -fsanitize=fuzzer,address)
+
+        add_executable(fuzz_difficulty tests/pow/fuzz_difficulty.cpp)
+        target_link_libraries(fuzz_difficulty PRIVATE drachma_layer1)
+        target_compile_options(fuzz_difficulty PRIVATE -fsanitize=fuzzer,address)
+        target_link_options(fuzz_difficulty PRIVATE -fsanitize=fuzzer,address)
     else()
         add_executable(fuzz_schnorr tests/crypto/fuzz_schnorr.cpp)
         target_link_libraries(fuzz_schnorr PRIVATE drachma_layer1)
@@ -147,6 +162,12 @@ if(DRACHMA_BUILD_TESTS)
 
         add_executable(fuzz_validation tests/validation/fuzz_validation.cpp)
         target_link_libraries(fuzz_validation PRIVATE drachma_layer1)
+
+        add_executable(fuzz_fork_resolution tests/consensus/fuzz_fork_resolution.cpp)
+        target_link_libraries(fuzz_fork_resolution PRIVATE drachma_layer1)
+
+        add_executable(fuzz_difficulty tests/pow/fuzz_difficulty.cpp)
+        target_link_libraries(fuzz_difficulty PRIVATE drachma_layer1)
     endif()
     add_executable(fuzz_schnorr tests/crypto/fuzz_schnorr.cpp)
     target_link_libraries(fuzz_schnorr PRIVATE drachma_layer1)

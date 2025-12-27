@@ -50,16 +50,23 @@ bool IsCoinbase(const Transaction& tx)
 
 bool ValidateBlockHeader(const BlockHeader& header, const consensus::Params& params, const BlockValidationOptions& opts)
 {
+    if (opts.limiter && !opts.limiter->Consume(opts.limiterWeight))
+        return false;
+
     if (!powalgo::CheckProofOfWork(BlockHash(header), header.bits, params))
         return false;
 
     // Enforce sane timestamp ordering relative to median past and against the
-    // wall clock with modest drift tolerance.
-    if (opts.medianTimePast != 0 && header.time <= opts.medianTimePast)
+    // wall clock with modest drift tolerance. medianTimePast must be supplied
+    // by the caller; using zero would skip the ordering rule and is rejected.
+    if (opts.medianTimePast == 0 || header.time <= opts.medianTimePast)
         return false;
 
-    uint32_t horizon = opts.now + opts.maxFutureDrift;
-    if (header.time > horizon)
+    uint64_t horizon = static_cast<uint64_t>(opts.now) + opts.maxFutureDrift;
+    uint32_t clampedHorizon = horizon > std::numeric_limits<uint32_t>::max()
+        ? std::numeric_limits<uint32_t>::max()
+        : static_cast<uint32_t>(horizon);
+    if (header.time > clampedHorizon)
         return false;
 
     return true;
