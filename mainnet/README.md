@@ -6,10 +6,13 @@ Layer-1 and Layer-2 binaries so that deployments are reproducible and auditable.
 
 ## Files
 - `genesis.json`: Canonical genesis block header fields and embedded message.
+- `genesis.cpp`: Utility for deriving and verifying the compiled genesis block
+  constants against consensus code.
 - `checkpoints.json`: Height-indexed block hashes for fast sync anchors.
 - `seeds.json`: Curated peer seed endpoints for bootstrapping new nodes.
 - `config.sample.conf`: Baseline configuration tuned for public nodes and validators.
 - `launch-notes.md`: Runbook for first blocks, checkpoint rotation, and incident response.
+- `launch.sh`: Minimal wrapper to start a mainnet node using the curated config.
 
 ## Usage
 1. Copy `config.sample.conf` to your data directory as `drachma.conf` and adjust RPC

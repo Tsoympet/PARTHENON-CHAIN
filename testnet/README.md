@@ -47,6 +47,14 @@ accepts `--allowlist` to restrict payouts to pre-approved addresses.
   the README inside that directory for scrape targets matching the provided
   docker-compose profile.
 
+## Dashboard
+
+`dashboard.html` is a static status page that polls JSON-RPC endpoints for
+blockchain height, mempool size, and peer counts. Serve it with any static web
+server (the default docker-compose stack mounts it behind nginx on port 8080)
+and set `RPC_URL`, `RPC_USER`, and `RPC_PASSWORD` via `window` variables when
+embedding in another site.
+
 ## Quick start (3-node local mesh)
 
 Use `docker-compose up -d` from the repository root to launch two seed nodes,

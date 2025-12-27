@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DRACHMA Testnet Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #0d1117; color: #c9d1d9; margin: 0; padding: 0; }
+    header { padding: 1.5rem; background: #161b22; border-bottom: 1px solid #30363d; }
+    h1 { margin: 0; }
+    .container { padding: 1.5rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+    .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+    .title { font-size: 0.9rem; color: #8b949e; text-transform: uppercase; letter-spacing: 0.05rem; margin-bottom: 0.25rem; }
+    .value { font-size: 1.4rem; font-weight: bold; }
+    .status { margin-top: 0.5rem; padding: 0.35rem 0.5rem; border-radius: 6px; display: inline-block; background: #21262d; }
+    .error { color: #f85149; }
+    footer { padding: 1rem 1.5rem; border-top: 1px solid #30363d; color: #8b949e; background: #0d1117; }
+    code { background: #21262d; padding: 0.2rem 0.3rem; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>DRACHMA Testnet Status</h1>
+    <p id="networkLabel">Loading network data…</p>
+  </header>
+  <main class="container">
+    <div class="card">
+      <div class="title">Best block height</div>
+      <div class="value" id="bestHeight">-</div>
+      <div class="status" id="difficulty"></div>
+    </div>
+    <div class="card">
+      <div class="title">Mempool transactions</div>
+      <div class="value" id="mempoolSize">-</div>
+      <div class="status" id="mempoolBytes"></div>
+    </div>
+    <div class="card">
+      <div class="title">Peer connections</div>
+      <div class="value" id="peers">-</div>
+      <div class="status" id="warning"></div>
+    </div>
+  </main>
+  <footer>
+    Point <code>RPC_URL</code> to a JSON-RPC endpoint (default <code>http://localhost:18332</code>). Data refreshes every 10 seconds.
+  </footer>
+
+  <script>
+    const rpcUrl = new URL(window.RPC_URL || 'http://localhost:18332');
+    const rpcUser = window.RPC_USER || 'user';
+    const rpcPassword = window.RPC_PASSWORD || 'pass';
+
+    async function rpc(method, params = []) {
+      const body = { jsonrpc: '1.0', id: 'dashboard', method, params };
+      const headers = new Headers();
+      headers.set('Content-Type', 'application/json');
+      headers.set('Authorization', 'Basic ' + btoa(`${rpcUser}:${rpcPassword}`));
+
+      const response = await fetch(rpcUrl, { method: 'POST', headers, body: JSON.stringify(body) });
+      if (!response.ok) {
+        throw new Error(`${response.status} ${response.statusText}`);
+      }
+      const payload = await response.json();
+      if (payload.error) {
+        throw new Error(payload.error.message || 'RPC error');
+      }
+      return payload.result;
+    }
+
+    async function refresh() {
+      try {
+        const [info, mempoolInfo, peerInfo] = await Promise.all([
+          rpc('getblockchaininfo'),
+          rpc('getmempoolinfo'),
+          rpc('getconnectioncount'),
+        ]);
+
+        document.getElementById('networkLabel').textContent = `${info.chain} | headers ${info.headers} | blocks ${info.blocks}`;
+        document.getElementById('bestHeight').textContent = info.blocks;
+        document.getElementById('difficulty').textContent = `Difficulty: ${info.difficulty}`;
+
+        document.getElementById('mempoolSize').textContent = mempoolInfo.size;
+        document.getElementById('mempoolBytes').textContent = `${(mempoolInfo.bytes / 1024).toFixed(2)} KiB`;
+
+        document.getElementById('peers').textContent = peerInfo;
+        document.getElementById('warning').textContent = peerInfo < 4 ? 'Low peer count' : 'Healthy';
+        document.getElementById('warning').classList.toggle('error', peerInfo < 2);
+      } catch (err) {
+        document.getElementById('networkLabel').textContent = `RPC error: ${err.message}`;
+        document.querySelectorAll('.value').forEach((el) => (el.textContent = '-'));
+        document.querySelectorAll('.status').forEach((el) => (el.textContent = '')); 
+      }
+    }
+
+    refresh();
+    setInterval(refresh, 10000);
+  </script>
+</body>
+</html>

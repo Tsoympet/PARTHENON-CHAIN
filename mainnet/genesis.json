@@ -6,6 +6,10 @@
   "merkleRoot": "9f1c5f78fd7a1265b6a59eaef6c0ef25b8b8d2d8f333f5cb4dc6fe0cc2a1c9b4",
   "hash": "0000099e1b8d4c7f5e6fbc85db3f1a4be810e5dc3fa1aa0b1aa55d1b335c1abc",
   "message": "DRACHMA MAINNET GENESIS - A non-custodial currency",
+  "pszTimestamp": "2025-02-29 / DRACHMA mainnet genesis mined for permissionless settlements",
   "reward": 5000000000,
+  "defaultPort": 9333,
+  "powLimit": "00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+  "subsidyHalvingInterval": 210000,
   "note": "Verify these fields against compiled constants before launch and during audits."
 }

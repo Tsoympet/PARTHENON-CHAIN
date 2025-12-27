@@ -3,6 +3,16 @@
 Simple testnet faucet script. Requires a DRACHMA node with JSON-RPC enabled and
 wallet support. The script enforces a per-address rate limit (in-memory) and
 refuses to send if the node reports low balance.
+
+Operational notes
+-----------------
+- The faucet connects directly to the node RPC interface; no additional SDKs
+  are required.
+- Use the `--state-file` flag so that rate limiting survives container restarts.
+- Enable `--dry-run` in probes and CI to validate connectivity without sending
+  coins.
+- When exposing the faucet publicly, pair it with a reverse proxy that enforces
+  TLS and request throttling.
 """
 import argparse
 import json
@@ -75,6 +85,12 @@ class Faucet:
     def _balance(self):
         return float(self._call("getbalance", [self.account]))
 
+    def info(self):
+        return {
+            "balance": self._balance(),
+            "network": self._call("getblockchaininfo", []),
+        }
+
     def send(self, address: str, amount: float):
         if amount <= 0 or amount > MAX_PAYOUT:
             raise RuntimeError(f"Invalid amount: must be between 0 and {MAX_PAYOUT}")
@@ -96,6 +112,7 @@ def main():
     parser.add_argument("--allowlist", help="File containing one address per line to receive payouts")
     parser.add_argument("--max-payout", type=float, default=MAX_PAYOUT, help="Override maximum payout per request")
     parser.add_argument("--rate-limit", type=int, default=RATE_LIMIT_SECONDS, help="Override rate-limit window in seconds")
+    parser.add_argument("--dry-run", action="store_true", help="Perform connectivity checks without sending funds")
     args = parser.parse_args()
 
     global MAX_PAYOUT, RATE_LIMIT_SECONDS  # noqa: PLW0603
@@ -108,6 +125,11 @@ def main():
 
     faucet = Faucet(args.rpc, args.rpcuser, args.rpcpassword, args.account, args.state_file, allowlist)
     try:
+        if args.dry_run:
+            info = faucet.info()
+            print(json.dumps(info, indent=2))
+            return
+
         txid = faucet.send(args.address, args.amount)
         print(f"Sent {args.amount} DRACHMA to {args.address}: {txid}")
     except Exception as exc:  # noqa: BLE001
