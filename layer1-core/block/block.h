@@ -17,3 +17,6 @@ struct Block {
     BlockHeader header;
     std::vector<Transaction> transactions;
 };
+
+// Compute the tagged hash of a block header (double-tagged SHA-256 per DRACHMA rules).
+uint256 BlockHash(const BlockHeader& header);
