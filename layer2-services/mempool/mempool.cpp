@@ -1,16 +1,48 @@
 #include "mempool.h"
 
 #include <algorithm>
+#include <optional>
 
 namespace mempool {
 
 Mempool::Mempool(const policy::FeePolicy& policy)
     : m_policy(policy)
 {
+    m_lookup = [](const OutPoint&) { return std::optional<TxOut>{}; };
 }
 
 bool Mempool::Accept(const Transaction& tx, uint64_t fee)
 {
+    std::function<void(const Transaction&)> callback;
+    Transaction txCopy;
+    {
+        std::lock_guard<std::mutex> g(m_mutex);
+        const auto ser = Serialize(tx);
+        const uint64_t feeRate = (ser.size() ? (fee * 1000 / ser.size()) : fee * 1000);
+        uint256 hash = tx.GetHash();
+        if (m_entries.count(hash)) return false;
+        if (!m_policy.IsFeeAcceptable(tx, fee)) return false;
+
+        if (m_params) {
+            std::vector<Transaction> batch{tx};
+            if (!ValidateTransactions(batch, *m_params, m_chainHeight, m_lookup)) return false;
+        }
+
+        for (const auto& in : tx.vin) {
+            if (m_spent.count(in.prevout)) return false; // double spend
+        }
+
+        if (m_entries.size() >= m_policy.MaxEntries()) EvictOne();
+
+        MempoolEntry entry{tx, fee, feeRate, std::chrono::steady_clock::now()};
+        m_arrival.push_back(hash);
+        m_byFeeRate.emplace(feeRate, hash);
+        m_entries.emplace(hash, std::move(entry));
+        for (const auto& in : tx.vin) m_spent.emplace(in.prevout, hash);
+        callback = m_onAccept;
+        txCopy = tx;
+    }
+    if (callback) callback(txCopy);
     std::lock_guard<std::mutex> g(m_mutex);
     const auto ser = Serialize(tx);
     const uint64_t feeRate = (ser.size() ? (fee * 1000 / ser.size()) : fee * 1000);
@@ -97,6 +129,20 @@ uint64_t Mempool::EstimateFeeRate(size_t percentile) const
     percentile = std::min(percentile, static_cast<size_t>(99));
     size_t idx = feeRates.size() * percentile / 100;
     return feeRates[idx];
+}
+
+void Mempool::SetValidationContext(const consensus::Params& params, int height, UTXOLookup lookup)
+{
+    std::lock_guard<std::mutex> g(m_mutex);
+    m_params = params;
+    m_chainHeight = height;
+    m_lookup = std::move(lookup);
+}
+
+void Mempool::SetOnAccept(std::function<void(const Transaction&)> cb)
+{
+    std::lock_guard<std::mutex> g(m_mutex);
+    m_onAccept = std::move(cb);
 }
 
 size_t Mempool::ArrayHasher::operator()(const uint256& data) const noexcept

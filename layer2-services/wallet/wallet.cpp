@@ -28,6 +28,27 @@ void WalletBackend::AddUTXO(const OutPoint& op, const TxOut& txout)
     m_utxos.push_back({op, txout});
 }
 
+void WalletBackend::SetUTXOLookup(UTXOLookup lookup)
+{
+    m_lookup = std::move(lookup);
+}
+
+void WalletBackend::SyncFromLayer1(const std::vector<OutPoint>& watchlist)
+{
+    if (!m_lookup) return;
+    std::lock_guard<std::mutex> g(m_mutex);
+    for (const auto& op : watchlist) {
+        auto existing = std::find_if(m_utxos.begin(), m_utxos.end(), [&op](const UTXO& u) {
+            return u.outpoint.hash == op.hash && u.outpoint.index == op.index;
+        });
+        if (existing != m_utxos.end()) continue;
+        auto maybe = m_lookup(op);
+        if (maybe) {
+            m_utxos.push_back({op, *maybe});
+        }
+    }
+}
+
 uint64_t WalletBackend::GetBalance() const
 {
     std::lock_guard<std::mutex> g(m_mutex);

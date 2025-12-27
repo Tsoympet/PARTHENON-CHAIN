@@ -5,6 +5,7 @@
 #include <cstring>
 #include <deque>
 #include <optional>
+#include <random>
 
 namespace net {
 
@@ -46,6 +47,21 @@ void P2PNode::AddPeerAddress(const std::string& address)
     m_seedAddrs.insert(address);
 }
 
+void P2PNode::SetLocalHeight(uint32_t height)
+{
+    m_localHeight = height;
+}
+
+void P2PNode::SetTxProvider(PayloadProvider provider)
+{
+    m_txProvider = std::move(provider);
+}
+
+void P2PNode::SetBlockProvider(PayloadProvider provider)
+{
+    m_blockProvider = std::move(provider);
+}
+
 void P2PNode::Start()
 {
     LoadDNSSeeds();
@@ -75,6 +91,15 @@ void P2PNode::SendTo(const std::string& peerId, const Message& msg)
     std::lock_guard<std::mutex> g(m_mutex);
     auto it = m_peers.find(peerId);
     if (it != m_peers.end()) QueueMessage(*it->second, msg);
+}
+
+void P2PNode::AnnounceInventory(const std::vector<uint256>& txs, const std::vector<uint256>& blocks)
+{
+    std::lock_guard<std::mutex> g(m_mutex);
+    for (auto& kv : m_peers) {
+        if (!txs.empty()) SendInv(kv.second, txs, /*type=*/0x01);
+        if (!blocks.empty()) SendInv(kv.second, blocks, /*type=*/0x02);
+    }
 }
 
 std::vector<PeerInfo> P2PNode::Peers() const
@@ -185,6 +210,8 @@ void P2PNode::ReadLoop(const std::shared_ptr<PeerState>& peer)
                             if (!RateLimit(*peer)) { DropPeer(peer->info.id); return; }
                             if (msg.command == "ping") {
                                 QueueMessage(*peer, Message{"pong", msg.payload});
+                            } else if (msg.command == "pong") {
+                                // heartbeat reply
                             } else {
                                 Dispatch(*peer, msg);
                             }
@@ -227,6 +254,22 @@ bool P2PNode::RateLimit(PeerState& peer)
 void P2PNode::SendVersion(const std::shared_ptr<PeerState>& peer)
 {
     std::string nodeId = peer->info.id.empty() ? "" : peer->info.id;
+    const uint32_t version = 1;
+    std::vector<uint8_t> payload;
+    payload.resize(sizeof(version) + sizeof(m_localHeight) + nodeId.size());
+    std::memcpy(payload.data(), &version, sizeof(version));
+    std::memcpy(payload.data() + sizeof(version), &m_localHeight, sizeof(m_localHeight));
+    std::memcpy(payload.data() + sizeof(version) + sizeof(m_localHeight), nodeId.data(), nodeId.size());
+    QueueMessage(*peer, Message{"version", payload});
+}
+
+void P2PNode::CompleteHandshake(const std::shared_ptr<PeerState>& peer, uint32_t)
+{
+    if (!peer->sentVerack) {
+        QueueMessage(*peer, Message{"verack", {}});
+        peer->sentVerack = true;
+    }
+    peer->gotVersion = true;
     std::vector<uint8_t> payload(nodeId.begin(), nodeId.end());
     QueueMessage(*peer, Message{"version", payload});
 }
@@ -272,6 +315,12 @@ void P2PNode::LoadDNSSeeds()
     try {
         boost::property_tree::ptree pt;
         read_json("testnet/seeds.json", pt);
+        for (const auto& child : pt) {
+            auto host = child.second.get<std::string>("host", "");
+            auto port = child.second.get<uint16_t>("port", 0);
+            if (!host.empty() && port != 0) {
+                AddPeerAddress(host + ":" + std::to_string(port));
+            }
         for (const auto& child : pt.get_child("seeds")) {
             AddPeerAddress(child.second.get_value<std::string>());
         }
@@ -283,12 +332,83 @@ void P2PNode::LoadDNSSeeds()
 void P2PNode::HandleBuiltin(const std::shared_ptr<PeerState>& peer, const Message& msg)
 {
     if (msg.command == "version") {
+        if (msg.payload.size() >= 8) {
+            uint32_t version{0};
+            uint32_t height{0};
+            std::memcpy(&version, msg.payload.data(), sizeof(version));
+            std::memcpy(&height, msg.payload.data() + sizeof(version), sizeof(height));
+            if (version == 0) { Ban(peer->info.address); DropPeer(peer->info.id); return; }
+            CompleteHandshake(peer, height);
+        } else {
+            Ban(peer->info.address);
+            DropPeer(peer->info.id);
+            return;
+        }
         peer->gotVersion = true;
         QueueMessage(*peer, Message{"verack", {}});
     } else if (msg.command == "verack") {
         peer->sentVerack = true;
     } else if (msg.command == "inv") {
         std::vector<uint256> invs;
+        uint8_t type = 0x01;
+        size_t stride = 32;
+        if (msg.payload.size() % 33 == 0) { stride = 33; }
+        for (size_t i = 0; i + stride <= msg.payload.size(); i += stride) {
+            uint256 h{};
+            if (stride == 33) type = msg.payload[i];
+            std::copy(msg.payload.begin() + i + (stride - 32), msg.payload.begin() + i + stride, h.begin());
+            if (m_seenInventory.insert(h).second) invs.push_back(h);
+        }
+        if (!invs.empty()) SendGetData(peer, invs, type);
+    } else if (msg.command == "getdata") {
+        std::vector<uint256> requests;
+        uint8_t type = 0x01;
+        size_t stride = 32;
+        if (msg.payload.size() % 33 == 0) stride = 33;
+        for (size_t i = 0; i + stride <= msg.payload.size(); i += stride) {
+            uint256 h{};
+            if (stride == 33) type = msg.payload[i];
+            std::copy(msg.payload.begin() + i + (stride - 32), msg.payload.begin() + i + stride, h.begin());
+            requests.push_back(h);
+        }
+        for (const auto& h : requests) {
+            std::optional<std::vector<uint8_t>> payload;
+            if (type == 0x02 && m_blockProvider) payload = m_blockProvider(h);
+            if (!payload && m_txProvider) payload = m_txProvider(h);
+            if (payload) {
+                SendPayload(peer, type == 0x02 ? "block" : "tx", *payload);
+            }
+        }
+    }
+}
+
+void P2PNode::SendInv(const std::shared_ptr<PeerState>& peer, const std::vector<uint256>& invs, uint8_t type)
+{
+    std::vector<uint8_t> payload;
+    payload.reserve(invs.size() * 33);
+    for (const auto& h : invs) {
+        payload.push_back(type);
+        payload.insert(payload.end(), h.begin(), h.end());
+    }
+    QueueMessage(*peer, Message{"inv", payload});
+}
+
+void P2PNode::SendGetData(const std::shared_ptr<PeerState>& peer, const std::vector<uint256>& hashes, uint8_t type)
+{
+    std::vector<uint8_t> payload;
+    payload.reserve(hashes.size() * 33);
+    for (const auto& h : hashes) {
+        payload.push_back(type);
+        payload.insert(payload.end(), h.begin(), h.end());
+    }
+    QueueMessage(*peer, Message{"getdata", payload});
+}
+
+void P2PNode::SendPayload(const std::shared_ptr<PeerState>& peer, const std::string& cmd, const std::vector<uint8_t>& payload)
+{
+    QueueMessage(*peer, Message{cmd, payload});
+}
+
         for (size_t i = 0; i + 32 <= msg.payload.size(); i += 32) {
             uint256 h{};
             std::copy(msg.payload.begin() + i, msg.payload.begin() + i + 32, h.begin());

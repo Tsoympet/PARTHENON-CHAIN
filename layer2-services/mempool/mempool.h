@@ -1,12 +1,16 @@
 #pragma once
 
 #include "../../layer1-core/tx/transaction.h"
+#include "../../layer1-core/consensus/params.h"
+#include "../../layer1-core/validation/validation.h"
 #include "../policy/policy.h"
 #include <chrono>
 #include <cstddef>
 #include <deque>
+#include <functional>
 #include <map>
 #include <mutex>
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
@@ -30,6 +34,8 @@ public:
     void Remove(const std::vector<uint256>& hashes);
     void RemoveForBlock(const std::vector<Transaction>& blockTxs);
     uint64_t EstimateFeeRate(size_t percentile) const; // sat/kB
+    void SetValidationContext(const consensus::Params& params, int height, UTXOLookup lookup);
+    void SetOnAccept(std::function<void(const Transaction&)> cb);
 
 private:
     struct ArrayHasher {
@@ -51,6 +57,10 @@ private:
     std::multimap<uint64_t, uint256> m_byFeeRate; // feeRate -> txid
     std::deque<uint256> m_arrival;
     std::unordered_map<OutPoint, uint256, OutPointHasher, OutPointEqual> m_spent;
+    std::optional<consensus::Params> m_params;
+    int m_chainHeight{0};
+    UTXOLookup m_lookup;
+    std::function<void(const Transaction&)> m_onAccept;
     mutable std::mutex m_mutex;
 };
 

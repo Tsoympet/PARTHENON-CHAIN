@@ -4,8 +4,11 @@
 #include <boost/beast/version.hpp>
 #include <algorithm>
 #include <functional>
+#include <fstream>
 #include <mutex>
+#include <optional>
 #include <regex>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -15,6 +18,7 @@
 #include "../net/p2p.h"
 #include "../wallet/wallet.h"
 #include "../index/txindex.h"
+#include "../../layer1-core/block/block.h"
 #include "../../layer1-core/tx/transaction.h"
 
 namespace http = boost::beast::http;
@@ -28,8 +32,15 @@ public:
     RPCServer(boost::asio::io_context& io, const std::string& user, const std::string& pass, uint16_t port)
         : m_io(io), m_acceptor(io, {boost::asio::ip::tcp::v4(), port}), m_user(user), m_pass(pass) {}
 
+    void SetBlockStorePath(std::string path) { m_blockPath = std::move(path); }
+
     void AttachCoreHandlers(mempool::Mempool& pool, wallet::WalletBackend& wallet, txindex::TxIndex& index, net::P2PNode& p2p)
     {
+        pool.SetOnAccept([&p2p](const Transaction& tx) {
+            auto payload = Serialize(tx);
+            p2p.Broadcast(net::Message{"tx", payload});
+        });
+
         Register("getbalance", [&wallet](const std::string&) {
             return std::to_string(wallet.GetBalance());
         });
@@ -38,11 +49,27 @@ public:
             return std::to_string(index.BlockCount());
         });
 
+        Register("getblock", [this, &index](const std::string& params) {
         Register("getblock", [&index](const std::string& params) {
             auto hash = ParseHash(params);
             uint32_t height{0};
             if (!index.LookupBlock(hash, height)) throw std::runtime_error("unknown block");
-            return std::string("{\"height\":") + std::to_string(height) + "}";
+            auto blk = ReadBlock(height);
+            std::string hexBody = "";
+            if (blk) {
+                std::vector<uint8_t> raw;
+                raw.insert(raw.end(), reinterpret_cast<uint8_t*>(&blk->header), reinterpret_cast<uint8_t*>(&blk->header) + sizeof(BlockHeader));
+                uint32_t txCount = static_cast<uint32_t>(blk->transactions.size());
+                raw.insert(raw.end(), reinterpret_cast<uint8_t*>(&txCount), reinterpret_cast<uint8_t*>(&txCount) + sizeof(txCount));
+                for (const auto& tx : blk->transactions) {
+                    auto ser = Serialize(tx);
+                    uint32_t txSize = static_cast<uint32_t>(ser.size());
+                    raw.insert(raw.end(), reinterpret_cast<uint8_t*>(&txSize), reinterpret_cast<uint8_t*>(&txSize) + sizeof(txSize));
+                    raw.insert(raw.end(), ser.begin(), ser.end());
+                }
+                hexBody = HexEncode(raw);
+            }
+            return std::string("{\"height\":") + std::to_string(height) + ",\"hex\":\"" + hexBody + "\"}";
         });
 
         Register("sendtx", [&pool, &p2p](const std::string& params) {
@@ -157,6 +184,59 @@ private:
         return it->second;
     }
 
+    static std::string HexEncode(const std::vector<uint8_t>& data)
+    {
+        static const char* hexmap = "0123456789abcdef";
+        std::string out;
+        out.reserve(data.size() * 2);
+        for (auto b : data) {
+            out.push_back(hexmap[b >> 4]);
+            out.push_back(hexmap[b & 0x0F]);
+        }
+        return out;
+    }
+
+    std::optional<Block> ReadBlock(uint32_t height)
+    {
+        std::ifstream in(m_blockPath, std::ios::binary);
+        if (!in.good()) return std::nullopt;
+        // naive scan until height match
+        uint32_t current = 0;
+        while (in.peek() != EOF) {
+            uint32_t size{0};
+            auto start = in.tellg();
+            in.read(reinterpret_cast<char*>(&size), sizeof(size));
+            if (!in || size == 0) break;
+            std::vector<uint8_t> data(size);
+            in.read(reinterpret_cast<char*>(data.data()), size);
+            if (!in) break;
+            if (current == height) {
+                Block block{};
+                size_t offset = 0;
+                if (size < sizeof(BlockHeader) + sizeof(uint32_t)) return std::nullopt;
+                std::memcpy(&block.header, data.data(), sizeof(BlockHeader));
+                offset += sizeof(BlockHeader);
+                uint32_t txCount{0};
+                std::memcpy(&txCount, data.data() + offset, sizeof(txCount));
+                offset += sizeof(txCount);
+                for (uint32_t i = 0; i < txCount; ++i) {
+                    if (offset + sizeof(uint32_t) > data.size()) return std::nullopt;
+                    uint32_t txSize{0};
+                    std::memcpy(&txSize, data.data() + offset, sizeof(txSize));
+                    offset += sizeof(txSize);
+                    if (offset + txSize > data.size()) return std::nullopt;
+                    std::vector<uint8_t> txdata(data.begin() + offset, data.begin() + offset + txSize);
+                    offset += txSize;
+                    block.transactions.push_back(DeserializeTransaction(txdata));
+                }
+                return block;
+            }
+            ++current;
+            in.seekg(start + static_cast<std::streamoff>(sizeof(uint32_t) + size));
+        }
+        return std::nullopt;
+    }
+
     static std::vector<uint8_t> ParseHex(const std::string& hex)
     {
         std::vector<uint8_t> out;
@@ -205,6 +285,7 @@ private:
     std::string m_pass;
     std::unordered_map<std::string, Handler> m_handlers;
     mutable std::mutex m_mutex;
+    std::string m_blockPath{"mainnet/blocks.dat"};
 };
 
 } // namespace rpc

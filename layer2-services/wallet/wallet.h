@@ -2,8 +2,10 @@
 
 #include "keystore/keystore.h"
 #include "../../layer1-core/tx/transaction.h"
+#include "../../layer1-core/validation/validation.h"
 #include <mutex>
 #include <unordered_map>
+#include <optional>
 
 namespace wallet {
 
@@ -19,6 +21,8 @@ public:
     KeyId ImportKey(const PrivKey& priv);
     bool GetKey(const KeyId& id, PrivKey& out) const;
     void AddUTXO(const OutPoint& op, const TxOut& txout);
+    void SetUTXOLookup(UTXOLookup lookup);
+    void SyncFromLayer1(const std::vector<OutPoint>& watchlist);
     uint64_t GetBalance() const;
     Transaction CreateSpend(const std::vector<TxOut>& outputs, const KeyId& from, uint64_t fee);
 
@@ -29,6 +33,7 @@ private:
 
     KeyStore m_store;
     std::vector<UTXO> m_utxos;
+    UTXOLookup m_lookup;
     mutable std::mutex m_mutex;
 };
 
