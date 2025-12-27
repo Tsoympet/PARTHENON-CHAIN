@@ -1,6 +1,7 @@
 #pragma once
 #include "../block/block.h"
 #include "../consensus/params.h"
+#include "anti_dos.h"
 #include <functional>
 #include <optional>
 #include <cstdint>
@@ -9,8 +10,8 @@
 using UTXOLookup = std::function<std::optional<TxOut>(const OutPoint&)>;
 
 struct BlockValidationOptions {
-    // Median time past over the last 11 blocks. Zero disables the check
-    // (useful for isolated unit tests).
+    // Median time past over the last 11 blocks. Must be provided to enforce
+    // BIP113-style timestamp ordering.
     uint32_t medianTimePast = 0;
 
     // Current wall clock (or network-adjusted) time. Defaults to now().
@@ -18,6 +19,13 @@ struct BlockValidationOptions {
 
     // Maximum allowed drift in seconds into the future.
     uint32_t maxFutureDrift = 2 * 60 * 60; // 2 hours
+
+    // Optional rate limiter used to gate validation to avoid DoS. If provided
+    // and Consume fails, validation short-circuits.
+    ValidationRateLimiter* limiter = nullptr;
+
+    // Weight to charge against the limiter per block (defaults to 1 request).
+    uint64_t limiterWeight = 1;
 };
 
 bool ValidateBlockHeader(const BlockHeader& header, const consensus::Params& params, const BlockValidationOptions& opts = {});

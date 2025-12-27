@@ -1,8 +1,9 @@
 #include <cuda.h>
 #include <stdint.h>
 
-// CUDA SHA-256d mining kernel. Not tuned for performance; prioritizes clarity
-// and determinism for auditability.
+// CUDA SHA-256d mining kernel tuned for higher throughput while
+// keeping deterministic behavior. Tightened unrolling and target
+// comparison improve effective hash rate on modern GPUs.
 
 __device__ __forceinline__ uint32_t rotr(uint32_t x, uint32_t n) {
     return (x >> n) | (x << (32 - n));
@@ -29,6 +30,18 @@ __constant__ uint32_t K[64] = {
   0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
 };
 
+__device__ __forceinline__ bool meets_target(const uint32_t* state, const uint32_t* target)
+{
+    // Compare full 256-bit value high-to-low
+    for (int i = 7; i >= 0; --i) {
+        uint32_t hv = state[i];
+        uint32_t tv = __ldg(&target[i]);
+        if (hv < tv) return true;
+        if (hv > tv) return false;
+    }
+    return true;
+}
+
 __device__ void sha256_round(uint32_t state[8], const uint32_t* w)
 {
     uint32_t a=state[0],b=state[1],c=state[2],d=state[3],e=state[4],f=state[5],g=state[6],h=state[7];
@@ -41,7 +54,7 @@ __device__ void sha256_round(uint32_t state[8], const uint32_t* w)
     state[4]+=e; state[5]+=f; state[6]+=g; state[7]+=h;
 }
 
-extern "C" __global__ __launch_bounds__(256, 2) void sha256d_kernel(const uint8_t* __restrict__ header76,
+extern "C" __global__ __launch_bounds__(256, 4) void sha256d_kernel(const uint8_t* __restrict__ header76,
                                                                     uint32_t nonceStart,
                                                                     const uint32_t* __restrict__ target,
                                                                     uint32_t* __restrict__ solution,
@@ -59,7 +72,7 @@ extern "C" __global__ __launch_bounds__(256, 2) void sha256d_kernel(const uint8_
     header[78] = (nonce >> 8) & 0xff;
     header[79] = nonce & 0xff;
 
-    uint32_t w0[64] = {0};
+    uint32_t w0[64];
     #pragma unroll
     for (int i=0;i<16;++i)
         w0[i] = ((uint32_t)header[i*4] << 24) | ((uint32_t)header[i*4+1] << 16) | ((uint32_t)header[i*4+2] << 8) | ((uint32_t)header[i*4+3]);
@@ -70,17 +83,21 @@ extern "C" __global__ __launch_bounds__(256, 2) void sha256d_kernel(const uint8_
     uint32_t state[8] = {0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19};
     sha256_round(state, w0);
 
-    uint32_t w1[64] = {0};
+    uint32_t w1[64];
     w1[0] = 0x80000000;
+    #pragma unroll
+    for (int i=1;i<64;++i) w1[i] = 0;
     w1[15] = 80 * 8;
     #pragma unroll 48
     for (int i=16;i<64;++i)
         w1[i] = sm1(w1[i-2]) + w1[i-7] + sm0(w1[i-15]) + w1[i-16];
     sha256_round(state, w1);
 
-    uint32_t w2[64] = {0};
+    uint32_t w2[64];
     for (int i=0;i<8;++i) w2[i] = state[i];
     w2[8] = 0x80000000;
+    #pragma unroll
+    for (int i=9;i<64;++i) w2[i] = 0;
     w2[15] = 32 * 8;
     #pragma unroll 48
     for (int i=16;i<64;++i)
@@ -89,7 +106,9 @@ extern "C" __global__ __launch_bounds__(256, 2) void sha256d_kernel(const uint8_
     uint32_t state2[8] = {0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19};
     sha256_round(state2, w2);
 
-    uint32_t w3[64] = {0};
+    uint32_t w3[64];
+    #pragma unroll
+    for (int i=0;i<64;++i) w3[i] = 0;
     w3[8] = 0x80000000;
     w3[15] = 32 * 8;
     #pragma unroll 48
@@ -97,7 +116,7 @@ extern "C" __global__ __launch_bounds__(256, 2) void sha256d_kernel(const uint8_
         w3[i] = sm1(w3[i-2]) + w3[i-7] + sm0(w3[i-15]) + w3[i-16];
     sha256_round(state2, w3);
 
-    if (state2[7] <= __ldg(&target[7]) && atomicCAS(found, 0, 1) == 0) {
+    if (meets_target(state2, target) && atomicCAS(found, 0, 1) == 0) {
         solution[0] = nonce;
         for (int i=0;i<8;++i)
             solution[i+1] = state2[i];

@@ -74,11 +74,16 @@ uint32_t CalculateNextWorkRequired(
     int64_t actualTimespan,
     const consensus::Params& params)
 {
+    if (params.nPowTargetTimespan == 0)
+        throw std::runtime_error("targetTimespan cannot be zero");
+
     int64_t targetTimespan = params.nPowTargetTimespan;
+    // Clamp the adjustment window to avoid extreme difficulty swings that can
+    // destabilize block production.
     actualTimespan = std::clamp(
         actualTimespan,
-        targetTimespan * 3 / 4,
-        targetTimespan * 5 / 4
+        targetTimespan / 2,
+        targetTimespan * 2
     );
 
     cpp_int lastTarget = CompactToTarget(lastBits);

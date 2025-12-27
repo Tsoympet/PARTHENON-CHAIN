@@ -23,7 +23,7 @@ BlockHeader MakeHeader(const uint256& prev, uint32_t time, uint32_t bits)
 
 int main()
 {
-    const auto& params = consensus::Main();
+    auto params = consensus::Main();
     consensus::ForkResolver resolver(/*finalizationDepth=*/2, /*reorgWorkMarginBps=*/500);
 
     uint256 nullHash{};
@@ -68,6 +68,15 @@ int main()
     auto path = resolver.ReorgPath(altH3);
     assert(path.size() == 4);
     assert(std::equal(path.front().begin(), path.front().end(), genesisHash.begin()));
+
+    // Hardened checkpoint should reject conflicting headers at the pinned height.
+    params.checkpoints[1] = h1;
+    consensus::ForkResolver checkpointed(/*finalizationDepth=*/2, /*reorgWorkMarginBps=*/500);
+    assert(checkpointed.ConsiderHeader(genesisHeader, genesisHash, nullHash, 0, params));
+    assert(checkpointed.ConsiderHeader(b1, h1, genesisHash, 1, params));
+    auto bad = MakeHeader(genesisHash, b1.time + 10, params.nGenesisBits);
+    auto badHash = BlockHash(bad);
+    assert(!checkpointed.ConsiderHeader(bad, badHash, genesisHash, 1, params));
 
     return 0;
 }

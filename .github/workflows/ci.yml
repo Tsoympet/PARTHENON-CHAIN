@@ -30,10 +30,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build gcovr libssl-dev libboost-all-dev
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build lcov libssl-dev libboost-all-dev
 
       - name: Configure with coverage
-        run: cmake -S . -B build -G Ninja -DDRACHMA_BUILD_TESTS=ON -DDRACHMA_BUILD_GUI=OFF -DCMAKE_CXX_FLAGS="--coverage" -DCMAKE_EXE_LINKER_FLAGS="--coverage"
+        run: cmake -S . -B build -G Ninja -DDRACHMA_BUILD_TESTS=ON -DDRACHMA_BUILD_GUI=OFF -DDRACHMA_COVERAGE=ON
 
       - name: Build
         run: cmake --build build --parallel
@@ -42,18 +42,22 @@ jobs:
         run: ctest --test-dir build --output-on-failure
 
       - name: Generate coverage report
-        run: gcovr -r . --xml coverage.xml --html-details coverage.html --print-summary
+        run: |
+          lcov --capture --directory build --output-file coverage.info
+          lcov --remove coverage.info '/usr/*' --output-file coverage.info
+          genhtml coverage.info --output-directory coverage_html
+          lcov --summary coverage.info
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         with:
           name: coverage
           path: |
-            coverage.xml
-            coverage.html
+            coverage.info
+            coverage_html
 
       - name: Upload to Codecov
         uses: codecov/codecov-action@v4
         with:
-          files: ./coverage.xml
+          files: ./coverage.info
           fail_ci_if_error: false

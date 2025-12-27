@@ -14,6 +14,7 @@ public:
     void Load(const std::string& path);
     void AddBlock(const uint256& blockHash, uint32_t height);
     bool LookupBlock(const uint256& blockHash, uint32_t& heightOut) const;
+    size_t BlockCount() const { return m_blockIndex.size(); }
 
 private:
     struct ArrayHasher {

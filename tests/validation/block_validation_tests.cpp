@@ -69,7 +69,10 @@ int main()
         block.header.version = 1;
         block.transactions.push_back(MakeCoinbase(consensus::GetBlockSubsidy(1, params)));
         block.header.merkleRoot = ComputeMerkleRoot(block.transactions);
-        assert(ValidateBlock(block, params, 1));
+        BlockValidationOptions opts;
+        opts.medianTimePast = block.header.time - 1;
+        opts.now = block.header.time;
+        assert(ValidateBlock(block, params, 1, {}, opts));
     }
 
     // Reject when Merkle root mismatches transactions.
@@ -80,7 +83,10 @@ int main()
         block.header.version = 1;
         block.transactions.push_back(MakeCoinbase(consensus::GetBlockSubsidy(2, params)));
         block.header.merkleRoot.fill(0xFF);
-        assert(!ValidateBlock(block, params, 2));
+        BlockValidationOptions opts;
+        opts.medianTimePast = block.header.time - 1;
+        opts.now = block.header.time;
+        assert(!ValidateBlock(block, params, 2, {}, opts));
     }
 
     return 0;

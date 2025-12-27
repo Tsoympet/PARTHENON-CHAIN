@@ -49,6 +49,8 @@
 #include <QStyleFactory>
 #include <QCryptographicHash>
 #include <QtGlobal>
+#include <openssl/evp.h>
+#include <openssl/rand.h>
 #include <random>
 #include <atomic>
 #include <cstdlib>
@@ -115,6 +117,7 @@ public:
     bool save(const QList<TransactionRow>& txs, const QStringList& addresses, const QList<AddressBookEntry>& book,
               const QString& passphrase, QString& err)
     {
+        if (passphrase.isEmpty()) { err = "Wallet is not encrypted"; return false; }
         QJsonObject root;
         QJsonArray txArr;
         for (const auto& tx : txs) {
@@ -157,6 +160,7 @@ public:
         QByteArray cipher = f.readAll();
         f.close();
         QByteArray plain = decrypt(cipher, passphrase);
+        if (plain.isEmpty()) { err = "Incorrect passphrase or corrupt wallet"; return false; }
         QJsonParseError parseErr;
         QJsonDocument doc = QJsonDocument::fromJson(plain, &parseErr);
         if (parseErr.error != QJsonParseError::NoError) { err = "Incorrect passphrase or corrupt wallet"; return false; }
@@ -200,26 +204,103 @@ public:
 private:
     QByteArray encrypt(const QByteArray& data, const QString& passphrase) const
     {
-        QByteArray key = deriveKey(passphrase);
-        QByteArray out = data;
-        for (int i = 0; i < out.size(); ++i) out[i] = out[i] ^ key.at(i % key.size());
-        return out.toBase64();
+        static const QByteArray magic("DRM1");
+        QByteArray salt(16, 0);
+        QByteArray iv(16, 0);
+        RAND_bytes(reinterpret_cast<unsigned char*>(salt.data()), salt.size());
+        RAND_bytes(reinterpret_cast<unsigned char*>(iv.data()), iv.size());
+
+        QByteArray key = deriveKey(passphrase, salt, 32);
+        if (key.isEmpty()) return {};
+
+        EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+        if (!ctx) return {};
+        QByteArray ciphertext(data.size() + EVP_CIPHER_block_size(EVP_aes_256_cbc()), 0);
+        int outLen1 = 0;
+        int outLen2 = 0;
+
+        if (EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), nullptr,
+                               reinterpret_cast<const unsigned char*>(key.constData()),
+                               reinterpret_cast<const unsigned char*>(iv.constData())) != 1) {
+            EVP_CIPHER_CTX_free(ctx);
+            return {};
+        }
+
+        if (EVP_EncryptUpdate(ctx, reinterpret_cast<unsigned char*>(ciphertext.data()), &outLen1,
+                              reinterpret_cast<const unsigned char*>(data.constData()), data.size()) != 1) {
+            EVP_CIPHER_CTX_free(ctx);
+            return {};
+        }
+
+        if (EVP_EncryptFinal_ex(ctx, reinterpret_cast<unsigned char*>(ciphertext.data()) + outLen1, &outLen2) != 1) {
+            EVP_CIPHER_CTX_free(ctx);
+            return {};
+        }
+        EVP_CIPHER_CTX_free(ctx);
+        ciphertext.resize(outLen1 + outLen2);
+
+        QByteArray payload;
+        payload.reserve(magic.size() + salt.size() + iv.size() + ciphertext.size());
+        payload.append(magic);
+        payload.append(salt);
+        payload.append(iv);
+        payload.append(ciphertext);
+        return payload.toBase64();
     }
 
     QByteArray decrypt(const QByteArray& data, const QString& passphrase) const
     {
-        QByteArray key = deriveKey(passphrase);
         QByteArray raw = QByteArray::fromBase64(data);
-        for (int i = 0; i < raw.size(); ++i) raw[i] = raw[i] ^ key.at(i % key.size());
-        return raw;
+        static const QByteArray magic("DRM1");
+        if (raw.size() < magic.size() + 32) return {};
+        if (!raw.startsWith(magic)) return {};
+
+        QByteArray salt = raw.mid(magic.size(), 16);
+        QByteArray iv = raw.mid(magic.size() + 16, 16);
+        QByteArray ciphertext = raw.mid(magic.size() + 32);
+
+        QByteArray key = deriveKey(passphrase, salt, 32);
+        if (key.isEmpty()) return {};
+
+        EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+        if (!ctx) return {};
+        QByteArray plaintext(ciphertext.size() + EVP_CIPHER_block_size(EVP_aes_256_cbc()), 0);
+        int outLen1 = 0;
+        int outLen2 = 0;
+
+        if (EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), nullptr,
+                               reinterpret_cast<const unsigned char*>(key.constData()),
+                               reinterpret_cast<const unsigned char*>(iv.constData())) != 1) {
+            EVP_CIPHER_CTX_free(ctx);
+            return {};
+        }
+
+        if (EVP_DecryptUpdate(ctx, reinterpret_cast<unsigned char*>(plaintext.data()), &outLen1,
+                              reinterpret_cast<const unsigned char*>(ciphertext.constData()), ciphertext.size()) != 1) {
+            EVP_CIPHER_CTX_free(ctx);
+            return {};
+        }
+
+        if (EVP_DecryptFinal_ex(ctx, reinterpret_cast<unsigned char*>(plaintext.data()) + outLen1, &outLen2) != 1) {
+            EVP_CIPHER_CTX_free(ctx);
+            return {};
+        }
+        EVP_CIPHER_CTX_free(ctx);
+        plaintext.resize(outLen1 + outLen2);
+        return plaintext;
     }
 
-    QByteArray deriveKey(const QString& passphrase) const
+    QByteArray deriveKey(const QString& passphrase, const QByteArray& salt, int size) const
     {
-        QByteArray salt("drachma-wallet-salt");
-        QByteArray input = passphrase.toUtf8() + salt;
-        QByteArray hash = QCryptographicHash::hash(input, QCryptographicHash::Sha256);
-        return hash;
+        if (passphrase.isEmpty()) return {};
+        QByteArray key(size, 0);
+        const int iterations = 50000;
+        if (PKCS5_PBKDF2_HMAC(passphrase.toUtf8().constData(), passphrase.size(),
+                              reinterpret_cast<const unsigned char*>(salt.constData()), salt.size(),
+                              iterations, EVP_sha256(), key.size(), reinterpret_cast<unsigned char*>(key.data())) != 1) {
+            return {};
+        }
+        return key;
     }
 
     QString m_path;
@@ -251,6 +332,11 @@ public:
 
     void callAsync(const QString& method, const QJsonArray& params, std::function<void(const Reply&)> cb)
     {
+#ifndef QT_DEBUG
+        if (method.startsWith("debug")) {
+            Reply r; r.ok = false; r.error = "Debug RPC disabled in release builds"; cb(r); return;
+        }
+#endif
         if (m_url.isEmpty()) {
             Reply r; r.ok = false; r.error = "RPC endpoint not configured"; cb(r); return;
         }
@@ -662,6 +748,7 @@ private slots:
                 m_peerCount.store(r.result.value("connections").toInt(m_peerCount.load()));
                 m_networkHashrate.store(r.result.value("networkhashps").toDouble(m_networkHashrate.load()));
                 m_failures = 0;
+                m_lastError.clear();
                 emit nodeStatusChanged(m_height.load(), m_syncProgress.load(), m_peerCount.load(), m_networkHashrate.load());
             } else {
                 m_failures++;
@@ -881,11 +968,15 @@ private:
         heightLbl = new QLabel("0", nodeBox);
         peersLbl = new QLabel("0", nodeBox);
         syncLbl = new QLabel("0%", nodeBox);
+        syncBar = new QProgressBar(nodeBox);
+        syncBar->setRange(0, 100);
+        syncBar->setValue(0);
         networkLbl = new QLabel("Offline", nodeBox);
         rpcErrorLabel = new QLabel("RPC: idle", nodeBox);
         nf->addRow("Current height", heightLbl);
         nf->addRow("Peers", peersLbl);
         nf->addRow("Sync", syncLbl);
+        nf->addRow("Progress", syncBar);
         nf->addRow("Network status", networkLbl);
         nf->addRow("RPC", rpcErrorLabel);
         nodeBox->setLayout(nf);
@@ -1116,6 +1207,32 @@ private:
         wallet->requestNewAddress("default");
     }
 
+    void promptForEncryptionSetup()
+    {
+        bool ok = false;
+        QString pass = QInputDialog::getText(this, "Create wallet passphrase", "Enter a strong passphrase", QLineEdit::Password, "", &ok);
+        if (!ok || pass.isEmpty()) {
+            QMessageBox::warning(this, "Encryption", "A passphrase is required to secure your wallet.");
+            return;
+        }
+        QString confirm = QInputDialog::getText(this, "Confirm passphrase", "Re-enter passphrase", QLineEdit::Password, "", &ok);
+        if (!ok || pass != confirm) {
+            QMessageBox::critical(this, "Encryption", "Passphrases did not match.");
+            return;
+        }
+        QString err;
+        if (!wallet->encryptWallet(pass, err)) {
+            QMessageBox::critical(this, "Encryption", err);
+            return;
+        }
+        if (!wallet->unlockWallet(pass, err)) {
+            QMessageBox::critical(this, "Encryption", err);
+            return;
+        }
+        QMessageBox::information(this, "Encryption", "Wallet encrypted with AES-256. Keep your passphrase safe.");
+        updateEncryptionState();
+    }
+
 private slots:
     void updateBalances(qint64 confirmed, qint64 unconfirmed)
     {
@@ -1128,9 +1245,13 @@ private slots:
         heightLbl->setText(QString::number(height));
         peersLbl->setText(QString::number(peers));
         syncLbl->setText(QString::number(syncProgress * 100.0, 'f', 2) + "%");
+        if (syncBar) syncBar->setValue(static_cast<int>(syncProgress * 100.0));
         networkLbl->setText(QString::number(networkHashrate, 'f', 2) + " H/s");
         QString rpcMsg = node->lastError().isEmpty() ? QString("RPC: online") : QString("RPC issue: %1").arg(node->lastError());
         rpcErrorLabel->setText(rpcMsg);
+        if (!node->lastError().isEmpty()) {
+            statusBar()->showMessage("RPC communication degraded: " + node->lastError(), 5000);
+        }
     }
 
     void updateHashrate(double rate)
@@ -1216,14 +1337,18 @@ private slots:
 
     void drawQr(const QString& data)
     {
-        QImage img(qrLabel->size(), QImage::Format_ARGB32_Premultiplied);
-        img.fill(Qt::white);
-        QPainter p(&img);
-        p.setPen(Qt::black);
-        p.drawRect(img.rect().adjusted(0,0,-1,-1));
-        p.drawText(img.rect(), Qt::AlignCenter, data);
-        p.end();
-        qrLabel->setPixmap(QPixmap::fromImage(img));
+        const int modules = 25;
+        QByteArray digest = QCryptographicHash::hash(data.toUtf8(), QCryptographicHash::Sha256);
+        QImage img(modules, modules, QImage::Format_ARGB32);
+        for (int y = 0; y < modules; ++y) {
+            for (int x = 0; x < modules; ++x) {
+                int idx = (x + y * modules) % digest.size();
+                bool dark = (static_cast<unsigned char>(digest[idx]) >> (idx % 8)) & 0x1;
+                img.setPixelColor(x, y, dark ? Qt::black : Qt::white);
+            }
+        }
+        QImage scaled = img.scaled(qrLabel->size(), Qt::KeepAspectRatio, Qt::FastTransformation);
+        qrLabel->setPixmap(QPixmap::fromImage(scaled));
     }
 
     void confirmAndSend()
@@ -1334,9 +1459,12 @@ private slots:
     void loadWalletFromDisk()
     {
         QString walletPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/wallet.dat";
-        if (!QFile::exists(walletPath)) return;
         QString err;
-        if (wallet->loadWithPassphrase("", err)) { updateEncryptionState(); return; }
+        if (!QFile::exists(walletPath)) {
+            promptForEncryptionSetup();
+            return;
+        }
+
         bool ok = false;
         QString pass = QInputDialog::getText(this, "Unlock wallet", "Enter wallet passphrase", QLineEdit::Password, "", &ok);
         if (!ok) return;
@@ -1398,6 +1526,7 @@ private slots:
 
     void backupWalletFile()
     {
+        QMessageBox::information(this, "Backup", "Backups include encrypted keys; store them offline and protect your passphrase.");
         QString dest = QFileDialog::getSaveFileName(this, "Backup wallet", QDir::homePath() + "/wallet-backup.dat");
         if (dest.isEmpty()) return;
         QString err;
@@ -1410,6 +1539,7 @@ private slots:
 
     void restoreWalletFile()
     {
+        QMessageBox::warning(this, "Restore", "Restoring replaces your current wallet. Only proceed if you trust the backup file.");
         QString src = QFileDialog::getOpenFileName(this, "Restore wallet", QDir::homePath());
         if (src.isEmpty()) return;
         bool ok = false;
@@ -1456,6 +1586,7 @@ private:
     QLabel* heightLbl{nullptr};
     QLabel* peersLbl{nullptr};
     QLabel* syncLbl{nullptr};
+    QProgressBar* syncBar{nullptr};
     QLabel* networkLbl{nullptr};
     QLabel* confirmedLbl{nullptr};
     QLabel* unconfirmedLbl{nullptr};

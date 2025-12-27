@@ -68,6 +68,7 @@ private:
     std::optional<BlockMeta> m_bestTip;
 
     bool IsBetterChain(const BlockMeta& candidate) const;
+    bool ViolatesCheckpoint(uint32_t height, const uint256& hash, const Params& params) const;
 };
 
 } // namespace consensus

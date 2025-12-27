@@ -1,5 +1,5 @@
-// Minimal OpenCL SHA-256d kernel for DRACHMA mining experiments.
-// This kernel evaluates candidate nonces for an 80-byte block header where the
+// Optimized OpenCL SHA-256d kernel for DRACHMA mining.
+// Evaluates candidate nonces for an 80-byte block header where the
 // first 76 bytes are fixed and the final 4 bytes contain the varying nonce.
 
 __constant uint k[64] = {
@@ -36,6 +36,17 @@ inline void sha256_compress(uint state[8], const uint w_in[16])
     }
     state[0]+=a; state[1]+=b; state[2]+=c; state[3]+=d;
     state[4]+=e; state[5]+=f; state[6]+=g; state[7]+=h;
+}
+
+inline bool meets_target(const uint state[8], __global const uint* target)
+{
+    for (int i = 7; i >= 0; --i) {
+        uint hv = state[i];
+        uint tv = target[i];
+        if (hv < tv) return true;
+        if (hv > tv) return false;
+    }
+    return true;
 }
 
 __kernel __attribute__((reqd_work_group_size(256,1,1))) void sha256d_search(__global const uchar* restrict header76,
@@ -84,9 +95,7 @@ __kernel __attribute__((reqd_work_group_size(256,1,1))) void sha256d_search(__gl
     w3[15] = 32 * 8;
     sha256_compress(state2, w3);
 
-    // Compare with target (big-endian). We only check first word for brevity;
-    // miners should extend comparison as needed for full correctness.
-    if (state2[7] <= target[7] && !(*found)) {
+    if (meets_target(state2, target) && !(*found)) {
         if (atomic_cmpxchg(found, 0, 1) == 0) {
             solution[0] = nonce;
             for (int i=0;i<8;++i) solution[i+1] = state2[i];

@@ -1,7 +1,9 @@
 #pragma once
 #include <array>
 #include <cstdint>
+#include <map>
 #include <string>
+#include "../block/block.h"
 
 namespace consensus {
 
@@ -34,6 +36,10 @@ struct Params {
     uint32_t nGenesisBits;
     uint32_t nGenesisNonce;
     std::string genesisMessage;
+
+    // Optional hardened checkpoints keyed by height. Chains should not accept
+    // competing headers that disagree with these anchors.
+    std::map<uint32_t, uint256> checkpoints;
 
     // Version bits governance-free activation parameters.
     uint32_t nRuleChangeActivationThreshold;

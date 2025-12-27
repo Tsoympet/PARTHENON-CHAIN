@@ -2,27 +2,36 @@
 #include <chrono>
 #include <cstdint>
 #include <cstring>
+#include <ctime>
+#include <fstream>
 #include <iomanip>
+#include <immintrin.h>
 #include <iostream>
 #include <mutex>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
 #include <sstream>
-#include <fstream>
-#include <ctime>
 
-#include <boost/asio.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
+#include <boost/property_tree/json_parser.hpp>
 
 #include "../../layer1-core/block/block.h"
 #include "../../layer1-core/consensus/params.h"
 #include "../../layer1-core/pow/difficulty.h"
+#include "../stratum.h"
 
 namespace {
 
-using boost::asio::ip::tcp;
+std::string ToHex(const uint256& h)
+{
+    std::ostringstream oss;
+    for (auto b : h)
+        oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(b);
+    return oss.str();
+}
 
 uint256 FromHex(const std::string& hex)
 {
@@ -40,20 +49,6 @@ uint256 FromHex(const std::string& hex)
     return out;
 }
 
-std::string ToHex(const uint256& h)
-{
-    std::ostringstream oss;
-    for (auto b : h)
-        oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(b);
-    return oss.str();
-}
-
-struct MinerJob {
-    BlockHeader header{};
-    uint256 target{};
-    std::string jobId;
-};
-
 uint32_t ParseLE32(const std::string& hex, size_t offset)
 {
     uint32_t out = 0;
@@ -62,21 +57,6 @@ uint32_t ParseLE32(const std::string& hex, size_t offset)
         out |= byte << (8 * i);
     }
     return out;
-}
-
-MinerJob ParseHeaderJob(const std::string& headerHex, const std::string& targetHex)
-{
-    if (headerHex.size() != 160)
-        throw std::invalid_argument("expected 80-byte header hex");
-    MinerJob job{};
-    job.header.version = ParseLE32(headerHex, 0);
-    job.header.prevBlockHash = FromHex(headerHex.substr(8, 64));
-    job.header.merkleRoot = FromHex(headerHex.substr(72, 64));
-    job.header.time = ParseLE32(headerHex, 136 / 2);
-    job.header.bits = ParseLE32(headerHex, 144 / 2);
-    job.header.nonce = ParseLE32(headerHex, 152 / 2);
-    job.target = targetHex.empty() ? uint256{} : FromHex(targetHex);
-    return job;
 }
 
 boost::multiprecision::cpp_int ToInteger(const uint256& h)
@@ -96,92 +76,6 @@ bool MeetsExplicitTarget(const uint256& hash, const uint256& target)
     return ToInteger(hash) <= ToInteger(target);
 }
 
-class StratumClient {
-public:
-    StratumClient(const std::string& url, const std::string& user, const std::string& pass, bool allowRemote)
-        : ctx_(), socket_(ctx_), user_(user), pass_(pass)
-    {
-        auto pos = url.find("://");
-        std::string hostport = pos == std::string::npos ? url : url.substr(pos + 3);
-        auto colon = hostport.find(":");
-        if (colon == std::string::npos)
-            throw std::invalid_argument("stratum url must include host:port");
-        host_ = hostport.substr(0, colon);
-        port_ = hostport.substr(colon + 1);
-
-        if (!allowRemote && host_ != "127.0.0.1" && host_ != "localhost")
-            throw std::runtime_error("remote stratum connections require --allow-remote");
-    }
-
-    void Connect()
-    {
-        tcp::resolver resolver(ctx_);
-        auto endpoints = resolver.resolve(host_, port_);
-        boost::asio::connect(socket_, endpoints);
-        Subscribe();
-        Authorize();
-    }
-
-    MinerJob AwaitJob()
-    {
-        boost::asio::streambuf buf;
-        boost::asio::read_until(socket_, buf, '\n');
-        std::istream is(&buf);
-        std::string line;
-        std::getline(is, line);
-        if (line.find("mining.notify") == std::string::npos)
-            throw std::runtime_error("unexpected stratum message: " + line);
-
-        auto header = ExtractField(line, "header");
-        auto target = ExtractField(line, "target");
-        MinerJob job = ParseHeaderJob(header, target);
-        job.jobId = ExtractField(line, "job");
-        return job;
-    }
-
-    void SubmitResult(const MinerJob& job)
-    {
-        std::ostringstream payload;
-        payload << "{\"id\":4,\"method\":\"mining.submit\",\"params\":[\"" << user_ << "\",\"" << job.jobId
-                << "\",\"" << ToHex(job.header.prevBlockHash) << "\",\"" << std::hex << job.header.nonce << "\"]}\n";
-        boost::asio::write(socket_, boost::asio::buffer(payload.str()));
-    }
-
-private:
-    void Subscribe()
-    {
-        static const std::string subscribe = "{\"id\":1,\"method\":\"mining.subscribe\",\"params\":[]}\n";
-        boost::asio::write(socket_, boost::asio::buffer(subscribe));
-    }
-
-    void Authorize()
-    {
-        std::ostringstream auth;
-        auth << "{\"id\":2,\"method\":\"mining.authorize\",\"params\":[\"" << user_ << "\",\"" << pass_ << "\"]}\n";
-        boost::asio::write(socket_, boost::asio::buffer(auth.str()));
-    }
-
-    static std::string ExtractField(const std::string& json, const std::string& key)
-    {
-        auto pos = json.find("\"" + key + "\"");
-        if (pos == std::string::npos)
-            return {};
-        auto colon = json.find(":", pos);
-        auto quote = json.find("\"", colon + 1);
-        auto end = json.find("\"", quote + 1);
-        if (quote == std::string::npos || end == std::string::npos)
-            return {};
-        return json.substr(quote + 1, end - quote - 1);
-    }
-
-    boost::asio::io_context ctx_;
-    tcp::socket socket_;
-    std::string host_;
-    std::string port_;
-    std::string user_;
-    std::string pass_;
-};
-
 struct MinerConfig {
     std::string stratumUrl;
     std::string user;
@@ -191,6 +85,9 @@ struct MinerConfig {
     int benchmarkSeconds{10};
     bool allowRemote{false};
     uint32_t minTargetBits{0};
+    std::string configPath;
+    uint32_t intensity{0};
+    std::string worker;
 };
 
 uint32_t ClampBits(uint32_t bits, uint32_t minBits)
@@ -213,10 +110,106 @@ uint32_t ClampBits(uint32_t bits, uint32_t minBits)
     return bits;
 }
 
-void PrintHash(const uint256& h)
+struct MidstateWorkspace {
+    uint32_t firstBlockState[8]{};
+    uint32_t tailWords[16]{};
+};
+
+inline uint32_t rotr(uint32_t x, uint32_t n) { return (x >> n) | (x << (32 - n)); }
+inline uint32_t ch(uint32_t x, uint32_t y, uint32_t z) { return (x & y) ^ (~x & z); }
+inline uint32_t maj(uint32_t x, uint32_t y, uint32_t z) { return (x & y) ^ (x & z) ^ (y & z); }
+inline uint32_t big0(uint32_t x) { return rotr(x, 2) ^ rotr(x, 13) ^ rotr(x, 22); }
+inline uint32_t big1(uint32_t x) { return rotr(x, 6) ^ rotr(x, 11) ^ rotr(x, 25); }
+inline uint32_t sm0(uint32_t x) { return rotr(x, 7) ^ rotr(x, 18) ^ (x >> 3); }
+inline uint32_t sm1(uint32_t x) { return rotr(x, 17) ^ rotr(x, 19) ^ (x >> 10); }
+
+constexpr uint32_t K[64] = {
+    0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2};
+
+inline void Compress(uint32_t state[8], uint32_t w[64])
 {
-    for (auto b : h)
-        std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(b);
+    uint32_t a=state[0],b=state[1],c=state[2],d=state[3],e=state[4],f=state[5],g=state[6],h=state[7];
+    for (int i=0;i<64;++i) {
+        uint32_t t1 = h + big1(e) + ch(e,f,g) + K[i] + w[i];
+        uint32_t t2 = big0(a) + maj(a,b,c);
+        h=g; g=f; f=e; e=d + t1; d=c; c=b; b=a; a=t1 + t2;
+    }
+    state[0]+=a; state[1]+=b; state[2]+=c; state[3]+=d;
+    state[4]+=e; state[5]+=f; state[6]+=g; state[7]+=h;
+}
+
+MidstateWorkspace BuildWorkspace(const BlockHeader& header)
+{
+    MidstateWorkspace ws{};
+    uint32_t w0[64] = {0};
+    const uint8_t* data = reinterpret_cast<const uint8_t*>(&header);
+    for (int i = 0; i < 16; ++i) {
+        w0[i] = (static_cast<uint32_t>(data[i*4]) << 24) | (static_cast<uint32_t>(data[i*4+1]) << 16) |
+                (static_cast<uint32_t>(data[i*4+2]) << 8) | (static_cast<uint32_t>(data[i*4+3]));
+    }
+    for (int i = 16; i < 64; ++i)
+        w0[i] = sm1(w0[i-2]) + w0[i-7] + sm0(w0[i-15]) + w0[i-16];
+
+    uint32_t state[8] = {0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19};
+    Compress(state, w0);
+
+    for (int i = 0; i < 8; ++i)
+        ws.firstBlockState[i] = state[i];
+
+    ws.tailWords[0] = (static_cast<uint32_t>(data[64]) << 24) | (static_cast<uint32_t>(data[65]) << 16) |
+                      (static_cast<uint32_t>(data[66]) << 8) | (static_cast<uint32_t>(data[67]));
+    ws.tailWords[1] = (static_cast<uint32_t>(data[68]) << 24) | (static_cast<uint32_t>(data[69]) << 16) |
+                      (static_cast<uint32_t>(data[70]) << 8) | (static_cast<uint32_t>(data[71]));
+    ws.tailWords[2] = (static_cast<uint32_t>(data[72]) << 24) | (static_cast<uint32_t>(data[73]) << 16) |
+                      (static_cast<uint32_t>(data[74]) << 8) | (static_cast<uint32_t>(data[75]));
+    ws.tailWords[3] = (static_cast<uint32_t>(data[76]) << 24) | (static_cast<uint32_t>(data[77]) << 16) |
+                      (static_cast<uint32_t>(data[78]) << 8) | (static_cast<uint32_t>(data[79]));
+    ws.tailWords[4] = 0x80000000;
+    for (int i = 5; i < 15; ++i) ws.tailWords[i] = 0;
+    ws.tailWords[15] = 80 * 8;
+    return ws;
+}
+
+inline void FillTail(uint32_t tail[64], const MidstateWorkspace& ws)
+{
+    for (int i = 0; i < 16; ++i)
+        tail[i] = ws.tailWords[i];
+    for (int i = 16; i < 64; ++i)
+        tail[i] = sm1(tail[i-2]) + tail[i-7] + sm0(tail[i-15]) + tail[i-16];
+}
+
+inline void HashFromMidstate(const MidstateWorkspace& ws, uint32_t nonce, uint32_t outState[8])
+{
+    uint32_t tail[64];
+    FillTail(tail, ws);
+    tail[3] = __builtin_bswap32(nonce);
+    uint32_t state[8];
+    for (int i = 0; i < 8; ++i) state[i] = ws.firstBlockState[i];
+    Compress(state, tail);
+
+    uint32_t w2[64] = {0};
+    for (int i=0;i<8;++i) w2[i] = state[i];
+    w2[8] = 0x80000000;
+    w2[15] = 32 * 8;
+    for (int i=16;i<64;++i)
+        w2[i] = sm1(w2[i-2]) + w2[i-7] + sm0(w2[i-15]) + w2[i-16];
+    uint32_t state2[8] = {0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19};
+    Compress(state2, w2);
+
+    uint32_t w3[64] = {0};
+    w3[8] = 0x80000000;
+    w3[15] = 32 * 8;
+    for (int i=16;i<64;++i)
+        w3[i] = sm1(w3[i-2]) + w3[i-7] + sm0(w3[i-15]) + w3[i-16];
+    Compress(state2, w3);
+    for (int i=0;i<8;++i) outState[i] = state2[i];
 }
 
 MinerConfig ParseArgs(int argc, char** argv)
@@ -228,13 +221,38 @@ MinerConfig ParseArgs(int argc, char** argv)
         else if (arg == "--stratum-user" && i + 1 < argc) cfg.user = argv[++i];
         else if (arg == "--stratum-pass" && i + 1 < argc) cfg.pass = argv[++i];
         else if (arg == "--threads" && i + 1 < argc) cfg.threads = std::stoul(argv[++i]);
-        else if (arg == "--benchmark") cfg.benchmark = true;
+        else if (arg == "--benchmark" || arg == "--bench") { cfg.benchmark = true; }
         else if (arg == "--benchmark-seconds" && i + 1 < argc) cfg.benchmarkSeconds = std::stoi(argv[++i]);
         else if (arg == "--allow-remote") cfg.allowRemote = true;
         else if (arg == "--min-target-bits" && i + 1 < argc) cfg.minTargetBits = std::stoul(argv[++i], nullptr, 16);
+        else if (arg == "--config" && i + 1 < argc) cfg.configPath = argv[++i];
+        else if (arg == "--intensity" && i + 1 < argc) cfg.intensity = std::stoul(argv[++i]);
+        else if (arg == "--worker" && i + 1 < argc) cfg.worker = argv[++i];
     }
     if (cfg.threads == 0) cfg.threads = 1;
     return cfg;
+}
+
+void LoadConfig(MinerConfig& cfg)
+{
+    if (cfg.configPath.empty())
+        return;
+    try {
+        boost::property_tree::ptree tree;
+        boost::property_tree::read_json(cfg.configPath, tree);
+        cfg.stratumUrl = tree.get("stratum_url", cfg.stratumUrl);
+        cfg.user = tree.get("user", cfg.user);
+        cfg.pass = tree.get("pass", cfg.pass);
+        cfg.worker = tree.get("worker", cfg.worker);
+        cfg.threads = tree.get("threads", cfg.threads);
+        cfg.allowRemote = tree.get("allow_remote", cfg.allowRemote);
+        cfg.minTargetBits = tree.get("min_target_bits", cfg.minTargetBits);
+        cfg.benchmarkSeconds = tree.get("benchmark_seconds", cfg.benchmarkSeconds);
+        cfg.intensity = tree.get("intensity", cfg.intensity);
+        cfg.benchmark = tree.get("benchmark", cfg.benchmark);
+    } catch (const std::exception& e) {
+        std::cerr << "Failed to read config: " << e.what() << "\n";
+    }
 }
 
 void RunBenchmark(const MinerConfig& cfg)
@@ -250,8 +268,10 @@ void RunBenchmark(const MinerConfig& cfg)
     std::atomic<bool> stop{false};
     auto worker = [&]() {
         BlockHeader local = header;
+        MidstateWorkspace ws = BuildWorkspace(local);
         while (!stop.load(std::memory_order_relaxed)) {
-            BlockHash(local);
+            uint32_t state[8];
+            HashFromMidstate(ws, local.nonce, state);
             ++hashes;
             ++local.nonce;
         }
@@ -266,7 +286,10 @@ void RunBenchmark(const MinerConfig& cfg)
     for (auto& t : threads) t.join();
 
     double rate = static_cast<double>(hashes.load()) / cfg.benchmarkSeconds;
-    std::cout << "Benchmark: " << rate / 1e6 << " MH/s across " << cfg.threads << " threads\n";
+    std::cout << "Benchmark: " << rate / 1e6 << " MH/s across " << cfg.threads << " threads";
+    if (cfg.intensity)
+        std::cout << " (intensity " << cfg.intensity << ")";
+    std::cout << "\n";
 }
 
 bool MineJob(const MinerJob& baseJob, const MinerConfig& cfg, StratumClient* client)
@@ -274,26 +297,35 @@ bool MineJob(const MinerJob& baseJob, const MinerConfig& cfg, StratumClient* cli
     const auto& params = consensus::Main();
     std::atomic<bool> found{false};
     std::atomic<uint32_t> nonceCounter{baseJob.header.nonce};
+    MidstateWorkspace ws = BuildWorkspace(baseJob.header);
     std::mutex submitMutex;
+
+    uint32_t stride = cfg.intensity ? cfg.intensity : 1024;
 
     auto worker = [&](int idx) {
         MinerJob job = baseJob;
         while (!found.load(std::memory_order_relaxed)) {
-            uint32_t startNonce = nonceCounter.fetch_add(1024, std::memory_order_relaxed);
-            for (uint32_t n = 0; n < 1024 && !found.load(std::memory_order_relaxed); ++n) {
+            uint32_t startNonce = nonceCounter.fetch_add(stride, std::memory_order_relaxed);
+            for (uint32_t n = 0; n < stride && !found.load(std::memory_order_relaxed); ++n) {
                 job.header.nonce = startNonce + n;
-                auto hash = BlockHash(job.header);
+                uint32_t state[8];
+                HashFromMidstate(ws, job.header.nonce, state);
+                uint256 hash{};
+                for (int i = 0; i < 8; ++i) {
+                    hash[i*4] = static_cast<uint8_t>((state[i] >> 24) & 0xff);
+                    hash[i*4+1] = static_cast<uint8_t>((state[i] >> 16) & 0xff);
+                    hash[i*4+2] = static_cast<uint8_t>((state[i] >> 8) & 0xff);
+                    hash[i*4+3] = static_cast<uint8_t>(state[i] & 0xff);
+                }
                 bool meets = (ToInteger(job.target) == 0)
                     ? powalgo::CheckProofOfWork(hash, ClampBits(job.header.bits, cfg.minTargetBits), params)
                     : MeetsExplicitTarget(hash, job.target);
                 if (meets) {
                     found.store(true, std::memory_order_relaxed);
                     std::lock_guard<std::mutex> g(submitMutex);
-                    std::cout << "[thread " << idx << "] found nonce: " << job.header.nonce << "\nHash: 0x";
-                    PrintHash(hash);
-                    std::cout << "\n";
+                    std::cout << "[thread " << idx << "] found nonce: " << job.header.nonce << "\n";
                     if (client)
-                        client->SubmitResult(job);
+                        client->SubmitResult(job, job.header.nonce);
                     return;
                 }
             }
@@ -312,20 +344,29 @@ bool MineJob(const MinerJob& baseJob, const MinerConfig& cfg, StratumClient* cli
 int main(int argc, char** argv)
 {
     MinerConfig cfg = ParseArgs(argc, argv);
+    LoadConfig(cfg);
     if (cfg.benchmark) {
         RunBenchmark(cfg);
         return 0;
     }
 
     if (!cfg.stratumUrl.empty()) {
-        StratumClient client(cfg.stratumUrl, cfg.user, cfg.pass, cfg.allowRemote);
+        StratumClient client(cfg.stratumUrl, cfg.user.empty() ? cfg.worker : cfg.user, cfg.pass, cfg.allowRemote);
         client.Connect();
+        auto lastPing = std::chrono::steady_clock::now();
         while (true) {
-            MinerJob job = client.AwaitJob();
-            job.header.bits = ClampBits(job.header.bits, cfg.minTargetBits);
-            std::cout << "Received job " << job.jobId << " from " << cfg.stratumUrl << "\n";
-            if (MineJob(job, cfg, &client))
-                std::cout << "Solution submitted for job " << job.jobId << "\n";
+            if (auto jobOpt = client.AwaitJob()) {
+                MinerJob job = *jobOpt;
+                job.header.bits = ClampBits(job.header.bits, cfg.minTargetBits);
+                std::cout << "Received job " << job.jobId << " (diff " << client.CurrentDifficulty() << ") from " << cfg.stratumUrl << "\n";
+                if (MineJob(job, cfg, &client))
+                    std::cout << "Solution submitted for job " << job.jobId << "\n";
+            }
+            auto now = std::chrono::steady_clock::now();
+            if (now - lastPing > std::chrono::seconds(30)) {
+                client.SendKeepalive();
+                lastPing = now;
+            }
         }
     }
 

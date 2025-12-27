@@ -28,6 +28,27 @@ void WalletBackend::AddUTXO(const OutPoint& op, const TxOut& txout)
     m_utxos.push_back({op, txout});
 }
 
+void WalletBackend::SetUTXOLookup(UTXOLookup lookup)
+{
+    m_lookup = std::move(lookup);
+}
+
+void WalletBackend::SyncFromLayer1(const std::vector<OutPoint>& watchlist)
+{
+    if (!m_lookup) return;
+    std::lock_guard<std::mutex> g(m_mutex);
+    for (const auto& op : watchlist) {
+        auto existing = std::find_if(m_utxos.begin(), m_utxos.end(), [&op](const UTXO& u) {
+            return u.outpoint.hash == op.hash && u.outpoint.index == op.index;
+        });
+        if (existing != m_utxos.end()) continue;
+        auto maybe = m_lookup(op);
+        if (maybe) {
+            m_utxos.push_back({op, *maybe});
+        }
+    }
+}
+
 uint64_t WalletBackend::GetBalance() const
 {
     std::lock_guard<std::mutex> g(m_mutex);
@@ -87,7 +108,26 @@ Transaction WalletBackend::CreateSpend(const std::vector<TxOut>& outputs, const 
     for (auto& in : tx.vin) {
         in.scriptSig = DummySignature(key, tx);
     }
+    std::vector<OutPoint> spent;
+    spent.reserve(tx.vin.size());
+    for (const auto& in : tx.vin) spent.push_back(in.prevout);
+    RemoveCoins(spent);
     return tx;
+}
+
+void WalletBackend::RemoveCoins(const std::vector<OutPoint>& used)
+{
+    std::lock_guard<std::mutex> g(m_mutex);
+    std::vector<UTXO> remaining;
+    remaining.reserve(m_utxos.size());
+    for (const auto& u : m_utxos) {
+        bool spent = false;
+        for (const auto& op : used) {
+            if (u.outpoint.hash == op.hash && u.outpoint.index == op.index) { spent = true; break; }
+        }
+        if (!spent) remaining.push_back(u);
+    }
+    m_utxos.swap(remaining);
 }
 
 } // namespace wallet

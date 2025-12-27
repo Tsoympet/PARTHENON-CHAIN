@@ -13,7 +13,9 @@ ForkResolver::ForkResolver(uint32_t finalizationDepth, uint32_t reorgWorkMarginB
 
 bool ForkResolver::ConsiderHeader(const BlockHeader& header, const uint256& hash, const uint256& parentHash, uint32_t height, const Params& params)
 {
-    (void)params; // Params kept for future rule toggles
+    if (ViolatesCheckpoint(height, hash, params))
+        return false;
+
     auto blockWork = ChainWork(powalgo::CalculateBlockWork(header.bits));
     ChainWork cumulative = blockWork;
 
@@ -37,6 +39,14 @@ bool ForkResolver::ConsiderHeader(const BlockHeader& header, const uint256& hash
 
     m_bestTip = meta;
     return true;
+}
+
+bool ForkResolver::ViolatesCheckpoint(uint32_t height, const uint256& hash, const Params& params) const
+{
+    auto it = params.checkpoints.find(height);
+    if (it == params.checkpoints.end())
+        return false;
+    return !std::equal(it->second.begin(), it->second.end(), hash.begin());
 }
 
 std::vector<uint256> ForkResolver::ReorgPath(const uint256& newTip) const
