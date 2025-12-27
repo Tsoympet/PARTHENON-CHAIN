@@ -41,17 +41,18 @@ __device__ void sha256_round(uint32_t state[8], const uint32_t* w)
     state[4]+=e; state[5]+=f; state[6]+=g; state[7]+=h;
 }
 
-extern "C" __global__ void sha256d_kernel(const uint8_t* header76,
-                                          uint32_t nonceStart,
-                                          const uint32_t* target,
-                                          uint32_t* solution,
-                                          int* found)
+extern "C" __global__ __launch_bounds__(256, 2) void sha256d_kernel(const uint8_t* __restrict__ header76,
+                                                                    uint32_t nonceStart,
+                                                                    const uint32_t* __restrict__ target,
+                                                                    uint32_t* __restrict__ solution,
+                                                                    int* found)
 {
     uint32_t gid = blockIdx.x * blockDim.x + threadIdx.x;
-    if (*found) return;
+    if (__ldg(found)) return;
 
     uint8_t header[80];
-    for (int i=0;i<76;++i) header[i] = header76[i];
+    #pragma unroll
+    for (int i=0;i<76;++i) header[i] = __ldg(&header76[i]);
     uint32_t nonce = nonceStart + gid;
     header[76] = (nonce >> 24) & 0xff;
     header[77] = (nonce >> 16) & 0xff;
@@ -59,8 +60,10 @@ extern "C" __global__ void sha256d_kernel(const uint8_t* header76,
     header[79] = nonce & 0xff;
 
     uint32_t w0[64] = {0};
+    #pragma unroll
     for (int i=0;i<16;++i)
         w0[i] = ((uint32_t)header[i*4] << 24) | ((uint32_t)header[i*4+1] << 16) | ((uint32_t)header[i*4+2] << 8) | ((uint32_t)header[i*4+3]);
+    #pragma unroll 48
     for (int i=16;i<64;++i)
         w0[i] = sm1(w0[i-2]) + w0[i-7] + sm0(w0[i-15]) + w0[i-16];
 
@@ -70,6 +73,7 @@ extern "C" __global__ void sha256d_kernel(const uint8_t* header76,
     uint32_t w1[64] = {0};
     w1[0] = 0x80000000;
     w1[15] = 80 * 8;
+    #pragma unroll 48
     for (int i=16;i<64;++i)
         w1[i] = sm1(w1[i-2]) + w1[i-7] + sm0(w1[i-15]) + w1[i-16];
     sha256_round(state, w1);
@@ -78,6 +82,7 @@ extern "C" __global__ void sha256d_kernel(const uint8_t* header76,
     for (int i=0;i<8;++i) w2[i] = state[i];
     w2[8] = 0x80000000;
     w2[15] = 32 * 8;
+    #pragma unroll 48
     for (int i=16;i<64;++i)
         w2[i] = sm1(w2[i-2]) + w2[i-7] + sm0(w2[i-15]) + w2[i-16];
 
@@ -87,11 +92,12 @@ extern "C" __global__ void sha256d_kernel(const uint8_t* header76,
     uint32_t w3[64] = {0};
     w3[8] = 0x80000000;
     w3[15] = 32 * 8;
+    #pragma unroll 48
     for (int i=16;i<64;++i)
         w3[i] = sm1(w3[i-2]) + w3[i-7] + sm0(w3[i-15]) + w3[i-16];
     sha256_round(state2, w3);
 
-    if (state2[7] <= target[7] && atomicCAS(found, 0, 1) == 0) {
+    if (state2[7] <= __ldg(&target[7]) && atomicCAS(found, 0, 1) == 0) {
         solution[0] = nonce;
         for (int i=0;i<8;++i)
             solution[i+1] = state2[i];

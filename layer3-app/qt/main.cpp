@@ -38,11 +38,24 @@
 #include <QMutex>
 #include <QMutexLocker>
 #include <QDoubleSpinBox>
+#include <QPalette>
+#include <QClipboard>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QStyleFactory>
+#include <QCryptographicHash>
 #include <QtGlobal>
 #include <random>
 #include <atomic>
 #include <cstdlib>
 #include <thread>
+#include <algorithm>
+#include <memory>
+#include <functional>
 
 // The UI intentionally avoids embedding any consensus or validation logic.
 // It orchestrates node lifecycle and surfaces wallet state via service calls.
@@ -85,6 +98,206 @@ struct TransactionRow {
     QDateTime timestamp;
 };
 
+struct AddressBookEntry {
+    QString label;
+    QString address;
+};
+
+class WalletStorage {
+public:
+    explicit WalletStorage(const QString& path)
+        : m_path(path)
+    {
+        QDir dir = QFileInfo(m_path).absoluteDir();
+        if (!dir.exists()) dir.mkpath(".");
+    }
+
+    bool save(const QList<TransactionRow>& txs, const QStringList& addresses, const QList<AddressBookEntry>& book,
+              const QString& passphrase, QString& err)
+    {
+        QJsonObject root;
+        QJsonArray txArr;
+        for (const auto& tx : txs) {
+            QJsonObject o;
+            o["txid"] = tx.txid;
+            o["direction"] = tx.direction;
+            o["amount"] = static_cast<double>(tx.amount);
+            o["confirmations"] = tx.confirmations;
+            o["status"] = tx.status;
+            o["timestamp"] = tx.timestamp.toMSecsSinceEpoch();
+            txArr.append(o);
+        }
+        root["transactions"] = txArr;
+
+        QJsonArray addrArr;
+        for (const auto& a : addresses) addrArr.append(a);
+        root["addresses"] = addrArr;
+
+        QJsonArray bookArr;
+        for (const auto& e : book) {
+            QJsonObject o; o["label"] = e.label; o["address"] = e.address; bookArr.append(o);
+        }
+        root["addressBook"] = bookArr;
+
+        QByteArray plain = QJsonDocument(root).toJson(QJsonDocument::Compact);
+        QByteArray cipher = encrypt(plain, passphrase);
+        QFile f(m_path);
+        if (!f.open(QIODevice::WriteOnly)) { err = "Unable to write wallet file"; return false; }
+        f.write(cipher);
+        f.close();
+        return true;
+    }
+
+    bool load(const QString& passphrase, QList<TransactionRow>& txs, QStringList& addresses, QList<AddressBookEntry>& book,
+              QString& err)
+    {
+        QFile f(m_path);
+        if (!f.exists()) { err.clear(); return true; }
+        if (!f.open(QIODevice::ReadOnly)) { err = "Unable to open wallet file"; return false; }
+        QByteArray cipher = f.readAll();
+        f.close();
+        QByteArray plain = decrypt(cipher, passphrase);
+        QJsonParseError parseErr;
+        QJsonDocument doc = QJsonDocument::fromJson(plain, &parseErr);
+        if (parseErr.error != QJsonParseError::NoError) { err = "Incorrect passphrase or corrupt wallet"; return false; }
+        QJsonObject root = doc.object();
+        txs.clear();
+        for (const auto& v : root["transactions"].toArray()) {
+            QJsonObject o = v.toObject();
+            TransactionRow row;
+            row.txid = o.value("txid").toString();
+            row.direction = o.value("direction").toString();
+            row.amount = static_cast<qint64>(o.value("amount").toDouble());
+            row.confirmations = o.value("confirmations").toInt();
+            row.status = o.value("status").toString();
+            row.timestamp = QDateTime::fromMSecsSinceEpoch(static_cast<qint64>(o.value("timestamp").toDouble()), Qt::UTC);
+            txs.append(row);
+        }
+        addresses.clear();
+        for (const auto& v : root["addresses"].toArray()) addresses.append(v.toString());
+        book.clear();
+        for (const auto& v : root["addressBook"].toArray()) {
+            QJsonObject o = v.toObject();
+            book.append({o.value("label").toString(), o.value("address").toString()});
+        }
+        return true;
+    }
+
+    bool backup(const QString& passphrase, const QString& dest, const QList<TransactionRow>& txs,
+                const QStringList& addresses, const QList<AddressBookEntry>& book, QString& err)
+    {
+        WalletStorage tmp(dest);
+        return tmp.save(txs, addresses, book, passphrase, err);
+    }
+
+    bool restore(const QString& source, const QString& passphrase, QList<TransactionRow>& txs, QStringList& addresses,
+                 QList<AddressBookEntry>& book, QString& err)
+    {
+        WalletStorage tmp(source);
+        return tmp.load(passphrase, txs, addresses, book, err);
+    }
+
+private:
+    QByteArray encrypt(const QByteArray& data, const QString& passphrase) const
+    {
+        QByteArray key = deriveKey(passphrase);
+        QByteArray out = data;
+        for (int i = 0; i < out.size(); ++i) out[i] = out[i] ^ key.at(i % key.size());
+        return out.toBase64();
+    }
+
+    QByteArray decrypt(const QByteArray& data, const QString& passphrase) const
+    {
+        QByteArray key = deriveKey(passphrase);
+        QByteArray raw = QByteArray::fromBase64(data);
+        for (int i = 0; i < raw.size(); ++i) raw[i] = raw[i] ^ key.at(i % key.size());
+        return raw;
+    }
+
+    QByteArray deriveKey(const QString& passphrase) const
+    {
+        QByteArray salt("drachma-wallet-salt");
+        QByteArray input = passphrase.toUtf8() + salt;
+        QByteArray hash = QCryptographicHash::hash(input, QCryptographicHash::Sha256);
+        return hash;
+    }
+
+    QString m_path;
+};
+
+class RpcClient : public QObject {
+    Q_OBJECT
+public:
+    struct Reply {
+        bool ok{false};
+        QJsonObject result;
+        QString error;
+    };
+
+    explicit RpcClient(QObject* parent = nullptr)
+        : QObject(parent)
+    {
+        manager = new QNetworkAccessManager(this);
+    }
+
+    void configure(const QString& url, const QString& user, const QString& pass)
+    {
+        m_url = url;
+        m_user = user;
+        m_pass = pass;
+    }
+
+    bool hasEndpoint() const { return !m_url.isEmpty(); }
+
+    void callAsync(const QString& method, const QJsonArray& params, std::function<void(const Reply&)> cb)
+    {
+        if (m_url.isEmpty()) {
+            Reply r; r.ok = false; r.error = "RPC endpoint not configured"; cb(r); return;
+        }
+        QNetworkRequest req(QUrl(m_url));
+        req.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+        if (!m_user.isEmpty()) {
+            QByteArray auth = QString("%1:%2").arg(m_user).arg(m_pass).toUtf8().toBase64();
+            req.setRawHeader("Authorization", "Basic " + auth);
+        }
+        QJsonObject payload;
+        payload["jsonrpc"] = "2.0";
+        payload["id"] = QString::number(QDateTime::currentMSecsSinceEpoch());
+        payload["method"] = method;
+        payload["params"] = params;
+        QByteArray body = QJsonDocument(payload).toJson(QJsonDocument::Compact);
+        QNetworkReply* reply = manager->post(req, body);
+        connect(reply, &QNetworkReply::finished, this, [reply, cb]() {
+            Reply r;
+            if (reply->error() != QNetworkReply::NoError) {
+                r.ok = false; r.error = reply->errorString();
+                reply->deleteLater();
+                cb(r);
+                return;
+            }
+            QJsonParseError parseErr;
+            QJsonDocument doc = QJsonDocument::fromJson(reply->readAll(), &parseErr);
+            reply->deleteLater();
+            if (parseErr.error != QJsonParseError::NoError) {
+                r.ok = false; r.error = "Failed to parse RPC response"; cb(r); return;
+            }
+            if (doc.object().contains("error") && !doc.object().value("error").isNull()) {
+                r.ok = false; r.error = doc.object().value("error").toObject().value("message").toString();
+                cb(r); return;
+            }
+            r.ok = true;
+            r.result = doc.object().value("result").toObject();
+            cb(r);
+        });
+    }
+
+private:
+    QNetworkAccessManager* manager{nullptr};
+    QString m_url;
+    QString m_user;
+    QString m_pass;
+};
+
 class WalletServiceClient : public QObject {
     Q_OBJECT
 public:
@@ -98,6 +311,33 @@ public:
         m_timer.setInterval(1000);
         connect(&m_timer, &QTimer::timeout, this, &WalletServiceClient::advanceConfirmations);
         m_timer.start();
+
+        QString walletPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/wallet.dat";
+        m_storage = std::make_unique<WalletStorage>(walletPath);
+    }
+
+    void hydrateFromDisk()
+    {
+        QString err;
+        QList<TransactionRow> tmpTxs;
+        QStringList tmpAddrs;
+        QList<AddressBookEntry> tmpBook;
+        if (m_storage->load(m_passphrase, tmpTxs, tmpAddrs, tmpBook, err)) {
+            QMutexLocker locker(&m_mutex);
+            m_txs = tmpTxs;
+            m_addresses = tmpAddrs;
+            m_book = tmpBook;
+            m_confirmed.store(0);
+            m_unconfirmed.store(0);
+            for (const auto& row : m_txs) {
+                if (row.status == "confirmed") {
+                    m_confirmed.fetch_add(row.amount);
+                } else if (row.amount > 0) {
+                    m_unconfirmed.fetch_add(row.amount);
+                }
+            }
+            emit transactionsChanged();
+        }
     }
 
     qint64 confirmedBalance() const { return m_confirmed.load(); }
@@ -118,14 +358,20 @@ public:
         return m_txs;
     }
 
+    QList<AddressBookEntry> addressBook() const
+    {
+        QMutexLocker locker(&m_mutex);
+        return m_book;
+    }
+
     QString requestNewAddress(const QString& label)
     {
-        // Addresses are deterministic placeholders; the backend owns key generation.
         QString addr = QString("drm_%1_%2").arg(QDateTime::currentMSecsSinceEpoch()).arg(m_addresses.size());
         {
             QMutexLocker locker(&m_mutex);
             m_addresses.append(addr + (label.isEmpty() ? "" : (" (" + label + ")")));
         }
+        persist();
         emit addressAdded(addr);
         return addr;
     }
@@ -144,6 +390,7 @@ public:
             m_txs.prepend(row);
         }
         m_unconfirmed += amount;
+        persist();
         emit balancesChanged(m_confirmed.load(), m_unconfirmed.load());
         emit transactionsChanged();
     }
@@ -175,6 +422,7 @@ public:
             m_txs.prepend(row);
         }
         m_confirmed -= total;
+        persist();
         emit balancesChanged(m_confirmed.load(), m_unconfirmed.load());
         emit transactionsChanged();
         Q_UNUSED(dest);
@@ -194,6 +442,7 @@ public:
         m_encrypted.store(true);
         m_locked.store(true);
         m_passphrase = passphrase;
+        persist();
         emit encryptionStateChanged();
         return true;
     }
@@ -213,6 +462,82 @@ public:
         return true;
     }
 
+    bool backupWallet(const QString& dest, QString& err)
+    {
+        QMutexLocker locker(&m_mutex);
+        return m_storage->backup(m_passphrase, dest, m_txs, m_addresses, m_book, err);
+    }
+
+    bool restoreWallet(const QString& src, const QString& passphrase, QString& err)
+    {
+        QList<TransactionRow> tmpTx;
+        QStringList tmpAddr;
+        QList<AddressBookEntry> tmpBook;
+        if (!m_storage->restore(src, passphrase, tmpTx, tmpAddr, tmpBook, err)) return false;
+        {
+            QMutexLocker locker(&m_mutex);
+            m_txs = tmpTx;
+            m_addresses = tmpAddr;
+            m_book = tmpBook;
+        }
+        m_passphrase = passphrase;
+        m_encrypted.store(true);
+        m_locked.store(false);
+        persist();
+        emit balancesChanged(m_confirmed.load(), m_unconfirmed.load());
+        emit transactionsChanged();
+        emit encryptionStateChanged();
+        return true;
+    }
+
+    bool loadWithPassphrase(const QString& passphrase, QString& err)
+    {
+        QList<TransactionRow> tmpTx;
+        QStringList tmpAddr;
+        QList<AddressBookEntry> tmpBook;
+        if (!m_storage->load(passphrase, tmpTx, tmpAddr, tmpBook, err)) return false;
+        {
+            QMutexLocker locker(&m_mutex);
+            m_txs = tmpTx;
+            m_addresses = tmpAddr;
+            m_book = tmpBook;
+        }
+        m_passphrase = passphrase;
+        m_encrypted.store(true);
+        m_locked.store(false);
+        m_confirmed.store(0);
+        m_unconfirmed.store(0);
+        for (const auto& row : m_txs) {
+            if (row.status == "confirmed") {
+                m_confirmed.fetch_add(row.amount);
+            } else if (row.amount > 0) {
+                m_unconfirmed.fetch_add(row.amount);
+            }
+        }
+        emit balancesChanged(m_confirmed.load(), m_unconfirmed.load());
+        emit transactionsChanged();
+        emit encryptionStateChanged();
+        return true;
+    }
+
+    void addAddressBookEntry(const QString& label, const QString& address)
+    {
+        {
+            QMutexLocker locker(&m_mutex);
+            m_book.append({label, address});
+        }
+        persist();
+    }
+
+    void removeAddressBookEntry(int index)
+    {
+        {
+            QMutexLocker locker(&m_mutex);
+            if (index >= 0 && index < m_book.size()) m_book.removeAt(index);
+        }
+        persist();
+    }
+
 signals:
     void balancesChanged(qint64 confirmed, qint64 unconfirmed);
     void transactionsChanged();
@@ -229,9 +554,12 @@ private slots:
         }
         bool changed = false;
         for (TransactionRow& row : snapshot) {
-            if (row.confirmations < 6) {
+            if (row.confirmations < 12) {
                 row.confirmations += 1;
                 if (row.confirmations >= 2 && row.status == "pending") {
+                    row.status = "broadcast";
+                }
+                if (row.confirmations >= 6 && row.status != "confirmed") {
                     row.status = "confirmed";
                     if (row.amount > 0) {
                         m_unconfirmed -= row.amount;
@@ -242,23 +570,35 @@ private slots:
             }
         }
         if (changed) {
-            QMutexLocker locker(&m_mutex);
-            m_txs = snapshot;
+            {
+                QMutexLocker locker(&m_mutex);
+                m_txs = snapshot;
+            }
+            persist();
             emit balancesChanged(m_confirmed.load(), m_unconfirmed.load());
             emit transactionsChanged();
         }
     }
 
 private:
+    void persist()
+    {
+        QString err;
+        QMutexLocker locker(&m_mutex);
+        m_storage->save(m_txs, m_addresses, m_book, m_passphrase, err);
+    }
+
     mutable QMutex m_mutex;
     QStringList m_addresses;
     QList<TransactionRow> m_txs;
+    QList<AddressBookEntry> m_book;
     std::atomic<qint64> m_confirmed;
     std::atomic<qint64> m_unconfirmed;
     std::atomic<bool> m_encrypted;
     std::atomic<bool> m_locked;
     QString m_passphrase;
     QTimer m_timer;
+    std::unique_ptr<WalletStorage> m_storage;
 };
 
 struct NodeConfig {
@@ -275,12 +615,13 @@ public:
         : QObject(parent)
     {
         connect(&m_pollTimer, &QTimer::timeout, this, &NodeProcessController::tick);
-        m_pollTimer.setInterval(1000);
+        m_pollTimer.setInterval(1500);
     }
 
     void startNode(const NodeConfig& cfg)
     {
         m_config = cfg;
+        m_rpc.configure(rpcUrl(), cfg.rpcUser, cfg.rpcPass);
         if (m_running.exchange(true)) return;
         m_height.store(0);
         m_syncProgress.store(0.0);
@@ -299,34 +640,7 @@ public:
 
     bool isRunning() const { return m_running.load(); }
 
-    struct RpcResult {
-        bool ok{false};
-        QString result;
-        QString error;
-    };
-
-    RpcResult call(const QString& user, const QString& pass, const QString& method, const QString& params)
-    {
-        RpcResult res;
-        if (!m_running.load()) {
-            res.error = "Node offline";
-            return res;
-        }
-        if (user != m_config.rpcUser || pass != m_config.rpcPass) {
-            res.error = "Unauthorized";
-            return res;
-        }
-        if (method == "ping") {
-            res.ok = true; res.result = "pong"; return res;
-        }
-        if (method == "getblockchaininfo") {
-            res.ok = true;
-            res.result = QString("height=%1 peers=%2").arg(m_height.load()).arg(m_peerCount.load());
-            return res;
-        }
-        res.error = QString("Unknown method %1").arg(method);
-        return res;
-    }
+    QString lastError() const { return m_lastError; }
 
 signals:
     void nodeStarted();
@@ -336,18 +650,47 @@ signals:
 private slots:
     void tick()
     {
-        if (!m_running.load()) return;
-        m_height.fetch_add(1);
-        double progress = std::min(1.0, m_syncProgress.load() + 0.01);
-        m_syncProgress.store(progress);
-        int peers = qBound(0, m_peerCount.load() + (rand() % 3 - 1), 16);
-        m_peerCount.store(peers);
-        double nh = 75.0 + (m_height.load() % 30) * 2.5;
-        m_networkHashrate.store(nh);
-        emit nodeStatusChanged(m_height.load(), progress, peers, nh);
+        if (!m_running.load() || m_inflight) return;
+        m_inflight = true;
+        m_rpc.callAsync("getblockchaininfo", {}, [this](const RpcClient::Reply& r){
+            m_inflight = false;
+            if (r.ok) {
+                int height = r.result.value("blocks").toInt(m_height.load());
+                double progress = r.result.value("verificationprogress").toDouble(m_syncProgress.load());
+                m_height.store(height);
+                m_syncProgress.store(progress);
+                m_peerCount.store(r.result.value("connections").toInt(m_peerCount.load()));
+                m_networkHashrate.store(r.result.value("networkhashps").toDouble(m_networkHashrate.load()));
+                m_failures = 0;
+                emit nodeStatusChanged(m_height.load(), m_syncProgress.load(), m_peerCount.load(), m_networkHashrate.load());
+            } else {
+                m_failures++;
+                m_lastError = r.error;
+                degradeStatus();
+            }
+        });
     }
 
 private:
+    QString rpcUrl() const
+    {
+        const QString host = "http://127.0.0.1";
+        QString port = m_config.network == "mainnet" ? "8332" : "18332";
+        return QString("%1:%2").arg(host).arg(port);
+    }
+
+    void degradeStatus()
+    {
+        m_height.fetch_add(1);
+        double progress = std::min(1.0, m_syncProgress.load() + 0.002);
+        m_syncProgress.store(progress);
+        int peers = std::max(0, m_peerCount.load() - 1);
+        m_peerCount.store(peers);
+        double nh = std::max(0.0, m_networkHashrate.load() - 1.0);
+        m_networkHashrate.store(nh);
+        emit nodeStatusChanged(m_height.load(), m_syncProgress.load(), m_peerCount.load(), m_networkHashrate.load());
+    }
+
     std::atomic<bool> m_running{false};
     std::atomic<int> m_height{0};
     std::atomic<double> m_syncProgress{0.0};
@@ -355,6 +698,10 @@ private:
     std::atomic<double> m_networkHashrate{0.0};
     QTimer m_pollTimer;
     NodeConfig m_config;
+    RpcClient m_rpc;
+    bool m_inflight{false};
+    int m_failures{0};
+    QString m_lastError;
 };
 
 class MiningManager : public QObject {
@@ -472,6 +819,7 @@ public:
         tabs->addTab(buildOverview(), "Overview");
         tabs->addTab(buildSend(), "Send");
         tabs->addTab(buildReceive(), "Receive");
+        tabs->addTab(buildAddressBook(), "Address book");
         tabs->addTab(buildTransactions(), "Transactions");
         tabs->addTab(buildMining(), "Mining");
         tabs->addTab(buildSettings(), "Settings");
@@ -489,9 +837,12 @@ public:
         // Load persisted settings and start the node.
         loadSettings();
         enforceEula();
+        applyThemeFromSettings();
+        loadWalletFromDisk();
         startNodeFromSettings();
-        seedWallet();
+        if (wallet->transactions().isEmpty()) seedWallet();
         refreshTransactions();
+        refreshAddressBook();
     }
 
     ~MainWindow() override
@@ -506,9 +857,13 @@ private:
         QMenu* fileMenu = menuBar()->addMenu("File");
         QAction* eulaAction = fileMenu->addAction("View EULA");
         QAction* whitepaperAction = fileMenu->addAction("Open Whitepaper");
+        QAction* backupAction = fileMenu->addAction("Backup wallet");
+        QAction* restoreAction = fileMenu->addAction("Restore wallet");
         QAction* exitAction = fileMenu->addAction("Exit");
         connect(eulaAction, &QAction::triggered, this, &MainWindow::showEulaDialog);
         connect(whitepaperAction, &QAction::triggered, this, &MainWindow::openWhitepaper);
+        connect(backupAction, &QAction::triggered, this, &MainWindow::backupWalletFile);
+        connect(restoreAction, &QAction::triggered, this, &MainWindow::restoreWalletFile);
         connect(exitAction, &QAction::triggered, this, &QWidget::close);
     }
 
@@ -527,10 +882,12 @@ private:
         peersLbl = new QLabel("0", nodeBox);
         syncLbl = new QLabel("0%", nodeBox);
         networkLbl = new QLabel("Offline", nodeBox);
+        rpcErrorLabel = new QLabel("RPC: idle", nodeBox);
         nf->addRow("Current height", heightLbl);
         nf->addRow("Peers", peersLbl);
         nf->addRow("Sync", syncLbl);
         nf->addRow("Network status", networkLbl);
+        nf->addRow("RPC", rpcErrorLabel);
         nodeBox->setLayout(nf);
 
         QGroupBox* walletBox = new QGroupBox("Wallet", w);
@@ -554,21 +911,42 @@ private:
         QFormLayout* f = new QFormLayout();
 
         destEdit = new QLineEdit(w);
+        QPushButton* copyFromBook = new QPushButton("Use selected address", w);
         amountEdit = new QDoubleSpinBox(w);
         amountEdit->setRange(0.00000001, 21000000.0);
         amountEdit->setDecimals(8);
         feeBox = new QComboBox(w);
-        feeBox->addItems({"Slow (0.0001)", "Normal (0.001)", "Fast (0.01)"});
+        feeBox->addItems({"Economy", "Normal", "Priority", "Custom"});
+        feeRate = new QDoubleSpinBox(w);
+        feeRate->setRange(0.1, 1000.0);
+        feeRate->setDecimals(1);
+        feeRate->setSuffix(" sat/vB");
+        feeRate->setValue(5.0);
+        feePreview = new QLabel("Est. fee: 0.0001 DRM", w);
+
+        connect(copyFromBook, &QPushButton::clicked, this, [this]{
+            if (!addressBookTable) return;
+            auto rows = addressBookTable->selectionModel()->selectedRows();
+            if (!rows.isEmpty()) {
+                destEdit->setText(addressBookTable->item(rows.first().row(), 1)->text());
+            }
+        });
+        connect(feeBox, &QComboBox::currentIndexChanged, this, &MainWindow::updateFeePreview);
+        connect(feeRate, qOverload<double>(&QDoubleSpinBox::valueChanged), this, &MainWindow::updateFeePreview);
 
         QPushButton* sendBtn = new QPushButton("Send", w);
         connect(sendBtn, &QPushButton::clicked, this, &MainWindow::confirmAndSend);
 
         f->addRow("Destination address", destEdit);
+        f->addRow("From address book", copyFromBook);
         f->addRow("Amount", amountEdit);
-        f->addRow("Fee", feeBox);
+        f->addRow("Fee profile", feeBox);
+        f->addRow("Fee rate", feeRate);
+        f->addRow("Fee preview", feePreview);
         v->addLayout(f);
         v->addWidget(sendBtn);
         v->addStretch(1);
+        updateFeePreview();
         return w;
     }
 
@@ -594,13 +972,42 @@ private:
         return w;
     }
 
+    QWidget* buildAddressBook()
+    {
+        QWidget* w = new QWidget(this);
+        QVBoxLayout* v = new QVBoxLayout(w);
+        addressBookTable = new QTableWidget(w);
+        addressBookTable->setColumnCount(2);
+        addressBookTable->setHorizontalHeaderLabels({"Label", "Address"});
+        addressBookTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+        addressBookTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+        addressBookTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+
+        QHBoxLayout* actions = new QHBoxLayout();
+        QPushButton* addBtn = new QPushButton("Add", w);
+        QPushButton* removeBtn = new QPushButton("Remove", w);
+        QPushButton* copyBtn = new QPushButton("Copy", w);
+        actions->addWidget(addBtn);
+        actions->addWidget(removeBtn);
+        actions->addWidget(copyBtn);
+
+        connect(addBtn, &QPushButton::clicked, this, &MainWindow::addAddressBookEntryDialog);
+        connect(removeBtn, &QPushButton::clicked, this, &MainWindow::removeAddressBookEntryDialog);
+        connect(copyBtn, &QPushButton::clicked, this, &MainWindow::copyAddressFromBook);
+
+        v->addWidget(addressBookTable);
+        v->addLayout(actions);
+        v->addStretch(1);
+        return w;
+    }
+
     QWidget* buildTransactions()
     {
         QWidget* w = new QWidget(this);
         QVBoxLayout* v = new QVBoxLayout(w);
         txTable = new QTableWidget(w);
-        txTable->setColumnCount(5);
-        txTable->setHorizontalHeaderLabels({"Time", "TXID", "Direction", "Amount", "Confirmations"});
+        txTable->setColumnCount(6);
+        txTable->setHorizontalHeaderLabels({"Time", "TXID", "Direction", "Amount", "Confirmations", "Status"});
         txTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
         txTable->setSelectionBehavior(QAbstractItemView::SelectRows);
         txTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -657,6 +1064,10 @@ private:
         rpcPassEdit = new QLineEdit(w);
         rpcPassEdit->setEchoMode(QLineEdit::Password);
 
+        themeBox = new QComboBox(w);
+        themeBox->addItems({"System", "Dark", "Light"});
+        connect(themeBox, &QComboBox::currentTextChanged, this, &MainWindow::applyTheme);
+
         encryptBtn = new QPushButton("Encrypt wallet", w);
         unlockBtn = new QPushButton("Unlock wallet", w);
         connect(encryptBtn, &QPushButton::clicked, this, &MainWindow::encryptWallet);
@@ -666,14 +1077,22 @@ private:
         f->addRow("Network", networkBox);
         f->addRow("RPC username", rpcUserEdit);
         f->addRow("RPC password", rpcPassEdit);
+        f->addRow("Theme", themeBox);
         f->addRow("Wallet encryption", encryptBtn);
         f->addRow("Wallet unlock", unlockBtn);
 
         QPushButton* save = new QPushButton("Save settings", w);
         connect(save, &QPushButton::clicked, this, &MainWindow::saveSettings);
 
+        QPushButton* backupBtn = new QPushButton("Backup wallet", w);
+        QPushButton* restoreBtn = new QPushButton("Restore wallet", w);
+        connect(backupBtn, &QPushButton::clicked, this, &MainWindow::backupWalletFile);
+        connect(restoreBtn, &QPushButton::clicked, this, &MainWindow::restoreWalletFile);
+
         v->addLayout(f);
         v->addWidget(save);
+        v->addWidget(backupBtn);
+        v->addWidget(restoreBtn);
         v->addStretch(1);
         return w;
     }
@@ -710,6 +1129,8 @@ private slots:
         peersLbl->setText(QString::number(peers));
         syncLbl->setText(QString::number(syncProgress * 100.0, 'f', 2) + "%");
         networkLbl->setText(QString::number(networkHashrate, 'f', 2) + " H/s");
+        QString rpcMsg = node->lastError().isEmpty() ? QString("RPC: online") : QString("RPC issue: %1").arg(node->lastError());
+        rpcErrorLabel->setText(rpcMsg);
     }
 
     void updateHashrate(double rate)
@@ -728,6 +1149,20 @@ private slots:
             txTable->setItem(i, 2, new QTableWidgetItem(row.direction));
             txTable->setItem(i, 3, new QTableWidgetItem(QString::number(row.amount / 100000000.0, 'f', 8)));
             txTable->setItem(i, 4, new QTableWidgetItem(QString::number(row.confirmations)));
+            txTable->setItem(i, 5, new QTableWidgetItem(row.status));
+            ++i;
+        }
+    }
+
+    void refreshAddressBook()
+    {
+        if (!addressBookTable) return;
+        auto entries = wallet->addressBook();
+        addressBookTable->setRowCount(entries.size());
+        int i = 0;
+        for (const auto& e : entries) {
+            addressBookTable->setItem(i, 0, new QTableWidgetItem(e.label));
+            addressBookTable->setItem(i, 1, new QTableWidgetItem(e.address));
             ++i;
         }
     }
@@ -747,6 +1182,38 @@ private slots:
         drawQr(addr);
     }
 
+    void addAddressBookEntryDialog()
+    {
+        bool ok = false;
+        QString label = QInputDialog::getText(this, "Address label", "Label", QLineEdit::Normal, "", &ok);
+        if (!ok || label.isEmpty()) return;
+        QString address = QInputDialog::getText(this, "Address", "Destination", QLineEdit::Normal, "", &ok);
+        if (!ok || address.isEmpty()) return;
+        wallet->addAddressBookEntry(label, address);
+        refreshAddressBook();
+    }
+
+    void removeAddressBookEntryDialog()
+    {
+        if (!addressBookTable) return;
+        auto rows = addressBookTable->selectionModel()->selectedRows();
+        if (rows.isEmpty()) return;
+        int idx = rows.first().row();
+        wallet->removeAddressBookEntry(idx);
+        refreshAddressBook();
+    }
+
+    void copyAddressFromBook()
+    {
+        if (!addressBookTable) return;
+        auto rows = addressBookTable->selectionModel()->selectedRows();
+        if (rows.isEmpty()) return;
+        QString addr = addressBookTable->item(rows.first().row(), 1)->text();
+        QApplication::clipboard()->setText(addr);
+        destEdit->setText(addr);
+        statusBar()->showMessage("Address copied", 2000);
+    }
+
     void drawQr(const QString& data)
     {
         QImage img(qrLabel->size(), QImage::Format_ARGB32_Premultiplied);
@@ -764,12 +1231,7 @@ private slots:
         QString dest = destEdit->text().trimmed();
         double amountD = amountEdit->value();
         qint64 amount = static_cast<qint64>(amountD * 100000000.0);
-        qint64 fee = 0;
-        switch (feeBox->currentIndex()) {
-            case 0: fee = 10000; break;
-            case 1: fee = 100000; break;
-            case 2: fee = 1000000; break;
-        }
+        qint64 fee = estimateFeeSats();
         if (dest.isEmpty()) {
             QMessageBox::warning(this, "Send", "Destination address is required.");
             return;
@@ -786,6 +1248,34 @@ private slots:
             return;
         }
         QMessageBox::information(this, "Send", "Transaction created and queued for broadcast.");
+    }
+
+    double currentFeeRate() const
+    {
+        switch (feeBox->currentIndex()) {
+            case 0: return 1.0;   // Economy
+            case 1: return 5.0;   // Normal
+            case 2: return 15.0;  // Priority
+            default: return feeRate ? feeRate->value() : 5.0;
+        }
+    }
+
+    qint64 estimateFeeSats() const
+    {
+        double rate = currentFeeRate();
+        double estimatedSize = 225.0; // typical P2PKH-sized send
+        return static_cast<qint64>(rate * estimatedSize);
+    }
+
+    void updateFeePreview()
+    {
+        if (!feePreview) return;
+        double rate = currentFeeRate();
+        qint64 fee = estimateFeeSats();
+        if (feeRate) feeRate->setEnabled(feeBox && feeBox->currentIndex() == 3);
+        feePreview->setText(QString("Est. fee: %1 DRM (%2 sat/vB)")
+            .arg(fee / 100000000.0, 0, 'f', 8)
+            .arg(rate, 0, 'f', 1));
     }
 
     void startMining()
@@ -811,8 +1301,10 @@ private slots:
         s.setValue("network", networkBox->currentText());
         s.setValue("rpcUser", rpcUserEdit->text());
         s.setValue("rpcPass", rpcPassEdit->text());
+        s.setValue("theme", themeBox->currentText());
         statusBar()->showMessage("Settings saved", 3000);
         startNodeFromSettings();
+        applyTheme(themeBox->currentText());
     }
 
     void loadSettings()
@@ -823,6 +1315,13 @@ private slots:
         networkBox->setCurrentText(s.value("network", "testnet").toString());
         rpcUserEdit->setText(s.value("rpcUser", "user").toString());
         rpcPassEdit->setText(s.value("rpcPass", "pass").toString());
+        themeBox->setCurrentText(s.value("theme", "System").toString());
+    }
+
+    void applyThemeFromSettings()
+    {
+        QSettings s("Drachma", "CoreDesktop");
+        applyTheme(s.value("theme", "System").toString());
     }
 
     void startNodeFromSettings()
@@ -830,6 +1329,45 @@ private slots:
         NodeConfig cfg{dataDirEdit->text(), networkBox->currentText(), rpcUserEdit->text(), rpcPassEdit->text()};
         if (node->isRunning()) node->stopNode();
         node->startNode(cfg);
+    }
+
+    void loadWalletFromDisk()
+    {
+        QString walletPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/wallet.dat";
+        if (!QFile::exists(walletPath)) return;
+        QString err;
+        if (wallet->loadWithPassphrase("", err)) { updateEncryptionState(); return; }
+        bool ok = false;
+        QString pass = QInputDialog::getText(this, "Unlock wallet", "Enter wallet passphrase", QLineEdit::Password, "", &ok);
+        if (!ok) return;
+        if (!wallet->loadWithPassphrase(pass, err)) {
+            QMessageBox::critical(this, "Wallet", err);
+        } else {
+            updateEncryptionState();
+            refreshTransactions();
+        }
+    }
+
+    void applyTheme(const QString& theme)
+    {
+        if (themeBox && themeBox->currentText() != theme)
+            themeBox->setCurrentText(theme);
+        if (theme == "Dark") {
+            QPalette p;
+            p.setColor(QPalette::Window, QColor(30,30,30));
+            p.setColor(QPalette::WindowText, Qt::white);
+            p.setColor(QPalette::Base, QColor(45,45,45));
+            p.setColor(QPalette::Text, Qt::white);
+            p.setColor(QPalette::Button, QColor(60,60,60));
+            p.setColor(QPalette::ButtonText, Qt::white);
+            QApplication::setStyle(QStyleFactory::create("Fusion"));
+            QApplication::setPalette(p);
+        } else if (theme == "Light") {
+            QApplication::setStyle(QStyleFactory::create("Fusion"));
+            QApplication::setPalette(QApplication::style()->standardPalette());
+        } else {
+            QApplication::setPalette(QApplication::style()->standardPalette());
+        }
     }
 
     void encryptWallet()
@@ -858,10 +1396,43 @@ private slots:
         QMessageBox::information(this, "Unlock", "Wallet unlocked.");
     }
 
+    void backupWalletFile()
+    {
+        QString dest = QFileDialog::getSaveFileName(this, "Backup wallet", QDir::homePath() + "/wallet-backup.dat");
+        if (dest.isEmpty()) return;
+        QString err;
+        if (!wallet->backupWallet(dest, err)) {
+            QMessageBox::critical(this, "Backup", err);
+        } else {
+            QMessageBox::information(this, "Backup", "Wallet backup saved.");
+        }
+    }
+
+    void restoreWalletFile()
+    {
+        QString src = QFileDialog::getOpenFileName(this, "Restore wallet", QDir::homePath());
+        if (src.isEmpty()) return;
+        bool ok = false;
+        QString pass = QInputDialog::getText(this, "Restore wallet", "Passphrase", QLineEdit::Password, "", &ok);
+        if (!ok) return;
+        QString err;
+        if (!wallet->restoreWallet(src, pass, err)) {
+            QMessageBox::critical(this, "Restore", err);
+        } else {
+            QMessageBox::information(this, "Restore", "Wallet restored.");
+            refreshTransactions();
+            refreshAddressBook();
+            updateEncryptionState();
+        }
+    }
+
     void updateEncryptionState()
     {
         encryptBtn->setEnabled(!wallet->isEncrypted());
         unlockBtn->setEnabled(wallet->isEncrypted());
+        if (wallet->isEncrypted()) {
+            unlockBtn->setText(wallet->isLocked() ? "Unlock wallet" : "Wallet unlocked");
+        }
     }
 
     void showEulaDialog()
@@ -893,9 +1464,16 @@ private:
     QLineEdit* destEdit{nullptr};
     QDoubleSpinBox* amountEdit{nullptr};
     QComboBox* feeBox{nullptr};
+    QDoubleSpinBox* feeRate{nullptr};
+    QLabel* feePreview{nullptr};
 
     QListWidget* addressList{nullptr};
     QLabel* qrLabel{nullptr};
+
+    QTableWidget* addressBookTable{nullptr};
+
+    QLabel* rpcErrorLabel{nullptr};
+    QComboBox* themeBox{nullptr};
 
     QTableWidget* txTable{nullptr};
 

@@ -38,10 +38,10 @@ inline void sha256_compress(uint state[8], const uint w_in[16])
     state[4]+=e; state[5]+=f; state[6]+=g; state[7]+=h;
 }
 
-__kernel void sha256d_search(__global const uchar* header76,
+__kernel __attribute__((reqd_work_group_size(256,1,1))) void sha256d_search(__global const uchar* restrict header76,
                              uint nonceStart,
-                             __global const uint* target,
-                             __global uint* solution,
+                             __global const uint* restrict target,
+                             __global uint* restrict solution,
                              __global int* found)
 {
     uint gid = get_global_id(0);
@@ -57,6 +57,7 @@ __kernel void sha256d_search(__global const uchar* header76,
     header[79] = nonce & 0xff;
 
     uint w0[16];
+    #pragma unroll
     for (int i = 0; i < 16; ++i) {
         w0[i] = ((uint)header[i*4] << 24) | ((uint)header[i*4+1] << 16) | ((uint)header[i*4+2] << 8) | ((uint)header[i*4+3]);
     }

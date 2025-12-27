@@ -1,30 +1,12 @@
+#include "keystore.h"
+
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
 #include <fstream>
-#include <vector>
-#include <array>
-#include <string>
 #include <stdexcept>
-#include <unordered_map>
-#include <cstddef>
 
 namespace wallet {
-
-using KeyId = std::array<uint8_t,32>;
-using PrivKey = std::array<uint8_t,32>;
-using PubKey  = std::array<uint8_t,33>;
-
-struct ArrayHasher {
-    size_t operator()(const std::array<uint8_t,32>& data) const noexcept
-    {
-        size_t h = 0;
-        for (auto b : data) {
-            h = (h * 131) ^ b;
-        }
-        return h;
-    }
-};
 
 static void DeriveKey(const std::string& pass, std::array<uint8_t,32>& out)
 {
@@ -74,60 +56,59 @@ static std::vector<uint8_t> Decrypt(const std::array<uint8_t,32>& key, const std
     return out;
 }
 
-class KeyStore {
-public:
-    KeyStore() = default;
+void KeyStore::Import(const KeyId& id, const PrivKey& key)
+{
+    m_keys[id] = key;
+}
 
-    void Import(const KeyId& id, const PrivKey& key)
-    {
-        m_keys[id] = key;
+bool KeyStore::Get(const KeyId& id, PrivKey& out) const
+{
+    auto it = m_keys.find(id);
+    if (it == m_keys.end()) return false;
+    out = it->second;
+    return true;
+}
+
+void KeyStore::EncryptToFile(const std::string& passphrase, const std::string& path) const
+{
+    std::vector<uint8_t> plain;
+    plain.reserve(m_keys.size() * 64);
+    for (const auto& kv : m_keys) {
+        plain.insert(plain.end(), kv.first.begin(), kv.first.end());
+        plain.insert(plain.end(), kv.second.begin(), kv.second.end());
     }
+    std::array<uint8_t,32> key;
+    DeriveKey(passphrase, key);
+    auto enc = Encrypt(key, plain);
+    std::ofstream file(path, std::ios::binary);
+    file.write(reinterpret_cast<const char*>(enc.data()), enc.size());
+}
 
-    bool Get(const KeyId& id, PrivKey& out) const
-    {
-        auto it = m_keys.find(id);
-        if (it == m_keys.end()) return false;
-        out = it->second;
-        return true;
+void KeyStore::LoadFromFile(const std::string& passphrase, const std::string& path)
+{
+    std::ifstream file(path, std::ios::binary);
+    if (!file.is_open()) throw std::runtime_error("missing keystore");
+    std::vector<uint8_t> enc((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    std::array<uint8_t,32> key;
+    DeriveKey(passphrase, key);
+    auto plain = Decrypt(key, enc);
+    m_keys.clear();
+    size_t offset = 0;
+    while (offset + 64 <= plain.size()) {
+        KeyId id{}; PrivKey pk{};
+        std::copy(plain.begin() + offset, plain.begin() + offset + 32, id.begin());
+        offset += 32;
+        std::copy(plain.begin() + offset, plain.begin() + offset + 32, pk.begin());
+        offset += 32;
+        m_keys.emplace(id, pk);
     }
+}
 
-    void EncryptToFile(const std::string& passphrase, const std::string& path) const
-    {
-        std::vector<uint8_t> plain;
-        plain.reserve(m_keys.size() * 64);
-        for (const auto& kv : m_keys) {
-            plain.insert(plain.end(), kv.first.begin(), kv.first.end());
-            plain.insert(plain.end(), kv.second.begin(), kv.second.end());
-        }
-        std::array<uint8_t,32> key;
-        DeriveKey(passphrase, key);
-        auto enc = Encrypt(key, plain);
-        std::ofstream file(path, std::ios::binary);
-        file.write(reinterpret_cast<const char*>(enc.data()), enc.size());
-    }
-
-    void LoadFromFile(const std::string& passphrase, const std::string& path)
-    {
-        std::ifstream file(path, std::ios::binary);
-        if (!file.is_open()) throw std::runtime_error("missing keystore");
-        std::vector<uint8_t> enc((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-        std::array<uint8_t,32> key;
-        DeriveKey(passphrase, key);
-        auto plain = Decrypt(key, enc);
-        m_keys.clear();
-        size_t offset = 0;
-        while (offset + 64 <= plain.size()) {
-            KeyId id{}; PrivKey pk{};
-            std::copy(plain.begin() + offset, plain.begin() + offset + 32, id.begin());
-            offset += 32;
-            std::copy(plain.begin() + offset, plain.begin() + offset + 32, pk.begin());
-            offset += 32;
-            m_keys.emplace(id, pk);
-        }
-    }
-
-private:
-    std::unordered_map<KeyId, PrivKey, ArrayHasher> m_keys;
-};
+size_t KeyStore::ArrayHasher::operator()(const std::array<uint8_t,32>& data) const noexcept
+{
+    size_t h = 0;
+    for (auto b : data) h = (h * 131) ^ b;
+    return h;
+}
 
 } // namespace wallet
