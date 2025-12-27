@@ -1,6 +1,9 @@
 #pragma once
 
 #include <boost/asio.hpp>
+#include "../../layer1-core/crypto/tagged_hash.h"
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 #include <functional>
 #include <mutex>
 #include <set>
@@ -40,6 +43,7 @@ private:
     struct PeerState;
     void AcceptLoop();
     void ConnectSeeds();
+    void LoadDNSSeeds();
     void RegisterPeer(const std::shared_ptr<PeerState>& peer);
     void QueueMessage(PeerState& peer, const Message& msg);
     void WriteLoop(PeerState& peer);
@@ -48,6 +52,11 @@ private:
     bool RateLimit(PeerState& peer);
     void SendVersion(const std::shared_ptr<PeerState>& peer);
     void DropPeer(const std::string& id);
+    void Ban(const std::string& address);
+    bool IsBanned(const std::string& address) const;
+    void HandleBuiltin(const std::shared_ptr<PeerState>& peer, const Message& msg);
+    void SendInv(const std::shared_ptr<PeerState>& peer, const std::vector<uint256>& invs);
+    void SendGetData(const std::shared_ptr<PeerState>& peer, const std::vector<uint256>& hashes);
     void ScheduleHeartbeat();
 
     boost::asio::io_context& m_io;
@@ -56,9 +65,12 @@ private:
     std::unordered_map<std::string, std::shared_ptr<PeerState>> m_peers;
     std::unordered_map<std::string, Handler> m_handlers;
     std::set<std::string> m_seedAddrs;
+    std::unordered_map<std::string, std::chrono::steady_clock::time_point> m_banned;
+    std::set<uint256> m_seenInventory;
     boost::asio::steady_timer m_timer;
     const size_t m_maxMsgsPerMinute{600};
     const int m_banThreshold{100};
+    const std::chrono::minutes m_banTime{10};
 };
 
 } // namespace net

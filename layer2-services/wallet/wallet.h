@@ -25,6 +25,7 @@ public:
 private:
     std::vector<UTXO> SelectCoins(uint64_t amount) const;
     std::vector<uint8_t> DummySignature(const PrivKey& key, const Transaction& tx) const;
+    void RemoveCoins(const std::vector<OutPoint>& used);
 
     KeyStore m_store;
     std::vector<UTXO> m_utxos;

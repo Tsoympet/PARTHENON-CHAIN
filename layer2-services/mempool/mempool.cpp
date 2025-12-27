@@ -18,12 +18,17 @@ bool Mempool::Accept(const Transaction& tx, uint64_t fee)
     if (m_entries.count(hash)) return false;
     if (!m_policy.IsFeeAcceptable(tx, fee)) return false;
 
+    for (const auto& in : tx.vin) {
+        if (m_spent.count(in.prevout)) return false; // double spend
+    }
+
     if (m_entries.size() >= m_policy.MaxEntries()) EvictOne();
 
     MempoolEntry entry{tx, fee, feeRate, std::chrono::steady_clock::now()};
     m_arrival.push_back(hash);
     m_byFeeRate.emplace(feeRate, hash);
     m_entries.emplace(hash, std::move(entry));
+    for (const auto& in : tx.vin) m_spent.emplace(in.prevout, hash);
     return true;
 }
 
@@ -31,6 +36,12 @@ bool Mempool::Exists(const uint256& hash) const
 {
     std::lock_guard<std::mutex> g(m_mutex);
     return m_entries.count(hash) != 0;
+}
+
+bool Mempool::SpendsKnown(const OutPoint& op) const
+{
+    std::lock_guard<std::mutex> g(m_mutex);
+    return m_spent.count(op) != 0;
 }
 
 std::vector<Transaction> Mempool::Snapshot() const
@@ -51,6 +62,10 @@ void Mempool::Remove(const std::vector<uint256>& hashes)
             auto range = m_byFeeRate.equal_range(it->second.feeRate);
             for (auto fr = range.first; fr != range.second; ++fr) {
                 if (fr->second == h) { m_byFeeRate.erase(fr); break; }
+            }
+            for (const auto& in : it->second.tx.vin) {
+                auto s = m_spent.find(in.prevout);
+                if (s != m_spent.end() && s->second == h) m_spent.erase(s);
             }
             m_entries.erase(it);
         }
@@ -91,6 +106,19 @@ size_t Mempool::ArrayHasher::operator()(const uint256& data) const noexcept
     return h;
 }
 
+size_t Mempool::OutPointHasher::operator()(const OutPoint& op) const noexcept
+{
+    size_t h = 0;
+    for (auto b : op.hash) h = (h * 131) ^ b;
+    h ^= static_cast<size_t>(op.index + 0x9e3779b97f4a7c15ULL + (h << 6) + (h >> 2));
+    return h;
+}
+
+bool Mempool::OutPointEqual::operator()(const OutPoint& a, const OutPoint& b) const noexcept
+{
+    return a.index == b.index && a.hash == b.hash;
+}
+
 void Mempool::EvictOne()
 {
     // Prefer evicting lowest feerate, break ties by oldest arrival
@@ -98,13 +126,28 @@ void Mempool::EvictOne()
         auto it = m_byFeeRate.begin();
         auto hash = it->second;
         m_byFeeRate.erase(it);
-        m_entries.erase(hash);
+        auto entryIt = m_entries.find(hash);
+        if (entryIt != m_entries.end()) {
+            for (const auto& in : entryIt->second.tx.vin) {
+                auto s = m_spent.find(in.prevout);
+                if (s != m_spent.end() && s->second == hash) m_spent.erase(s);
+            }
+            m_entries.erase(entryIt);
+        }
         return;
     }
     while (!m_arrival.empty()) {
         auto h = m_arrival.front();
         m_arrival.pop_front();
-        if (m_entries.erase(h)) break;
+        auto it = m_entries.find(h);
+        if (it != m_entries.end()) {
+            for (const auto& in : it->second.tx.vin) {
+                auto s = m_spent.find(in.prevout);
+                if (s != m_spent.end() && s->second == h) m_spent.erase(s);
+            }
+            m_entries.erase(it);
+            break;
+        }
     }
 }
 

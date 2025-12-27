@@ -87,7 +87,26 @@ Transaction WalletBackend::CreateSpend(const std::vector<TxOut>& outputs, const 
     for (auto& in : tx.vin) {
         in.scriptSig = DummySignature(key, tx);
     }
+    std::vector<OutPoint> spent;
+    spent.reserve(tx.vin.size());
+    for (const auto& in : tx.vin) spent.push_back(in.prevout);
+    RemoveCoins(spent);
     return tx;
+}
+
+void WalletBackend::RemoveCoins(const std::vector<OutPoint>& used)
+{
+    std::lock_guard<std::mutex> g(m_mutex);
+    std::vector<UTXO> remaining;
+    remaining.reserve(m_utxos.size());
+    for (const auto& u : m_utxos) {
+        bool spent = false;
+        for (const auto& op : used) {
+            if (u.outpoint.hash == op.hash && u.outpoint.index == op.index) { spent = true; break; }
+        }
+        if (!spent) remaining.push_back(u);
+    }
+    m_utxos.swap(remaining);
 }
 
 } // namespace wallet

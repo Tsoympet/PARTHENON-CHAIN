@@ -34,6 +34,10 @@ public:
             return std::to_string(wallet.GetBalance());
         });
 
+        Register("getblockcount", [&index](const std::string&) {
+            return std::to_string(index.BlockCount());
+        });
+
         Register("getblock", [&index](const std::string& params) {
             auto hash = ParseHash(params);
             uint32_t height{0};
@@ -52,6 +56,23 @@ public:
                 p2p.Broadcast(net::Message{"tx", payload});
             }
             return std::string("{\"accepted\":") + (ok ? "true" : "false") + "}";
+        });
+
+        Register("sendrawtransaction", [this](const std::string& params) {
+            return GetHandler("sendtx")(params);
+        });
+
+        Register("gettransaction", [&index](const std::string& params) {
+            auto hash = ParseHash(params);
+            uint32_t height{0};
+            bool found = index.Lookup(hash, height);
+            return std::string("{\"found\":") + (found ? "true" : "false") + ",\"height\":" + std::to_string(height) + "}";
+        });
+
+        Register("estimatefee", [&pool](const std::string& params) {
+            size_t percentile = 50;
+            try { percentile = std::stoul(TrimQuotes(params)); } catch (...) {}
+            return std::to_string(pool.EstimateFeeRate(percentile));
         });
     }
 
