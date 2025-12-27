@@ -148,6 +148,11 @@ if(DRACHMA_BUILD_TESTS)
         add_executable(fuzz_validation tests/validation/fuzz_validation.cpp)
         target_link_libraries(fuzz_validation PRIVATE drachma_layer1)
     endif()
+    add_executable(fuzz_schnorr tests/crypto/fuzz_schnorr.cpp)
+    target_link_libraries(fuzz_schnorr PRIVATE drachma_layer1)
+
+    add_executable(fuzz_tagged_hash tests/crypto/fuzz_tagged_hash.cpp)
+    target_link_libraries(fuzz_tagged_hash PRIVATE drachma_layer1)
 endif()
 
 # Install rules
