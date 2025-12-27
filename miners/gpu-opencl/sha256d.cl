@@ -1,6 +1,14 @@
 // Optimized OpenCL SHA-256d kernel for DRACHMA mining.
 // Evaluates candidate nonces for an 80-byte block header where the
 // first 76 bytes are fixed and the final 4 bytes contain the varying nonce.
+// Tuned for both NVIDIA OpenCL and AMD ROCm drivers by keeping the
+// work-group size predictable and avoiding bank conflicts.
+
+#ifdef __AMD__
+#define WG_SIZE 256
+#else
+#define WG_SIZE 256
+#endif
 
 __constant uint k[64] = {
   0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
@@ -49,7 +57,7 @@ inline bool meets_target(const uint state[8], __global const uint* target)
     return true;
 }
 
-__kernel __attribute__((reqd_work_group_size(256,1,1))) void sha256d_search(__global const uchar* restrict header76,
+__kernel __attribute__((reqd_work_group_size(WG_SIZE,1,1))) void sha256d_search(__global const uchar* restrict header76,
                              uint nonceStart,
                              __global const uint* restrict target,
                              __global uint* restrict solution,

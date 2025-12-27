@@ -3,7 +3,11 @@
 
 // CUDA SHA-256d mining kernel tuned for higher throughput while
 // keeping deterministic behavior. Tightened unrolling and target
-// comparison improve effective hash rate on modern GPUs.
+// comparison improve effective hash rate on modern GPUs. Shared-memory
+// caching of the static header improves occupancy on both NVIDIA and
+// ROCm-compatible devices running CUDA.
+
+constexpr int THREADS_PER_BLOCK = 256;
 
 __device__ __forceinline__ uint32_t rotr(uint32_t x, uint32_t n) {
     return (x >> n) | (x << (32 - n));
@@ -54,7 +58,7 @@ __device__ void sha256_round(uint32_t state[8], const uint32_t* w)
     state[4]+=e; state[5]+=f; state[6]+=g; state[7]+=h;
 }
 
-extern "C" __global__ __launch_bounds__(256, 4) void sha256d_kernel(const uint8_t* __restrict__ header76,
+extern "C" __global__ __launch_bounds__(THREADS_PER_BLOCK, 3) void sha256d_kernel(const uint8_t* __restrict__ header76,
                                                                     uint32_t nonceStart,
                                                                     const uint32_t* __restrict__ target,
                                                                     uint32_t* __restrict__ solution,
@@ -63,9 +67,14 @@ extern "C" __global__ __launch_bounds__(256, 4) void sha256d_kernel(const uint8_
     uint32_t gid = blockIdx.x * blockDim.x + threadIdx.x;
     if (__ldg(found)) return;
 
+    __shared__ uint8_t shHeader[76];
+    if (threadIdx.x < 76)
+        shHeader[threadIdx.x] = __ldg(&header76[threadIdx.x]);
+    __syncthreads();
+
     uint8_t header[80];
     #pragma unroll
-    for (int i=0;i<76;++i) header[i] = __ldg(&header76[i]);
+    for (int i=0;i<76;++i) header[i] = shHeader[i];
     uint32_t nonce = nonceStart + gid;
     header[76] = (nonce >> 24) & 0xff;
     header[77] = (nonce >> 16) & 0xff;

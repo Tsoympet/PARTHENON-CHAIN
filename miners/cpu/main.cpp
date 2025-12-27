@@ -1,3 +1,4 @@
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <cstdint>
@@ -8,7 +9,9 @@
 #include <immintrin.h>
 #include <iostream>
 #include <mutex>
+#include <numeric>
 #include <optional>
+#include <random>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -88,6 +91,8 @@ struct MinerConfig {
     std::string configPath;
     uint32_t intensity{0};
     std::string worker;
+    bool preferStratumV2{false};
+    std::string rpcAuthToken;
 };
 
 uint32_t ClampBits(uint32_t bits, uint32_t minBits)
@@ -108,6 +113,14 @@ uint32_t ClampBits(uint32_t bits, uint32_t minBits)
     if (minTarget != 0 && target > minTarget)
         return minBits;
     return bits;
+}
+
+inline uint32_t RandomizeNonceSeed()
+{
+    std::random_device rd;
+    std::array<uint32_t, 4> entropy{};
+    for (auto& e : entropy) e = rd();
+    return std::accumulate(entropy.begin(), entropy.end(), 0u);
 }
 
 struct MidstateWorkspace {
@@ -228,6 +241,8 @@ MinerConfig ParseArgs(int argc, char** argv)
         else if (arg == "--config" && i + 1 < argc) cfg.configPath = argv[++i];
         else if (arg == "--intensity" && i + 1 < argc) cfg.intensity = std::stoul(argv[++i]);
         else if (arg == "--worker" && i + 1 < argc) cfg.worker = argv[++i];
+        else if (arg == "--stratum-v2") cfg.preferStratumV2 = true;
+        else if (arg == "--rpc-auth-token" && i + 1 < argc) cfg.rpcAuthToken = argv[++i];
     }
     if (cfg.threads == 0) cfg.threads = 1;
     return cfg;
@@ -250,6 +265,8 @@ void LoadConfig(MinerConfig& cfg)
         cfg.benchmarkSeconds = tree.get("benchmark_seconds", cfg.benchmarkSeconds);
         cfg.intensity = tree.get("intensity", cfg.intensity);
         cfg.benchmark = tree.get("benchmark", cfg.benchmark);
+        cfg.preferStratumV2 = tree.get("stratum_v2", cfg.preferStratumV2);
+        cfg.rpcAuthToken = tree.get("rpc_auth_token", cfg.rpcAuthToken);
     } catch (const std::exception& e) {
         std::cerr << "Failed to read config: " << e.what() << "\n";
     }
@@ -292,20 +309,26 @@ void RunBenchmark(const MinerConfig& cfg)
     std::cout << "\n";
 }
 
-bool MineJob(const MinerJob& baseJob, const MinerConfig& cfg, StratumClient* client)
+bool MineJob(const MinerJob& baseJob, const MinerConfig& cfg, StratumPool* pool)
 {
     const auto& params = consensus::Main();
     std::atomic<bool> found{false};
-    std::atomic<uint32_t> nonceCounter{baseJob.header.nonce};
+    uint32_t nonceSeed = RandomizeNonceSeed() ^ baseJob.header.nonce;
+    std::atomic<uint32_t> nonceCounter{nonceSeed};
     MidstateWorkspace ws = BuildWorkspace(baseJob.header);
     std::mutex submitMutex;
 
     uint32_t stride = cfg.intensity ? cfg.intensity : 1024;
+#if defined(__AVX2__)
+    stride *= 2; // Favor larger batches to keep vector units fed
+#endif
 
     auto worker = [&](int idx) {
         MinerJob job = baseJob;
         while (!found.load(std::memory_order_relaxed)) {
             uint32_t startNonce = nonceCounter.fetch_add(stride, std::memory_order_relaxed);
+            __builtin_prefetch(&startNonce, 0, 3);
+#pragma GCC unroll 8
             for (uint32_t n = 0; n < stride && !found.load(std::memory_order_relaxed); ++n) {
                 job.header.nonce = startNonce + n;
                 uint32_t state[8];
@@ -324,8 +347,8 @@ bool MineJob(const MinerJob& baseJob, const MinerConfig& cfg, StratumClient* cli
                     found.store(true, std::memory_order_relaxed);
                     std::lock_guard<std::mutex> g(submitMutex);
                     std::cout << "[thread " << idx << "] found nonce: " << job.header.nonce << "\n";
-                    if (client)
-                        client->SubmitResult(job, job.header.nonce);
+                    if (pool)
+                        pool->SubmitResult(job, job.header.nonce);
                     return;
                 }
             }
@@ -351,7 +374,18 @@ int main(int argc, char** argv)
     }
 
     if (!cfg.stratumUrl.empty()) {
-        StratumClient client(cfg.stratumUrl, cfg.user.empty() ? cfg.worker : cfg.user, cfg.pass, cfg.allowRemote);
+        StratumPool::Options opts{};
+        opts.url = cfg.stratumUrl;
+        opts.user = cfg.user.empty() ? cfg.worker : cfg.user;
+        opts.pass = cfg.rpcAuthToken.empty() ? cfg.pass : cfg.rpcAuthToken;
+        opts.allowRemote = cfg.allowRemote;
+        opts.protocol = cfg.preferStratumV2 ? StratumProtocol::V2 : StratumProtocol::V1;
+        opts.onSecurityEvent = [](const std::string& msg) {
+            std::cerr << "[security] " << msg << "\n";
+            std::terminate();
+        };
+
+        StratumPool client(opts);
         client.Connect();
         auto lastPing = std::chrono::steady_clock::now();
         while (true) {
