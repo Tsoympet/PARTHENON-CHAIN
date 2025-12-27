@@ -3,9 +3,13 @@
 #include <boost/asio.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <cstdint>
+#include <atomic>
+#include <functional>
 #include <mutex>
 #include <optional>
+#include <random>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "../layer1-core/block/block.h"
@@ -43,5 +47,40 @@ private:
     uint32_t extranonce2Size_{0};
     double currentDifficulty_{1.0};
     std::mutex ioMutex_;
+};
+
+enum class StratumProtocol { V1, V2 };
+
+class StratumPool {
+public:
+    struct Options {
+        std::string url;
+        std::string user;
+        std::string pass;
+        bool allowRemote{false};
+        StratumProtocol protocol{StratumProtocol::V1};
+        std::function<void(const std::string&)> onSecurityEvent;
+    };
+
+    explicit StratumPool(Options opts);
+    ~StratumPool();
+    void Connect();
+    std::optional<MinerJob> AwaitJob();
+    void SubmitResult(const MinerJob& job, uint32_t nonce);
+    double CurrentDifficulty() const;
+    void SendKeepalive();
+
+private:
+    void EnsureNonceEntropy();
+    void StartHealthMonitor();
+    bool MalwareScan();
+
+    Options opts_;
+    StratumClient legacyClient_;
+    double difficulty_{1.0};
+    std::mt19937 nonceRng_;
+    std::uniform_int_distribution<uint32_t> nonceDist_;
+    std::thread monitorThread_;
+    std::atomic<bool> stopMonitor_{false};
 };
 
