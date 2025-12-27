@@ -1,5 +1,31 @@
 <RCC>
     <qresource prefix="/icons">
+        <file>app_icon.svg</file>
+        <file>logo.svg</file>
+        <file>wallet.svg</file>
+        <file>send.svg</file>
+        <file>receive.svg</file>
+        <file>transactions.svg</file>
+        <file>mining.svg</file>
+        <file>network.svg</file>
+        <file>network-connected.svg</file>
+        <file>network-disconnected.svg</file>
+        <file>settings.svg</file>
+        <file>status-connected.svg</file>
+        <file>status-disconnected.svg</file>
+        <file>dark/app_icon.svg</file>
+        <file>dark/logo.svg</file>
+        <file>dark/wallet.svg</file>
+        <file>dark/send.svg</file>
+        <file>dark/receive.svg</file>
+        <file>dark/transactions.svg</file>
+        <file>dark/mining.svg</file>
+        <file>dark/network.svg</file>
+        <file>dark/network-connected.svg</file>
+        <file>dark/network-disconnected.svg</file>
+        <file>dark/settings.svg</file>
+        <file>dark/status-connected.svg</file>
+        <file>dark/status-disconnected.svg</file>
         <file>icons/app_icon.svg</file>
         <file>icons/logo.svg</file>
         <file>icons/wallet.svg</file>
