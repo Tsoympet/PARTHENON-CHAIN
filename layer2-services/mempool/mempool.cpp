@@ -1,104 +1,111 @@
-#include "../policy/policy.cpp"
-#include "../../layer1-core/tx/transaction.h"
-#include <unordered_map>
-#include <mutex>
-#include <chrono>
-#include <deque>
-#include <cstddef>
+#include "mempool.h"
 
-// A minimal but deterministic mempool implementation for non-consensus relay
-// purposes. It enforces a fee floor and deterministic eviction order (oldest
-// first) but intentionally avoids touching consensus validation logic.
+#include <algorithm>
+
 namespace mempool {
 
-struct MempoolEntry {
-    Transaction tx;
-    uint64_t fee;
-    std::chrono::steady_clock::time_point added;
-};
+Mempool::Mempool(const policy::FeePolicy& policy)
+    : m_policy(policy)
+{
+}
 
-struct ArrayHasher {
-    size_t operator()(const uint256& data) const noexcept
-    {
-        size_t h = 0;
-        for (auto b : data)
-            h = (h * 131) ^ b;
-        return h;
-    }
-};
+bool Mempool::Accept(const Transaction& tx, uint64_t fee)
+{
+    std::lock_guard<std::mutex> g(m_mutex);
+    const auto ser = Serialize(tx);
+    const uint64_t feeRate = (ser.size() ? (fee * 1000 / ser.size()) : fee * 1000);
+    uint256 hash = tx.GetHash();
+    if (m_entries.count(hash)) return false;
+    if (!m_policy.IsFeeAcceptable(tx, fee)) return false;
 
-class Mempool {
-public:
-    explicit Mempool(const policy::FeePolicy& policy)
-        : m_policy(policy) {}
+    if (m_entries.size() >= m_policy.MaxEntries()) EvictOne();
 
-    bool Accept(const Transaction& tx, uint64_t fee)
-    {
-        std::lock_guard<std::mutex> g(m_mutex);
-        uint256 hash = tx.GetHash();
-        if (m_entries.count(hash))
-            return false; // duplicate
-        if (!m_policy.IsFeeAcceptable(tx, fee))
-            return false;
-        if (m_entries.size() >= m_policy.MaxEntries())
-            EvictOldest();
-        m_entries.emplace(hash, MempoolEntry{tx, fee, std::chrono::steady_clock::now()});
-        m_order.push_back(hash);
-        return true;
-    }
+    MempoolEntry entry{tx, fee, feeRate, std::chrono::steady_clock::now()};
+    m_arrival.push_back(hash);
+    m_byFeeRate.emplace(feeRate, hash);
+    m_entries.emplace(hash, std::move(entry));
+    return true;
+}
 
-    bool Exists(const uint256& hash) const
-    {
-        std::lock_guard<std::mutex> g(m_mutex);
-        return m_entries.count(hash) != 0;
-    }
+bool Mempool::Exists(const uint256& hash) const
+{
+    std::lock_guard<std::mutex> g(m_mutex);
+    return m_entries.count(hash) != 0;
+}
 
-    std::vector<Transaction> Snapshot() const
-    {
-        std::lock_guard<std::mutex> g(m_mutex);
-        std::vector<Transaction> out;
-        out.reserve(m_entries.size());
-        for (const auto& kv : m_entries)
-            out.push_back(kv.second.tx);
-        return out;
-    }
+std::vector<Transaction> Mempool::Snapshot() const
+{
+    std::lock_guard<std::mutex> g(m_mutex);
+    std::vector<Transaction> out;
+    out.reserve(m_entries.size());
+    for (const auto& kv : m_entries) out.push_back(kv.second.tx);
+    return out;
+}
 
-    void Remove(const std::vector<uint256>& hashes)
-    {
-        std::lock_guard<std::mutex> g(m_mutex);
-        for (const auto& h : hashes) {
-            auto it = m_entries.find(h);
-            if (it != m_entries.end()) {
-                m_entries.erase(it);
+void Mempool::Remove(const std::vector<uint256>& hashes)
+{
+    std::lock_guard<std::mutex> g(m_mutex);
+    for (const auto& h : hashes) {
+        auto it = m_entries.find(h);
+        if (it != m_entries.end()) {
+            auto range = m_byFeeRate.equal_range(it->second.feeRate);
+            for (auto fr = range.first; fr != range.second; ++fr) {
+                if (fr->second == h) { m_byFeeRate.erase(fr); break; }
             }
-        }
-        // rebuild order deterministically preserving remaining items
-        std::deque<uint256> rebuilt;
-        for (const auto& h : m_order) {
-            if (m_entries.count(h))
-                rebuilt.push_back(h);
-        }
-        m_order.swap(rebuilt);
-    }
-
-private:
-    void EvictOldest()
-    {
-        while (!m_order.empty()) {
-            const auto hash = m_order.front();
-            m_order.pop_front();
-            auto it = m_entries.find(hash);
-            if (it != m_entries.end()) {
-                m_entries.erase(it);
-                break;
-            }
+            m_entries.erase(it);
         }
     }
 
-    policy::FeePolicy m_policy;
-    std::unordered_map<uint256, MempoolEntry, ArrayHasher> m_entries;
-    std::deque<uint256> m_order;
-    mutable std::mutex m_mutex;
-};
+    std::deque<uint256> rebuilt;
+    for (const auto& h : m_arrival) {
+        if (m_entries.count(h)) rebuilt.push_back(h);
+    }
+    m_arrival.swap(rebuilt);
+}
+
+void Mempool::RemoveForBlock(const std::vector<Transaction>& blockTxs)
+{
+    std::vector<uint256> hashes;
+    hashes.reserve(blockTxs.size());
+    for (const auto& tx : blockTxs) hashes.push_back(tx.GetHash());
+    Remove(hashes);
+}
+
+uint64_t Mempool::EstimateFeeRate(size_t percentile) const
+{
+    std::lock_guard<std::mutex> g(m_mutex);
+    if (m_entries.empty()) return m_policy.MinFeeRate();
+    std::vector<uint64_t> feeRates;
+    feeRates.reserve(m_entries.size());
+    for (const auto& kv : m_entries) feeRates.push_back(kv.second.feeRate);
+    std::sort(feeRates.begin(), feeRates.end());
+    percentile = std::min(percentile, static_cast<size_t>(99));
+    size_t idx = feeRates.size() * percentile / 100;
+    return feeRates[idx];
+}
+
+size_t Mempool::ArrayHasher::operator()(const uint256& data) const noexcept
+{
+    size_t h = 0;
+    for (auto b : data) h = (h * 131) ^ b;
+    return h;
+}
+
+void Mempool::EvictOne()
+{
+    // Prefer evicting lowest feerate, break ties by oldest arrival
+    if (!m_byFeeRate.empty()) {
+        auto it = m_byFeeRate.begin();
+        auto hash = it->second;
+        m_byFeeRate.erase(it);
+        m_entries.erase(hash);
+        return;
+    }
+    while (!m_arrival.empty()) {
+        auto h = m_arrival.front();
+        m_arrival.pop_front();
+        if (m_entries.erase(h)) break;
+    }
+}
 
 } // namespace mempool

@@ -17,15 +17,20 @@ Both miners communicate with Layer 2 services via RPC to fetch block templates a
 
 ## Starting the CPU Miner
 
+The CPU miner now supports solo RPC templates *and* Stratum pool mode. Anti-botnet defaults restrict remote pool connections; add `--allow-remote` only when you fully trust the endpoint.
+
 ```bash
 ./miners/drachma-miner-cpu \
-  --rpc-url http://127.0.0.1:9332 \
-  --rpc-user <user> --rpc-pass <pass> \
-  --threads <num>
+  --stratum-url stratum+tcp://127.0.0.1:3333 \
+  --stratum-user workername --stratum-pass password \
+  --threads <num> --min-target-bits 1d00ffff
 ```
 
-- `--threads`: Number of CPU worker threads. Start with `nproc - 1` to leave one core for system tasks.
-- The miner periodically requests new templates and automatically handles chain tips and difficulty adjustments.
+Key flags:
+- `--threads`: Number of CPU worker threads (multi-threaded hashing is enabled).
+- `--min-target-bits`: Enforce a minimum target (compact bits) so pool jobs cannot downshift difficulty unexpectedly.
+- `--benchmark` / `--benchmark-seconds`: Run an offline hash-rate benchmark with your chosen thread count.
+- `--allow-remote`: Opt-in to non-local Stratum endpoints; keep unset for anti-botnet safety.
 
 ## Starting the GPU Miner
 
@@ -52,6 +57,7 @@ Key flags:
 - `--devices`: Comma-separated device indices.
 - `--platform`: OpenCL platform index (for AMD/Intel stacks).
 - `--intensity` / `--work-size`: Tune kernel occupancy and batch size.
+- `--pool`: Pool/Stratum URL; GPU miners forward solutions through the CPU miner's submitter when present.
 
 ## Performance Tuning
 
@@ -59,10 +65,12 @@ Key flags:
   - Use hugepages and NUMA pinning on multi-socket systems.
   - Set `--threads` to match physical cores; hyper-threading yields diminishing returns.
   - Pin miner threads with `taskset` or `numactl` to reduce cross-node latency.
+  - Run `--benchmark --benchmark-seconds 20` after changes to compare hash rate.
 - **GPU:**
   - Match `--intensity`/`--work-size` to available VRAM and bus bandwidth.
   - Keep GPUs cool; hash rate drops when thermal throttling triggers.
   - Use recent drivers; outdated OpenCL ICDs often reduce stability.
+  - For CUDA, launch bounds are tuned for 256-thread blocks; prefer intensities that map to full SM occupancy.
 - **Node/Network:**
   - Run miners close to the node (same LAN) to minimize RPC latency.
   - Ensure the services daemon has sufficient peers for timely template updates.
@@ -72,12 +80,30 @@ Key flags:
 - **Entry / Development:** 4–8 core CPU, integrated or low-end GPU; suitable for testing.
 - **Prosumer:** 12–24 core CPU, modern NVIDIA RTX (30/40 series) or AMD RDNA2/3 GPUs with >= 8 GB VRAM.
 - **Enterprise:** Multi-GPU rigs with high-efficiency PSUs, adequate cooling, and stable power delivery. Consider ECC memory on hosts for reliability.
+- **Compatibility notes:**
+  - CUDA: Optimized for compute capability 7.5+ with 256-thread blocks; older GPUs run but may hash slower.
+  - OpenCL: Targeted at AMD RDNA2/3 and Intel Arc drivers; set `--work-size 128` on legacy Polaris cards.
+  - CPUs: Prefer AVX2-capable cores; SMT provides small gains only when memory bandwidth is ample.
+
+## Pool Mining and Stratum Security
+
+- Stratum is enabled for CPU miners via `--stratum-url/--stratum-user/--stratum-pass`.
+- Remote endpoints are blocked by default; add `--allow-remote` after verifying pool ownership to avoid botnet abuse.
+- Use `--min-target-bits` to reject jobs below your chosen difficulty floor.
+- Keep per-worker credentials unique; rotate passwords regularly and avoid running miners as root.
 
 ## Monitoring and Stability
 
 - Enable verbose logs during tuning: `--log-level debug`.
 - Watch acceptance rate; frequent rejects indicate stale work or unstable overclocks.
 - Restart miners after driver updates to reload kernels.
+
+## Mainnet Readiness Checklist
+
+- Connect miners to trusted endpoints on secured networks (TLS or VPN) and avoid exposing Stratum over the public internet.
+- Set conservative intensity/work-size values first; ramp up only after observing low reject rates.
+- Pin `--min-target-bits` to prevent difficulty downgrades from malicious pools.
+- Keep host firmware, drivers, and the node software patched; rescan configs after each release.
 
 ## Troubleshooting
 

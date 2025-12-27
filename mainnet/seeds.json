@@ -1,0 +1,5 @@
+[
+  { "host": "seed1.drachma.org", "port": 9333, "desc": "Foundation-operated seed" },
+  { "host": "seed2.drachma.org", "port": 9333, "desc": "Community-operated seed" },
+  { "host": "198.51.100.42", "port": 9333, "desc": "Anycast bootstrap" }
+]

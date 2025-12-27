@@ -121,6 +121,22 @@ Commands are subject to change as the implementation matures; prefer scripts in 
 
 ---
 
+## Mainnet Launch
+
+Use this checklist before connecting to mainnet or distributing binaries:
+
+- **Build type:** Use release builds with assertions enabled when possible: `cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DDRACHMA_BUILD_TESTS=OFF`.
+- **Reproducibility:** Build from a tagged release, pin dependency versions, and verify hashes of toolchains/SDKs.
+- **Key hygiene:** Keep the signing key offline; verify maintainer signatures on tags, source archives, and SBOMs.
+- **Network settings:** Start nodes with explicit flags (`--network mainnet`, `--listen`, `--rpcuser`, `--rpcpassword`) and review `deployment.md` for hardening.
+- **Bootstrap safety:** Prefer initial block download over external snapshots; if using bootstrap files, verify signatures and perform full validation.
+- **Miner configuration:** Point miners to authenticated endpoints only, with TLS or trusted LAN where available; review pool settings and difficulty floors.
+- **Operational readiness:** Enable logging/rotation, monitor resource usage, and document incident response contacts for your deployment.
+
+Mainnet procedures and host preparation steps are detailed in [`docs/deployment.md`](docs/deployment.md) and security reviews are outlined in [`docs/audit-guide.md`](docs/audit-guide.md).
+
+---
+
 ## Core Principles
 
 - **Proof-of-Work:** SHA-256d (double SHA-256), unmodified

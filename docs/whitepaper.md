@@ -6,7 +6,7 @@ Drachma is a minimalist proof-of-work cryptocurrency engineered for predictable 
 ## Monetary Policy
 - **Max supply:** 42,000,000 DRM
 - **Genesis premine:** None; the genesis coinbase is provably unspendable.
-- **Block subsidy:** 50 DRM initially, halving every 210,000 blocks.
+- **Block subsidy:** 50 DRM initially, halving every 2,102,400 blocks (~4 years at 60-second targets).
 - **Block interval:** 60 seconds target.
 - **Reward maturity:** Coinbase outputs require standard maturity before spending.
 - **Fee model:** Transaction fees are collected by miners and are the only reward after subsidy exhaustion.
@@ -34,6 +34,27 @@ Wallets are local-only HD wallets producing Schnorr keypairs. Seeds are 24-word 
 - Difficulty clamping prevents large oscillations while retaining responsiveness.
 - UTXO set updates are atomic per block and reorg-safe through rollback metadata.
 - No governance, staking, or admin keys exist; all participants follow the same rules.
+
+## Threat Model
+
+Drachma inherits the Bitcoin-class threat posture while narrowing surface area by avoiding smart contracts and privileged keys.
+
+- **51% hashpower adversary:** Mitigated by chainwork-first fork resolution, fast difficulty retargets with clamps, and node policies that limit deep reorganizations unless cumulative work strictly exceeds the active tip.
+- **Eclipse/partition attacks:** Nodes use diversified DNS seeds, manual addnode lists, and inbound+outbound peer balancing. Invalid chainwork or header anomalies trigger disconnects and bans.
+- **Malleability and replay:** Deterministic transaction IDs with tagged hashing and Schnorr-only validation prevent signature malleability. Network messages carry per-network magic bytes to prevent accidental cross-network relay.
+- **Resource exhaustion:** Tight bounds on inv/getdata fan-out, mempool admission, script size, and header/timestamp checks guard CPU and memory budgets.
+- **Key compromise:** Wallets encrypt seeds at rest, support airgapped signing flows, and surface health checks for backups; no custodial recovery backdoors exist.
+
+Residual risks common to open networks—such as widespread miner collusion or nationwide censorship—require social coordination and monitoring rather than protocol-level overrides. Operational guidance appears in `deployment.md` and `security.md`.
+
+## Comparison to Bitcoin
+
+- **What stays the same:** SHA-256d proof-of-work, UTXO accounting, Schnorr-over-secp256k1 signatures, and conservative script rules mirror Bitcoin’s well-tested foundations. Fork choice relies on cumulative work and full validation—never checkpoints or trust anchors.
+- **What differs:**
+  - **Block cadence:** 60-second targets with 60-block retargets tighten confirmation latency while retaining bounded difficulty swings.
+  - **Monetary cap:** 42 million DRM with longer halving intervals to preserve multi-decade emission, versus 21 million BTC.
+  - **Layered design:** Services (P2P/RPC/wallet/indexes) and UI live outside consensus to simplify audits and minimize attack surface.
+  - **Launch posture:** No premine, no developer fees, no version-bits governance. All activation parameters are transparent and reproducible from genesis.
 
 ## Cross-Chain Support (Layer 2)
 Cross-chain components operate off-consensus. Proof-based adapters validate external chain headers and Merkle proofs to inform relayers and wallets, but Layer 1 state is never altered by cross-chain messages. Relayers are untrusted; users must verify proofs locally.

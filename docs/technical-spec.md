@@ -4,19 +4,31 @@ This document summarizes key protocol parameters for DRACHMA. Values may be fina
 
 ## Monetary Policy
 
-- **Supply Cap:** 42,000,000 DRM
-- **Block Subsidy (initial):** 50 DRM (testnet placeholder)
-- **Halving Interval:** 210,000 blocks (approx. every 4 years at 10-minute blocks)
-- **Minimum Subsidy:** 0 DRM (tail emission not planned)
-- **Fee Model:** Transaction fees are collected by miners in full; no fee burning.
+- **Supply Cap:** 42,000,000 DRM enforced by consensus range checks.
+- **Block Subsidy (initial):** 50 DRM.
+- **Halving Interval:** 2,102,400 blocks (~4 years at 60-second targets).
+- **Minimum Subsidy:** 0 DRM (no tail emission).
+- **Fee Model:** 100% of transaction fees go to miners; no fee burning or developer fees.
+
+### Supply Schedule
+
+| Era | Height Range | Subsidy (DRM) | Approx. Duration |
+| --- | ------------ | ------------- | ---------------- |
+| 0   | 0 – 2,102,399 | 50 | ~4 years |
+| 1   | 2,102,400 – 4,204,799 | 25 | ~4 years |
+| 2   | 4,204,800 – 6,307,199 | 12.5 | ~4 years |
+| 3   | 6,307,200 – 8,409,599 | 6.25 | ~4 years |
+| ... | ... | halving each era | ... |
+
+Supply accumulates asymptotically to the 42M cap; the final subsidy era naturally rounds down to zero.
 
 ## Consensus Parameters
 
 - **Proof of Work:** SHA-256d
-- **Target Block Time:** 10 minutes
-- **Difficulty Adjustment:** Retarget every 2016 blocks (approx. 2 weeks), bounded to limit abrupt swings
-- **Block Size/Weight:** To be finalized with performance measurements; conservative defaults favored
-- **Timestamp Rules:** Median-time-past enforcement and future drift limits consistent with Bitcoin-like safety
+- **Target Block Time:** 60 seconds
+- **Difficulty Adjustment:** Retarget every 60 blocks (1-hour window) with clamped adjustments to prevent oscillations and timestamp abuse.
+- **Block Size/Weight:** Conservative defaults; oversized blocks are rejected at consensus and policy layers.
+- **Timestamp Rules:** Median-time-past enforcement and bounded future drift consistent with Bitcoin-derived safety limits.
 
 ## Transaction Model
 
@@ -28,11 +40,19 @@ This document summarizes key protocol parameters for DRACHMA. Values may be fina
 ## Network Parameters
 
 - **Default Ports:**
-  - P2P: 9333 (testnet example)
-  - RPC: 8332
-  - Work/Stratum-like mining endpoint: 9333 (when proxied via services)
-- **Message Integrity:** Checksummed payloads; DoS-resistant bounds on inventories and mempool admission
-- **Address Format:** To be defined (e.g., Bech32m variant) with checksum for user safety
+  - P2P: 9333 (mainnet) / 19333 (testnet)
+  - RPC: 8332 (mainnet) / 18332 (testnet)
+  - Stratum/Work relay: 9333 (proxied by services; authenticate for pools)
+- **Magic Bytes:** Distinct per network; nodes refuse messages with mismatched magic.
+- **Message Integrity:** Checksummed payloads; DoS-resistant bounds on inventories, peer slots, and mempool admission.
+- **Address Format:** Bech32m-style with human-readable prefix per network; checksum protects against typos.
+
+## Genesis Block
+
+- **Launch Statement:** Human-readable commitment encoded in the genesis coinbase, unspendable by consensus.
+- **Merkle Root:** Computed over the single coinbase transaction using duplicate-last-leaf rule.
+- **Timestamp & Difficulty:** Chosen to meet the SHA-256d target encoded in `nBits`; no premine or checkpointing is applied.
+- **Validation:** Genesis is hardcoded for bootstrapping but subject to the same header validity and proof-of-work checks.
 
 ## Storage
 

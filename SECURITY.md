@@ -37,4 +37,6 @@ We take security and consensus safety seriously. Please report suspected vulnera
 - Hypothetical attacks without actionable details.
 - Vulnerabilities requiring root/administrator access on a fully compromised host without network implications.
 
-Thank you for helping keep DRACHMA users safe.
+## External Audits
+
+We welcome external audits ahead of each tagged release. Auditors can open a private issue titled "Security Audit Request" to coordinate scope, timelines, and key exchange. Release candidates will be announced on the repository Releases page with binary hashes and optional detached signatures to simplify verification.

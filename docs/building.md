@@ -40,8 +40,8 @@ This guide describes how to build the DRACHMA reference stack across platforms. 
    ```bash
    cmake -S . -B build \
      -DCMAKE_BUILD_TYPE=Release \
-     -DBUILD_TESTS=ON \
-     -DENABLE_GUI=ON \
+     -DDRACHMA_BUILD_TESTS=ON \
+     -DDRACHMA_BUILD_GUI=ON \
      -DENABLE_WALLET=ON \
      -DENABLE_GPU_MINERS=ON
    ```
@@ -60,12 +60,12 @@ Artifacts follow the repository layout under `build/` (e.g., `build/layer1-core/
 ## Notable CMake Options
 
 - `CMAKE_BUILD_TYPE` = `Release` | `Debug` | `RelWithDebInfo`
-- `ENABLE_WALLET` (ON/OFF): build wallet/key management
-- `ENABLE_GUI` (ON/OFF): build desktop client under `layer3-app`
-- `ENABLE_P2P` (ON/OFF): networking services
+- `DRACHMA_BUILD_TESTS` (ON/OFF): build unit/integration tests
+- `DRACHMA_BUILD_GUI` (ON/OFF): build desktop client under `layer3-app`
+- `ENABLE_WALLET` (ON/OFF): wallet/key management services
 - `ENABLE_GPU_MINERS` (ON/OFF): CUDA/OpenCL miners
+- `DRACHMA_BUILD_FUZZ` (ON/OFF): build fuzzing harnesses (developers only)
 - `CUDA_TOOLKIT_ROOT_DIR` / `OpenCL_INCLUDE_DIR` / `OpenCL_LIBRARY`: override GPU paths
-- `ENABLE_TESTS` or `BUILD_TESTS` (ON/OFF): unit/integration tests
 - `USE_SYSTEM_LIBS` (ON/OFF): prefer system dependencies over vendored
 
 Pass options via `-D<OPTION>=<VALUE>` during configuration.
@@ -76,6 +76,24 @@ Pass options via `-D<OPTION>=<VALUE>` during configuration.
 - **macOS:** Specify OpenSSL path: `-DOPENSSL_ROOT_DIR=$(brew --prefix openssl)` when CMake cannot locate it.
 - **Windows:** Configure from a “x64 Native Tools” shell. Use Ninja (`-G Ninja`) for faster builds. Set `-DOPENSSL_ROOT_DIR` to your vcpkg install path. Disable GPU miners if CUDA/OpenCL SDKs are absent.
 - **Containers:** The provided `Dockerfile` and `docker-compose.yml` offer reproducible environments for CI and testing.
+
+## Mainnet Build Profile
+
+For production nodes and release artifacts:
+
+- Configure in release mode with deterministic flags where available:
+  ```bash
+  cmake -S . -B build \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DDRACHMA_BUILD_TESTS=OFF \
+    -DDRACHMA_BUILD_GUI=OFF \
+    -DDRACHMA_BUILD_FUZZ=OFF \
+    -DENABLE_WALLET=ON \
+    -DENABLE_GPU_MINERS=OFF
+  ```
+- Prefer system packages vetted by your distro; pin versions in CI to reproduce hashes.
+- Use `-DCMAKE_INSTALL_PREFIX=/opt/drachma` and `cmake --install build` for managed deployments.
+- Sign resulting binaries and publish SHA-256 checksums. Verify signatures before promotion to production hosts.
 
 ## GPU Build Tips
 

@@ -3,19 +3,21 @@
 A phased plan for delivering the DRACHMA blockchain with transparency and predictable milestones.
 
 ## Current Focus
-- Core structural implementation of protocol components.
-- Strengthening validation logic and consensus safety checks.
-- Completing the desktop user interface for node control and wallet interactions.
+- Finalizing Layer 1 consensus validation and fork-choice hardening.
+- Strengthening P2P, mempool, and wallet services for adversarial networks.
+- Completing the desktop user interface for node control, wallet operations, and miner configuration.
 
 ## Short-Term (Next Phase)
-- Finalize full Layer 1 consensus implementation and integration testing.
-- Launch a public testnet with faucet support for onboarding and developer experimentation.
+- Launch public testnet with seed nodes, explorer endpoints, and faucet support.
+- Expand fuzzing/integration coverage and publish updated threat models.
+- Produce reproducible release builds for early operators.
 
 ## Medium-Term
-- Conduct an external security audit covering protocol, client, and smart contract interfaces.
-- Deliver optimized miner implementations to improve efficiency and network performance.
+- Conduct external security audits for consensus, networking, wallet, and miner code.
+- Deliver optimized CPU/GPU miners with documented pool/solo settings and DoS protections.
+- Draft operational hardening guidance (`deployment.md`) and operator runbooks.
 
 ## Long-Term
-- Execute a fair mainnet launch with transparent participation criteria.
+- Execute a fair mainnet launch with transparent participation criteria and public seed lists.
 - Release a public block explorer with real-time network and economic metrics.
-- Grow community programs, documentation, and governance processes.
+- Maintain a regular documentation cadence and post-launch monitoring plan without governance keys.

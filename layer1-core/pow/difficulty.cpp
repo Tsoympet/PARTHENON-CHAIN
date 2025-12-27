@@ -57,6 +57,18 @@ static uint32_t TargetToCompact(const cpp_int& target)
     return result;
 }
 
+cpp_int CalculateBlockWork(uint32_t nBits)
+{
+    // Bitcoin-style work calculation: (2^256 - target) / (target + 1) + 1
+    cpp_int target = CompactToTarget(nBits);
+    cpp_int powLimit("0x10000000000000000000000000000000000000000000000000000000000000000");
+    if (target <= 0 || target >= powLimit)
+        return 0;
+
+    cpp_int work = (powLimit - target - 1) / (target + 1);
+    return work + 1;
+}
+
 uint32_t CalculateNextWorkRequired(
     uint32_t lastBits,
     int64_t actualTimespan,

@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "timestamp": 1735689600,
+  "bits": "1d00ffff",
+  "nonce": 2084524493,
+  "merkleRoot": "4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b",
+  "message": "DRACHMA MAINNET GENESIS - FAIR LAUNCH",
+  "reward": 5000000000,
+  "note": "Verify this against compiled constants before launch."
+}

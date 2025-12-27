@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>DRACHMA Explorer (Light)</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>DRACHMA Explorer</h1>
+    <div class="status">
+      <label for="rpc">RPC URL</label>
+      <input id="rpc" type="text" value="http://localhost:18332" />
+      <button id="refresh">Refresh</button>
+    </div>
+  </header>
+  <main>
+    <section>
+      <h2>Chain Tip</h2>
+      <div id="tip">Loading...</div>
+    </section>
+    <section>
+      <h2>Lookup Block</h2>
+      <input id="block-id" type="text" placeholder="Height or hash" />
+      <button id="lookup">Lookup</button>
+      <pre id="block-json"></pre>
+    </section>
+  </main>
+  <script>
+    async function rpcCall(rpcUrl, method, params = []) {
+      const response = await fetch(rpcUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 'explorer', method, params })
+      });
+      const obj = await response.json();
+      if (obj.error) throw new Error(obj.error.message);
+      return obj.result;
+    }
+
+    async function refreshTip() {
+      const rpc = document.getElementById('rpc').value;
+      try {
+        const height = await rpcCall(rpc, 'getblockcount');
+        const hash = await rpcCall(rpc, 'getbestblockhash');
+        document.getElementById('tip').textContent = `Height: ${height} / Hash: ${hash}`;
+      } catch (err) {
+        document.getElementById('tip').textContent = `Error: ${err.message}`;
+      }
+    }
+
+    async function lookupBlock() {
+      const rpc = document.getElementById('rpc').value;
+      const id = document.getElementById('block-id').value.trim();
+      if (!id) return;
+      try {
+        const blockHash = isNaN(Number(id)) ? id : await rpcCall(rpc, 'getblockhash', [Number(id)]);
+        const block = await rpcCall(rpc, 'getblock', [blockHash]);
+        document.getElementById('block-json').textContent = JSON.stringify(block, null, 2);
+      } catch (err) {
+        document.getElementById('block-json').textContent = `Error: ${err.message}`;
+      }
+    }
+
+    document.getElementById('refresh').addEventListener('click', refreshTip);
+    document.getElementById('lookup').addEventListener('click', lookupBlock);
+    refreshTip();
+  </script>
+</body>
+</html>

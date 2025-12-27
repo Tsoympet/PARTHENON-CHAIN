@@ -1,0 +1,58 @@
+name: Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-package:
+    name: Build ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up CMake
+        uses: jwlawson/actions-setup-cmake@v1
+      - name: Configure
+        run: cmake -S . -B build -DDRACHMA_BUILD_GUI=OFF -DDRACHMA_BUILD_TESTS=OFF
+      - name: Build
+        run: cmake --build build --config Release --parallel
+      - name: Archive artifacts
+        if: runner.os != 'Windows'
+        run: |
+          tar -czf drachma-${{ runner.os }}.tar.gz -C build .
+      - name: Archive artifacts (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          7z a drachma-Windows.zip ./build/*
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: drachma-${{ runner.os }}
+          path: |
+            drachma-${{ runner.os }}.tar.gz
+            drachma-Windows.zip
+          if-no-files-found: ignore
+      - name: Sign artifacts
+        if: secrets.RELEASE_GPG_KEY != ''
+        env:
+          SIGNING_KEY: ${{ secrets.RELEASE_GPG_KEY }}
+          SIGNING_PASS: ${{ secrets.RELEASE_GPG_PASSPHRASE }}
+        run: |
+          echo "$SIGNING_KEY" | gpg --batch --import
+          for f in drachma-*; do
+            gpg --batch --yes --passphrase "$SIGNING_PASS" --detach-sign "$f"
+          done
+      - name: Publish GitHub Release assets
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            drachma-*.tar.gz*
+            drachma-Windows.zip*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

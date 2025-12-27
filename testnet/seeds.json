@@ -1,0 +1,5 @@
+[
+  { "host": "tn1.drachma.org", "port": 19335, "desc": "Foundation testnet seed" },
+  { "host": "tn2.drachma.org", "port": 19335, "desc": "Community seed" },
+  { "host": "203.0.113.77", "port": 19335, "desc": "Geo-diverse seed" }
+]

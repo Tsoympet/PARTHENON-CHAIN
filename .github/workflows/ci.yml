@@ -12,7 +12,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libssl-dev
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libssl-dev libboost-all-dev
 
       - name: Configure
         run: cmake -S . -B build -G Ninja -DDRACHMA_BUILD_TESTS=ON -DDRACHMA_BUILD_GUI=OFF
@@ -22,3 +22,38 @@ jobs:
 
       - name: Test
         run: ctest --test-dir build --output-on-failure
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build gcovr libssl-dev libboost-all-dev
+
+      - name: Configure with coverage
+        run: cmake -S . -B build -G Ninja -DDRACHMA_BUILD_TESTS=ON -DDRACHMA_BUILD_GUI=OFF -DCMAKE_CXX_FLAGS="--coverage" -DCMAKE_EXE_LINKER_FLAGS="--coverage"
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test with coverage
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Generate coverage report
+        run: gcovr -r . --xml coverage.xml --html-details coverage.html --print-summary
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: |
+            coverage.xml
+            coverage.html
+
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false

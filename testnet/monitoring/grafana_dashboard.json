@@ -1,0 +1,30 @@
+{
+  "title": "DRACHMA Testnet",
+  "editable": true,
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Block Height",
+      "targets": [
+        {"expr": "drachma_block_height"}
+      ],
+      "gridPos": {"x": 0, "y": 0, "w": 8, "h": 4}
+    },
+    {
+      "type": "graph",
+      "title": "Peers",
+      "targets": [
+        {"expr": "drachma_peers_total"}
+      ],
+      "gridPos": {"x": 8, "y": 0, "w": 8, "h": 6}
+    },
+    {
+      "type": "graph",
+      "title": "Mempool Size",
+      "targets": [
+        {"expr": "drachma_mempool_bytes"}
+      ],
+      "gridPos": {"x": 0, "y": 4, "w": 16, "h": 6}
+    }
+  ]
+}

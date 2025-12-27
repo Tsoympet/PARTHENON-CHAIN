@@ -4,7 +4,9 @@
 #include "../script/interpreter.h"
 #include <algorithm>
 #include <limits>
+#include <unordered_map>
 #include <unordered_set>
+#include <chrono>
 
 namespace {
 
@@ -46,10 +48,54 @@ bool IsCoinbase(const Transaction& tx)
 
 } // namespace
 
-bool ValidateBlockHeader(const BlockHeader& header, const consensus::Params& params)
+bool ValidateBlockHeader(const BlockHeader& header, const consensus::Params& params, const BlockValidationOptions& opts)
 {
-    return powalgo::CheckProofOfWork(BlockHash(header), header.bits, params);
+    if (!powalgo::CheckProofOfWork(BlockHash(header), header.bits, params))
+        return false;
+
+    // Enforce sane timestamp ordering relative to median past and against the
+    // wall clock with modest drift tolerance.
+    if (opts.medianTimePast != 0 && header.time <= opts.medianTimePast)
+        return false;
+
+    uint32_t horizon = opts.now + opts.maxFutureDrift;
+    if (header.time > horizon)
+        return false;
+
+    return true;
 }
+
+namespace {
+
+class CachedLookup {
+public:
+    CachedLookup(const UTXOLookup& base, size_t capacity)
+        : m_base(base), m_capacity(capacity) {}
+
+    std::optional<TxOut> operator()(const OutPoint& out)
+    {
+        auto it = m_cache.find(out);
+        if (it != m_cache.end())
+            return it->second;
+
+        auto res = m_base ? m_base(out) : std::nullopt;
+        if (res) {
+            if (m_cache.size() >= m_capacity) {
+                // Simple clock-sweep eviction for predictable behaviour.
+                m_cache.erase(m_cache.begin());
+            }
+            m_cache.emplace(out, *res);
+        }
+        return res;
+    }
+
+private:
+    UTXOLookup m_base;
+    size_t m_capacity;
+    std::unordered_map<OutPoint, TxOut, OutPointHasher, OutPointEq> m_cache;
+};
+
+} // namespace
 
 bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::Params& params, int height, const UTXOLookup& lookup)
 {
@@ -80,7 +126,10 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
     }
 
     std::unordered_set<OutPoint, OutPointHasher, OutPointEq> seenPrevouts;
+    seenPrevouts.reserve(txs.size() * 2);
     uint64_t totalFees = 0;
+
+    CachedLookup cachedLookup(lookup, 1024);
 
     for (size_t i = 0; i < txs.size(); ++i) {
         const auto& tx = txs[i];
@@ -121,7 +170,7 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
             if (!seenPrevouts.insert(in.prevout).second)
                 return false; // duplicate spend within block
 
-            auto utxo = lookup(in.prevout);
+            auto utxo = cachedLookup(in.prevout);
             if (!utxo)
                 return false;
 
@@ -158,9 +207,9 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
     return true;
 }
 
-bool ValidateBlock(const Block& block, const consensus::Params& params, int height, const UTXOLookup& lookup)
+bool ValidateBlock(const Block& block, const consensus::Params& params, int height, const UTXOLookup& lookup, const BlockValidationOptions& opts)
 {
-    if (!ValidateBlockHeader(block.header, params))
+    if (!ValidateBlockHeader(block.header, params, opts))
         return false;
     if (!ValidateTransactions(block.transactions, params, height, lookup))
         return false;
