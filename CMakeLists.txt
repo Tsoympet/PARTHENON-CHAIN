@@ -94,11 +94,23 @@ target_link_libraries(drachma_cpu_miner PRIVATE drachma_layer1 Boost::system)
 
 # Optional Qt GUI (off by default to avoid toolchain requirement in CI)
 if(DRACHMA_BUILD_GUI)
-    find_package(Qt5 COMPONENTS Widgets Network REQUIRED)
+    find_package(Qt6 COMPONENTS Widgets Network QUIET)
     find_package(OpenSSL REQUIRED)
-    add_executable(drachma_qt layer3-app/qt/main.cpp)
+
+    set(DRACHMA_QT_RESOURCES)
+    set(DRACHMA_QT_LIBS)
+    if(Qt6_FOUND)
+        qt_add_resources(DRACHMA_QT_RESOURCES ${CMAKE_CURRENT_SOURCE_DIR}/layer3-app/resources/icons.qrc)
+        list(APPEND DRACHMA_QT_LIBS Qt6::Widgets Qt6::Network)
+    else()
+        find_package(Qt5 COMPONENTS Widgets Network REQUIRED)
+        qt5_add_resources(DRACHMA_QT_RESOURCES ${CMAKE_CURRENT_SOURCE_DIR}/layer3-app/resources/icons.qrc)
+        list(APPEND DRACHMA_QT_LIBS Qt5::Widgets Qt5::Network)
+    endif()
+
+    add_executable(drachma_qt layer3-app/qt/main.cpp ${DRACHMA_QT_RESOURCES})
     target_include_directories(drachma_qt PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/layer1-core ${CMAKE_CURRENT_SOURCE_DIR}/layer2-services)
-    target_link_libraries(drachma_qt PRIVATE Qt5::Widgets Qt5::Network OpenSSL::SSL OpenSSL::Crypto drachma_layer2)
+    target_link_libraries(drachma_qt PRIVATE ${DRACHMA_QT_LIBS} OpenSSL::SSL OpenSSL::Crypto drachma_layer2)
 endif()
 
 # Tests
