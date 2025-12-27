@@ -1,7 +1,5 @@
 # DRACHMA Blockchain (DRM)
 
-[![Roadmap](https://img.shields.io/badge/Roadmap-See%20plans-8A2BE2)](ROADMAP.md)
-
 [![CI](https://github.com/Tsoympet/BlockChainDrachma/actions/workflows/ci.yml/badge.svg)](https://github.com/Tsoympet/BlockChainDrachma/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![GitHub Stars](https://img.shields.io/github/stars/Tsoympet/BlockChainDrachma?style=social)](https://github.com/Tsoympet/BlockChainDrachma/stargazers)
@@ -9,12 +7,7 @@
 [![Open Issues](https://img.shields.io/github/issues/Tsoympet/BlockChainDrachma)](https://github.com/Tsoympet/BlockChainDrachma/issues)
 [![Security Policy](https://img.shields.io/badge/Security-Policy-orange)](SECURITY.md)
 [![Discussions](https://img.shields.io/badge/Discussions-join-blue.svg)](#community--support)
-[![GitHub Stars](https://img.shields.io/github/stars/Tsoympet/BlockChainDrachma?style=social)](https://github.com/Tsoympet/BlockChainDrachma/stargazers)
-[![GitHub Forks](https://img.shields.io/github/forks/Tsoympet/BlockChainDrachma?style=social)](https://github.com/Tsoympet/BlockChainDrachma/network/members)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![CI](https://github.com/Tsoympet/BlockChainDrachma/actions/workflows/ci.yml/badge.svg)](https://github.com/Tsoympet/BlockChainDrachma/actions/workflows/ci.yml)
-[![Static Badge](https://img.shields.io/badge/Discussions-join-blue.svg)](#community--support)
-[![Placeholder Badge](https://img.shields.io/badge/Placeholder-stars/forks-lightgrey.svg)](https://example.com)
+[![Roadmap](https://img.shields.io/badge/Roadmap-See%20plans-8A2BE2)](ROADMAP.md)
 
 DRACHMA is a **Proof-of-Work monetary blockchain** designed for long-term stability, auditability, and minimal trust assumptions.
 
@@ -25,6 +18,15 @@ The project focuses on:
 - and transparent network launch conditions.
 
 This repository contains the **reference implementation** of the DRACHMA network.
+
+## Releases
+
+Official binaries and source archives will be published on the GitHub Releases page. Each release will be tagged (vX.Y.Z) and include:
+- Signed artifacts (release tag and archives signed with the maintainer key).
+- SHA-256 checksums for every downloadable file.
+- A generated SBOM and changelog highlighting consensus-impacting changes.
+
+Always verify signatures and checksums before running binaries.
 
 ---
 
