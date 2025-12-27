@@ -14,14 +14,20 @@ This document summarizes key protocol parameters for DRACHMA. Values may be fina
 
 | Era | Height Range | Subsidy (DRM) | Era Emission (DRM) | Cumulative Supply (DRM) | Approx. Duration |
 | --- | ------------ | ------------- | ------------------ | ----------------------- | ---------------- |
-| 0   | 0 – 2,102,399 | 10.00000000 | 21,024,000 | 21,024,000 | ~4 years |
-| 1   | 2,102,400 – 4,204,799 | 5.00000000 | 10,512,000 | 31,536,000 | ~4 years |
-| 2   | 4,204,800 – 6,307,199 | 2.50000000 | 5,256,000 | 36,792,000 | ~4 years |
-| 3   | 6,307,200 – 8,409,599 | 1.25000000 | 2,628,000 | 39,420,000 | ~4 years |
-| 4   | 8,409,600 – 10,511,999 | 0.62500000 | 1,314,000 | 40,734,000 | ~4 years |
-| 5+  | 10,512,000 onward | 0.31250000 → 0 | ~1,266,000 (long tail) | 42,000,000 cap | — |
+| 0 | 0 – 2,102,399 | 10.00000000 | 21,024,000 | 21,024,000 | ~4 years |
+| 1 | 2,102,400 – 4,204,799 | 5.00000000 | 10,512,000 | 31,536,000 | ~4 years |
+| 2 | 4,204,800 – 6,307,199 | 2.50000000 | 5,256,000 | 36,792,000 | ~4 years |
+| 3 | 6,307,200 – 8,409,599 | 1.25000000 | 2,628,000 | 39,420,000 | ~4 years |
+| 4 | 8,409,600 – 10,511,999 | 0.62500000 | 1,314,000 | 40,734,000 | ~4 years |
+| 5 | 10,512,000 – 12,614,399 | 0.31250000 | 657,000 | 41,391,000 | ~4 years |
+| 6+ | 12,614,400 onward | 0.15625000 → 0 | ~609,000 (long tail) | 42,000,000 cap | — |
 
 Supply accumulates asymptotically to the 42M cap; later halvings naturally round down to zero once the minimum unit (1 sat = 1e-8 DRM) is reached.
+
+#### Halving Math
+- Subsidy per height `h` is `floor(initial_subsidy * 10^8 / 2^(h // interval)) / 10^8`.
+- Consensus enforces `total_output <= max_money` at every spend to prevent overflow.
+- Monetary tests should recompute the cumulative sum per era and assert convergence to the cap within ±1 sat tolerance.
 
 ## Consensus Parameters
 
@@ -55,6 +61,27 @@ Supply accumulates asymptotically to the 42M cap; later halvings naturally round
 - **Header Parameters:** version `0x1`, timestamp `1735689600`, bits `0x1d00ffff`, nonce `2084524493` (mainnet draft values; testnet may allow easier targets).
 - **Genesis Hash (mainnet draft):** `0x31fbff9618d6d72ecd673f6ef771a209f0b8ada3d7bb7030b867951a4f4bf521` derived from the above header.
 - **Validation:** Genesis is hardcoded for bootstrapping but subject to the same header validity and proof-of-work checks.
+
+### Genesis Verification Script (Python)
+```python
+import binascii, hashlib
+
+def double_sha256(b: bytes) -> bytes:
+    return hashlib.sha256(hashlib.sha256(b).digest()).digest()[::-1]
+
+genesis_header_hex = (
+    "01000000"  # version
+    "0000000000000000000000000000000000000000000000000000000000000000"  # prev
+    "4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"  # merkle
+    "00000000"  # time (replace with mainnet/testnet)
+    "1d00ffff"  # bits
+    "7c2bac1d"  # nonce (replace with mainnet/testnet)
+)
+
+header = binascii.unhexlify(genesis_header_hex)
+print("header hash:", double_sha256(header).hex())
+```
+Update `time` and `nonce` values with finalized parameters and compare the printed hash with the published genesis hash.
 
 ## Storage
 

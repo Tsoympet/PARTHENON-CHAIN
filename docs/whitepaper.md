@@ -19,6 +19,38 @@ The subsidy schedule follows integer division at each halving height, and cumula
 3. **Transactions:** Deterministic serialization with tagged SHA-256 (BIP-340 style) for transaction IDs. Only Schnorr signatures over secp256k1 are valid; no ECDSA fallback exists. Scripts are minimal, non-Turing-complete, and forbid loops and recursion.
 4. **Validation:** Nodes verify proof-of-work, header linkage, Merkle consistency, input availability, signature validity, coinbase maturity, fee correctness, and money-range constraints. Blocks failing any rule are rejected deterministically.
 
+### Consensus Pseudocode (Simplified)
+```pseudocode
+function validate_block(block, chainstate):
+    assert block.header.previous_hash == chainstate.tip.hash
+    assert block.header.nBits == retarget(chainstate)
+    assert double_sha256(block.header) <= target_from_bits(block.header.nBits)
+    assert merkle_root(block.transactions) == block.header.merkle_root
+
+    subsidy = subsidy_for_height(chainstate.height + 1)
+    fees = 0
+    for tx in block.transactions:
+        assert check_serialization(tx)
+        assert check_scripts(tx)
+        assert check_schnorr_signatures(tx)
+        fees += tx.input_value - tx.output_value
+    assert block.coinbase_output_value == subsidy + fees
+
+    chainstate.apply(block)
+```
+
+```pseudocode
+loop consensus():
+    block = p2p.wait_for_block()
+    if validate_block(block, chainstate):
+        chainstate = chainstate.advance(block)
+        p2p.broadcast(block.header)
+    else:
+        p2p.penalize(block.sender)
+```
+
+The reference implementation mirrors this flow with replay-safe state transitions and rollback metadata for reorganizations.
+
 ## Genesis Block
 The genesis block includes an unspendable coinbase with a commitment string documenting the chain launch. The Merkle root is derived from this single transaction. The genesis header is mined so its double-SHA-256 hash meets the encoded difficulty target. No special launch or checkpoint logic exists; the chain starts normally from height 0.
 
@@ -36,7 +68,6 @@ Wallets are local-only HD wallets producing Schnorr keypairs. Seeds are 24-word 
 - No governance, staking, or admin keys exist; all participants follow the same rules.
 
 ## Security Model
-
 DRACHMA assumes an **open, adversarial environment** with the following invariants:
 
 - Honest miners eventually control >50% of cumulative work over meaningful windows.
@@ -47,33 +78,28 @@ DRACHMA assumes an **open, adversarial environment** with the following invarian
 
 The model explicitly **excludes** reliance on social recovery, governance voting, or trusted hardware. Safety derives from validation, cumulative work, and transparent parameters rather than special authorities.
 
-## Threat Model
+## Threat Model (Structured)
+The following threat model enumerates assets, adversaries, and mitigations. Severity assumes mainnet exposure.
 
-Drachma inherits the Bitcoin-class threat posture while narrowing surface area by avoiding smart contracts and privileged keys.
-
-- **51% hashpower adversary:** Mitigated by chainwork-first fork resolution, fast difficulty retargets with clamps, and node policies that limit deep reorganizations unless cumulative work strictly exceeds the active tip.
-- **Eclipse/partition attacks:** Nodes use diversified DNS seeds, manual addnode lists, and inbound+outbound peer balancing. Invalid chainwork or header anomalies trigger disconnects and bans.
-- **Malleability and replay:** Deterministic transaction IDs with tagged hashing and Schnorr-only validation prevent signature malleability. Network messages carry per-network magic bytes to prevent accidental cross-network relay.
-- **Resource exhaustion:** Tight bounds on inv/getdata fan-out, mempool admission, script size, and header/timestamp checks guard CPU and memory budgets.
-- **Key compromise:** Wallets encrypt seeds at rest, support airgapped signing flows, and surface health checks for backups; no custodial recovery backdoors exist.
-
-### Additional Attack Vectors
-
-- **Checkpoint spoofing:** Optional checkpoints are embedded in configuration only. Nodes reject conflicting chains *only* when local operators opt in, preventing remote tampering.
-- **Fee-sniping and MEV:** Short block times and mempool fee priority may incentivize short-range reorgs. The protocol does not include MEV-specific logic; operators should monitor for abnormal orphan rates.
-- **Long-range reorganizations:** Cumulative work is required to displace the active tip. Difficulty clamping and median-time-past rules constrain fabricated histories with unrealistic timestamps.
-- **Resource starvation via fuzzed inputs:** Dedicated fuzz harnesses target transaction validation, difficulty retargeting, and fork resolution. Crashes or unbounded resource use are treated as security bugs.
+| Asset | Adversary | Vector | Impact | Mitigations |
+| --- | --- | --- | --- | --- |
+| Chain correctness | Hashpower majority | Deep reorgs, double-spend | High | Chainwork-first fork choice, 60-block retarget with clamps, monitoring for abnormal reorg depth, operator-configured checkpoints for detection only |
+| Network availability | Eclipse attacker | Peer isolation, poisoned headers | High | Diverse DNS/manual peers, inbound/outbound balance, misbehavior scoring, magic-byte isolation, eviction of anomalous headers |
+| Wallet funds | Malware/operator error | Key theft, seed leakage | High | Local-only encrypted seeds, airgapped signing support, mnemonic backups, no custodial recovery backdoors |
+| Node resources | DoS actor | Oversized messages, mempool flooding | Medium | Bounded queues, inventory limits, script/weight caps, fee and ancestor/descendant policy, per-peer bans |
+| Privacy | Traffic analyst | Address/peer correlation | Medium | Optional Tor/VPN, manual peer rotation, no silent telemetry, discouraged RPC exposure |
+| Supply cap | Protocol bug | Overflow, incorrect subsidy | Critical | Height-indexed subsidy calculation, consensus range checks, deterministic serialization tests, fuzzing of monetary logic |
 
 Residual risks common to open networks—such as widespread miner collusion or nationwide censorship—require social coordination and monitoring rather than protocol-level overrides. Operational guidance appears in `deployment.md` and `security.md`.
 
 ## Comparison to Bitcoin
-
 - **What stays the same:** SHA-256d proof-of-work, UTXO accounting, Schnorr-over-secp256k1 signatures, and conservative script rules mirror Bitcoin’s well-tested foundations. Fork choice relies on cumulative work and full validation—never checkpoints or trust anchors.
 - **What differs:**
   - **Block cadence:** 60-second targets with 60-block retargets tighten confirmation latency while retaining bounded difficulty swings.
   - **Monetary cap:** 42 million DRM with longer halving intervals to preserve multi-decade emission, versus 21 million BTC.
-  - **Layered design:** Services (P2P/RPC/wallet/indexes) and UI live outside consensus to simplify audits and minimize attack surface.
   - **Launch posture:** No premine, no developer fees, no version-bits governance. All activation parameters are transparent and reproducible from genesis.
+  - **Layered design:** Services (P2P/RPC/wallet/indexes) and UI live outside consensus to simplify audits and minimize attack surface.
+  - **Mainnet readiness:** Deterministic build instructions, monitoring defaults (Prometheus/Grafana), and reproducible genesis verification scripts accompany the launch materials.
 
 ## Cross-Chain Support (Layer 2)
 Cross-chain components operate off-consensus. Proof-based adapters validate external chain headers and Merkle proofs to inform relayers and wallets, but Layer 1 state is never altered by cross-chain messages. Relayers are untrusted; users must verify proofs locally.
@@ -82,7 +108,6 @@ Cross-chain components operate off-consensus. Proof-based adapters validate exte
 Drachma delivers a conservative, auditable proof-of-work system with clear monetary bounds and a minimal feature set. The layered architecture isolates consensus from services and UI, enabling independent review and safe extensibility without compromising core security guarantees.
 
 ## Economic Rationale for a 42M Cap
-
 The 42,000,000 DRM maximum supply balances **scarcity** and **transactional utility**:
 
 - A higher unit count than Bitcoin reduces UX friction for retail payments while maintaining scarcity via predictable halvings.

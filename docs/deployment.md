@@ -21,6 +21,48 @@ testnet and preparing for mainnet launch.
 - Confirm connectivity with `scripts/sync-check.sh --network testnet` (or
   `mainnet`) which validates checkpoint height and block freshness.
 
+## Firewall and Network Hardening
+- Restrict inbound traffic to the P2P port and SSH/VPN; drop all else:
+  ```bash
+  sudo ufw default deny incoming
+  sudo ufw allow 9333/tcp comment "drachma mainnet"
+  sudo ufw allow 22/tcp    comment "ssh"
+  sudo ufw enable
+  ```
+- If using `nftables`, prefer stateful rules and rate limits on new connections.
+- Disable inbound RPC on public interfaces; bind RPC to localhost or VPN-only IPs.
+- Enable `Fail2ban` or equivalent to block repeated auth failures on SSH and reverse proxies.
+
+## systemd Service Hardening
+Example unit for a dedicated `drachma` user:
+```ini
+[Unit]
+Description=Drachma node
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=drachma
+Group=drachma
+ExecStart=/opt/drachma/bin/drachmad --datadir=/var/lib/drachma --network=mainnet --conf=/etc/drachma.conf --daemon=0
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=65536
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+ReadWritePaths=/var/lib/drachma
+
+[Install]
+WantedBy=multi-user.target
+```
+- Place configs in `/etc/drachma.conf` with `chmod 640` and `chown drachma`.
+- Consider `SystemCallFilter=@system-service` and `MemoryDenyWriteExecute=yes` where compatible.
+- Use `tmpfs` for `/var/lib/drachma/tmp` if database durability settings permit.
+
 ## Docker-based multi-node testnet
 - `docker-compose up -d` launches two seed nodes, three regular peers, a faucet,
   Prometheus, and Grafana. The compose file exposes RPC on 18332/18333/18334 and
@@ -36,6 +78,22 @@ testnet and preparing for mainnet launch.
   `maxuploadtarget` and `banscore` as in `mainnet/config.sample.conf`.
 - Enable systemd service isolation with `ProtectSystem=strict`, `NoNewPrivileges`
   and `PrivateTmp=yes`.
+- Run nodes under dedicated Unix users; disable password SSH logins and enforce
+  key-based auth.
+
+## Monitoring and health
+- Prometheus and Grafana dashboards live in `testnet/monitoring/`; update scrape
+  targets if your hostnames differ from the default compose stack.
+- Example Prometheus static config:
+  ```yaml
+  scrape_configs:
+    - job_name: drachma-node
+      static_configs:
+        - targets: ['127.0.0.1:9311']
+  ```
+- `scripts/sync-check.sh` alarms when the tip age exceeds a threshold or the node
+  lags published checkpoints—use in cron or CI.
+- Export systemd logs to a centralized collector (Loki, Elastic) for retention.
 
 ## Upgrades
 - Use `scripts/upgrade-node.sh -b /path/to/new/drachma_node --sha256 <digest>
@@ -43,12 +101,7 @@ testnet and preparing for mainnet launch.
   managed service.
 - Always back up configs and the `wallet.dat` (if applicable) before upgrading;
   the script automatically preserves the previous binary with a timestamp.
-
-## Monitoring and health
-- Prometheus and Grafana dashboards live in `testnet/monitoring/`; update scrape
-  targets if your hostnames differ from the default compose stack.
-- `scripts/sync-check.sh` alarms when the tip age exceeds a threshold or the node
-  lags published checkpoints—use in cron or CI.
+- Stage upgrades on canary nodes before rolling to production peers.
 
 ## Backups and recovery
 - Periodically back up the data directory and `drachma.conf`. For wallet nodes,
@@ -56,3 +109,5 @@ testnet and preparing for mainnet launch.
   while the wallet is locked.
 - Validate backups by restoring onto an isolated host and verifying `getbalance`
   and a few historical transactions via RPC.
+- Keep offsite copies of configuration, TLS certificates (if used), and systemd
+  unit files to rebuild quickly after incidents.

@@ -22,7 +22,8 @@ This document outlines expectations, scope, and artifacts for independent audits
 - Source tag/commit hash and signed release artifacts.
 - CMake cache/configuration used for builds (`CMakeCache.txt`).
 - Test/fuzz coverage reports and failing seeds (if any).
-- Protocol documents: [`whitepaper.md`](whitepaper.md), [`technical-spec.md`](technical-spec.md), [`security.md`](security.md), [`threat-model.md`](threat-model.md).
+- Protocol documents: [`whitepaper.md`](whitepaper.md), [`technical-spec.md`](technical-spec.md), [`security.md`](security.md),
+[`threat-model.md`](threat-model.md).
 - Sample configs and deployment profiles (`deployment.md`, `building.md`).
 
 ## Recommended Methodology
@@ -45,3 +46,19 @@ This document outlines expectations, scope, and artifacts for independent audits
 - Issues will be tracked in a public advisory once mitigated or acknowledged.
 - Fixes require regression tests and, when consensus-affecting, a testnet activation rehearsal.
 - Auditors may be asked to review patches for critical findings prior to mainnet launch.
+
+## Auditor Checklist
+- [ ] Build from tagged source; verify binary hashes and GPG signatures.
+- [ ] Reproduce genesis hash from parameters in `technical-spec.md`.
+- [ ] Run consensus, P2P, and wallet fuzzers with published seeds.
+- [ ] Execute adversarial reorg tests against fork-choice logic.
+- [ ] Inspect RPC authentication/authorization and rate limits.
+- [ ] Validate wallet encryption, key derivation, and backup/restore flows.
+- [ ] Review miner Stratum parsing and difficulty-floor handling.
+- [ ] Confirm logging redacts secrets and that crash dumps omit private data.
+
+## Known Issues / Points of Attention
+- Testnet v1 still uses draft difficulty clamps; expect parameter changes prior to mainnet.
+- Hardware wallet integrations are experimental; auditors should focus on mnemonic handling and signing prompts.
+- GPU miner OpenCL backends may vary across drivers; reproducibility scripts are prioritized for CUDA first.
+- Monitoring dashboards are provided for testnet; mainnet alert thresholds remain to be tuned.

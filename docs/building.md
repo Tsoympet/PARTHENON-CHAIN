@@ -95,6 +95,11 @@ For production nodes and release artifacts:
 - Use `-DCMAKE_INSTALL_PREFIX=/opt/drachma` and `cmake --install build` for managed deployments.
 - Sign resulting binaries and publish SHA-256 checksums. Verify signatures before promotion to production hosts.
 
+### Release verification
+- Document the exact commit/tag, toolchain versions, and CMake cache in release notes.
+- Publish `sha256sum` outputs for binaries and installers; require operators to compare before installation.
+- Cross-check deterministic builds between at least two maintainers before tagging a release candidate.
+
 ## GPU Build Tips
 
 - For CUDA, ensure `nvcc --version` matches the driver; set `-DCMAKE_CUDA_ARCHITECTURES` for target GPUs.

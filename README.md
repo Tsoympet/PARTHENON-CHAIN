@@ -158,6 +158,14 @@ Use this checklist before connecting to mainnet or distributing binaries:
 - **Miner configuration:** Point miners to authenticated endpoints only, with TLS or trusted LAN where available; review pool settings and difficulty floors.
 - **Operational readiness:** Enable logging/rotation, monitor resource usage, and document incident response contacts for your deployment.
 
+## Known Limitations
+
+- **API surface is evolving:** Some RPC methods are still stabilizing; see [`docs/api-reference.md`](docs/api-reference.md) for current coverage and examples.
+- **Testnet-first posture:** Monitoring dashboards and alert thresholds are tuned for testnet; operators must adjust for mainnet scale.
+- **Hardware wallet support:** Integrations are experimental and should be treated as beta until external audits are complete.
+- **OpenCL miner variance:** Performance and determinism can differ across vendor drivers; CUDA paths are prioritized for reproducibility.
+- **Docs in motion:** Roadmaps and technical parameters may shift after audit feedback; always consult the latest tagged release notes.
+
 Mainnet procedures and host preparation steps are detailed in [`docs/deployment.md`](docs/deployment.md) and security reviews are outlined in [`docs/audit-guide.md`](docs/audit-guide.md).
 
 ---

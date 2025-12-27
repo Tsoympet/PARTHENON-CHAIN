@@ -13,20 +13,35 @@ A phased plan for delivering the DRACHMA blockchain with transparency and predic
 - [ ] Mainnet parameter freeze and launch ceremony
 - [ ] Long-term monitoring/observability package for operators
 
-## 2024 Q4 — Testnet Maturation
-- Expand fuzzing/integration coverage and publish updated threat models.
-- Ship reproducible release builds (Docker + native) for testnet nodes and miners.
-- Iterate on wallet UX (encryption, backups, address book, QR flows) with community feedback.
+## 2025 Q3 — Networking & Wallet Polish
+- Harden P2P validation, DoS protections, and peer diversity heuristics.
+- Ship wallet UX refinements (hardware wallet flows, watch-only support, backup UX).
+- Improve mempool fee estimation and rebroadcast policies.
 
-## 2025 Q1 — Audit & Mainnet Readiness
-- Commission third-party audits covering consensus, networking, and wallet components.
-- Finalize genesis parameters and publish deterministic build scripts for launch artifacts.
-- Freeze mainnet rule set; release RC binaries and documentation for operators.
+## 2025 Q4 — Mining, Tooling, and Ops
+- Optimize CPU/GPU miners with deterministic build scripts and published benchmarks.
+- Publish Prometheus/Grafana dashboards and alert runbooks for node operators.
+- Finalize container/systemd deployment profiles for reproducible mainnet installs.
 
-## 2025 Q2 — Mainnet Launch
-- Execute a fair mainnet launch with transparent participation criteria and public seed lists.
-- Publish monitoring dashboards and on-call playbooks for early operators.
-- Deliver public block explorer and supply dashboards synchronized with launch.
+## 2026 Q1 — Testnet v2
+- Launch public testnet v2 with updated seeds, explorer endpoints, and faucet rate limits.
+- Exercise activation/reorg rehearsals, difficulty clamp tuning, and latency/bandwidth metrics collection.
+- Freeze candidate consensus parameters for audits.
+
+## 2026 Q2 — Security Review
+- Commission third-party audits across consensus, networking, wallet, and miner surfaces.
+- Run fuzzing/adversarial campaigns; publish threat-model deltas and remediation timelines.
+- Post public issue tracker for findings and patch status.
+
+## 2026 Q3 — Release Candidates
+- Produce signed RC binaries and SBOMs; verify deterministic builds across maintainers.
+- Document rollback/activation playbooks and backup/restoration drills.
+- Run community dry-runs of mainnet deployment scripts.
+
+## 2026 Q4 — Mainnet Launch
+- Execute fair-launch mainnet with open seed lists and monitored explorers.
+- Provide 24/7 observability dashboards and incident contacts during launch window.
+- Transition to long-term maintenance cadence and public release notes.
 
 ## Post-Launch (Ongoing)
 - Maintain a regular documentation cadence and responsible disclosure workflow.

@@ -78,6 +78,12 @@ graph LR
 3. Miners request templates from Layer 2, run PoW (CPU/GPU), and return solutions; Layer 1 validates before gossiping.
 4. Layer 3 drives user actions (create transaction, start miner) solely through RPC, leaving consensus surfaces untouched.
 
+## Mainnet Readiness Touchpoints
+
+- Layer 1 parameters (subsidy, halving interval, difficulty clamps) are frozen in `technical-spec.md` and must not drift across releases.
+- Layer 2 exposes RPC/auth surfaces; see `deployment.md` for hardening defaults and Prometheus endpoints.
+- Layer 3 and miners are replaceable as long as they respect the documented RPC/block-template contracts.
+
 ## Upgrade Strategy
 
 - **Consensus (Layer 1):** Any rule change requires explicit activation logic and broad review. Releases should be reproducible and signed.

@@ -22,6 +22,8 @@ A concise overview of supply, issuance, and fair-launch mechanics for the DRACHM
 | 4 | 8,409,600 – 10,511,999 | 0.62500000 | 1,314,000 | 40,734,000 |
 | 5+ | 10,512,000 onward | 0.31250000 → 0 over time | ~1,266,000 (long tail) | 42,000,000 cap |
 
+**Halving math:** subsidy at height `h` is `floor(10 DRM * 1e8 / 2^(h // 2,102,400)) / 1e8` with consensus range checks to prevent overflow.
+
 ### Emission Curve (Mermaid)
 
 ```mermaid
