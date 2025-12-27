@@ -3,10 +3,21 @@
 #include <string>
 #include <array>
 #include <stdexcept>
+#include <cstddef>
 
 #include "../../layer1-core/tx/transaction.h"
 
-namespace index {
+namespace txindex {
+
+struct ArrayHasher {
+    size_t operator()(const std::array<uint8_t,32>& data) const noexcept
+    {
+        size_t h = 0;
+        for (auto b : data)
+            h = (h * 131) ^ b;
+        return h;
+    }
+};
 
 class TxIndex {
 public:
@@ -50,7 +61,7 @@ public:
     }
 
 private:
-    std::unordered_map<uint256, uint32_t> m_index;
+    std::unordered_map<uint256, uint32_t, ArrayHasher> m_index;
 };
 
-} // namespace index
+} // namespace txindex

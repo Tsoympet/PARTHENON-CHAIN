@@ -1,10 +1,11 @@
 #include "sha256d.h"
 #include "../consensus/params.h"
+#include "../crypto/tagged_hash.h"
 #include <algorithm>
 #include <stdexcept>
 #include <boost/multiprecision/cpp_int.hpp>
 
-namespace pow {
+namespace powalgo {
 using boost::multiprecision::cpp_int;
 
 static constexpr uint32_t COMPACT_EXPONENT_MASK = 0xFF000000;
@@ -94,4 +95,4 @@ bool CheckProofOfWork(const uint256& hash, uint32_t nBits, const consensus::Para
     return value <= target;
 }
 
-} // namespace pow
+} // namespace powalgo

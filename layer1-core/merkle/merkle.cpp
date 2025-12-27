@@ -6,8 +6,6 @@ uint256 ComputeMerkleRoot(const std::vector<Transaction>& txs)
 {
     if (txs.empty())
         return uint256{};
-uint256 ComputeMerkleRoot(const std::vector<Transaction>& txs) {
-    if (txs.empty()) return uint256{};
 
     std::vector<uint256> layer;
     layer.reserve(txs.size());

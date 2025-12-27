@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <cstring>
 #include <stdexcept>
+#include <array>
 #include <openssl/sha.h>
 
 namespace crosschain {

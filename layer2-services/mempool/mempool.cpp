@@ -4,6 +4,7 @@
 #include <mutex>
 #include <chrono>
 #include <deque>
+#include <cstddef>
 
 // A minimal but deterministic mempool implementation for non-consensus relay
 // purposes. It enforces a fee floor and deterministic eviction order (oldest
@@ -14,6 +15,16 @@ struct MempoolEntry {
     Transaction tx;
     uint64_t fee;
     std::chrono::steady_clock::time_point added;
+};
+
+struct ArrayHasher {
+    size_t operator()(const uint256& data) const noexcept
+    {
+        size_t h = 0;
+        for (auto b : data)
+            h = (h * 131) ^ b;
+        return h;
+    }
 };
 
 class Mempool {
@@ -85,7 +96,7 @@ private:
     }
 
     policy::FeePolicy m_policy;
-    std::unordered_map<uint256, MempoolEntry> m_entries;
+    std::unordered_map<uint256, MempoolEntry, ArrayHasher> m_entries;
     std::deque<uint256> m_order;
     mutable std::mutex m_mutex;
 };

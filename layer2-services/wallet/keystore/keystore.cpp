@@ -7,12 +7,24 @@
 #include <string>
 #include <stdexcept>
 #include <unordered_map>
+#include <cstddef>
 
 namespace wallet {
 
 using KeyId = std::array<uint8_t,32>;
 using PrivKey = std::array<uint8_t,32>;
 using PubKey  = std::array<uint8_t,33>;
+
+struct ArrayHasher {
+    size_t operator()(const std::array<uint8_t,32>& data) const noexcept
+    {
+        size_t h = 0;
+        for (auto b : data) {
+            h = (h * 131) ^ b;
+        }
+        return h;
+    }
+};
 
 static void DeriveKey(const std::string& pass, std::array<uint8_t,32>& out)
 {
@@ -115,7 +127,7 @@ public:
     }
 
 private:
-    std::unordered_map<KeyId, PrivKey> m_keys;
+    std::unordered_map<KeyId, PrivKey, ArrayHasher> m_keys;
 };
 
 } // namespace wallet

@@ -1,6 +1,7 @@
 #pragma once
 #include <array>
 #include <vector>
+#include <cstdint>
 
 bool VerifySchnorr(
     const std::array<uint8_t,32>& pubkey,

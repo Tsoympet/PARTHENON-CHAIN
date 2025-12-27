@@ -105,7 +105,7 @@ private:
     std::unordered_map<std::string, Handler> m_handlers;
     std::queue<std::pair<PeerInfo, Message>> m_queue;
     std::condition_variable m_cv;
-    std::mutex m_mutex;
+    mutable std::mutex m_mutex;
     std::thread m_worker;
     std::atomic<bool> m_running;
 };

@@ -7,6 +7,7 @@
 #include <boost/multiprecision/cpp_int.hpp>
 #include <limits>
 #include <stdexcept>
+#include <vector>
 
 using boost::multiprecision::cpp_int;
 
@@ -48,14 +49,6 @@ std::array<uint8_t, 32> TargetFromCompact(uint32_t compact)
         target >>= 8;
     }
     return out;
-}
-
-cpp_int ToInteger(const uint256& hash)
-{
-    cpp_int result = 0;
-    for (uint8_t byte : hash)
-        result = (result << 8) | byte;
-    return result;
 }
 
 cpp_int ToInteger(const std::array<uint8_t, 32>& target)
@@ -106,7 +99,8 @@ std::string BuildGenesisScript(const std::string& message)
 Block CreateGenesisBlock(const consensus::Params& params)
 {
     Transaction coinbase;
-    coinbase.vout.push_back({50 * COIN, BuildGenesisScript(params.genesisMessage)});
+    const std::string script = BuildGenesisScript(params.genesisMessage);
+    coinbase.vout.push_back(TxOut{50 * COIN, std::vector<uint8_t>(script.begin(), script.end())});
 
     Block genesis;
     genesis.header.version = 1;

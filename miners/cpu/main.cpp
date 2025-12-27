@@ -52,7 +52,7 @@ int main(int argc, char** argv)
 
     while (true) {
         auto hash = BlockHash(header);
-        if (pow::CheckProofOfWork(hash, header.bits, params)) {
+        if (powalgo::CheckProofOfWork(hash, header.bits, params)) {
             auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - start).count();
             std::cout << "Found nonce: " << header.nonce << " after " << elapsed << "s\n";
             std::cout << "Hash: 0x";
