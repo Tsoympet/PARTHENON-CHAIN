@@ -1,32 +1,22 @@
 ---
 name: Bug report
-about: Create a report to help us improve stability
+about: Help us improve by reporting a bug
 labels: bug
 ---
 
-## Summary
-A clear and concise description of the bug.
+## Description
+<!-- Provide a clear and concise description of the bug. -->
+
+## Steps to Reproduce
+<!-- List the steps that lead to the issue. -->
+
+## Expected vs Actual Behavior
+<!-- Describe what you expected to happen and what actually happened. -->
 
 ## Environment
-- Commit/Version:
-- OS/Arch:
-- Build type (Release/Debug):
-- Layer(s) impacted: [Layer1 | Layer2 | Layer3 | Miners | Scripts]
+<!-- Include OS, build version, and any other relevant environment details. -->
+- OS:
+- Build version:
 
-## Reproduction Steps
-1. 
-2. 
-3. 
-
-## Expected Behavior
-What you expected to happen.
-
-## Actual Behavior
-What actually happened (logs, screenshots, stack traces).
-
-## Consensus Impact
-- Could this affect consensus rules or chainstate? [Yes/No/Unsure]
-- Does it differ across nodes/platforms? [Yes/No/Unsure]
-
-## Additional Context
-Add any other context, configuration, or network conditions (e.g., testnet/mainnet) here.
+## Impact on Consensus/Security
+<!-- Explain any potential impact on consensus or security. -->

@@ -1,24 +1,17 @@
 ---
 name: Feature request
-about: Suggest an idea for this project
+about: Suggest an idea to improve the project
 labels: enhancement
 ---
 
-## Summary
-Describe the feature or improvement.
+## Description
+<!-- Describe the feature or improvement you would like to see. -->
 
 ## Motivation
-Why is this needed? What problem does it solve? Is it consensus-critical?
+<!-- Explain why this feature is important and what problem it solves. -->
 
-## Proposed Design
-- A short design description or link to a proposal.
-- Layers affected: [Layer1 | Layer2 | Layer3 | Miners | Scripts | Docs]
+## Proposed Solution
+<!-- Describe your proposed approach or design. -->
 
 ## Alternatives Considered
-List any alternative approaches and trade-offs.
-
-## Testing/Validation
-How should this be tested? Include testnet or benchmarking requirements if applicable.
-
-## Additional Context
-Links, diagrams, or references.
+<!-- List alternative solutions or features you have considered. -->
