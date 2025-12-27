@@ -1,3 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 64" width="256" height="64">
+  <rect width="256" height="64" rx="12" fill="#0d1b2a"/>
+  <circle cx="32" cy="32" r="22" fill="#f6e27f" stroke="#d4af37" stroke-width="4"/>
+  <path d="M32 14 L20 46 L26 46 L32 32 L38 46 L44 46 Z" fill="#0d1b2a"/>
+  <text x="70" y="40" font-family="'Segoe UI', 'Inter', sans-serif" font-size="26" fill="#f6e27f" font-weight="700">DRACHMA</text>
+  <text x="70" y="22" font-family="'Segoe UI', 'Inter', sans-serif" font-size="10" fill="#8fb3d1">BLOCKCHAIN WALLET</text>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
   <defs>
     <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">

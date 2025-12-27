@@ -4,8 +4,4 @@
   <line x1="38" y1="38" x2="90" y2="90" stroke="#1f4f70" stroke-width="8" stroke-linecap="round"/>
   <circle cx="44" cy="76" r="8" fill="#c59d32"/>
   <circle cx="84" cy="52" r="8" fill="#c59d32"/>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="12" ry="12" fill="#0d1f1a" />
-  <circle cx="32" cy="32" r="20" fill="#ff7043" />
-  <path d="M22 22 L42 42 M42 22 L22 42" stroke="#0d1f1a" stroke-width="6" stroke-linecap="round" />
 </svg>

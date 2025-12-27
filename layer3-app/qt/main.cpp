@@ -1065,6 +1065,8 @@ public:
     {
         setWindowTitle("DRACHMA Core Desktop");
         setMinimumSize(1200, 800);
+        useDarkIcons = isSystemPaletteDark();
+        setWindowIcon(themedIcon("app_icon.svg"));
         setWindowIcon(QIcon(":/icons/app_icon.svg"));
 
         QLocale locale;
@@ -1087,6 +1089,13 @@ public:
         layout->addWidget(tabs);
         setCentralWidget(central);
 
+        tabs->addTab(buildOverview(), themedIcon("network.svg"), "Overview");
+        tabs->addTab(buildSend(), themedIcon("send.svg"), "Send");
+        tabs->addTab(buildReceive(), themedIcon("receive.svg"), "Receive");
+        tabs->addTab(buildAddressBook(), themedIcon("wallet.svg"), "Address book");
+        tabs->addTab(buildTransactions(), themedIcon("transactions.svg"), "Transactions");
+        tabs->addTab(buildMining(), themedIcon("mining.svg"), "Mining");
+        tabs->addTab(buildSettings(), themedIcon("settings.svg"), "Settings");
         tabs->addTab(buildOverview(), QIcon(":/icons/network.svg"), "Overview");
         tabs->addTab(buildSend(), QIcon(":/icons/send.svg"), "Send");
         tabs->addTab(buildReceive(), QIcon(":/icons/receive.svg"), "Receive");
@@ -1123,9 +1132,72 @@ public:
     }
 
 private:
+    QString iconPath(const QString& name) const
+    {
+        const QString darkPath = QStringLiteral(":/icons/dark/%1").arg(name);
+        const QString lightPath = QStringLiteral(":/icons/%1").arg(name);
+        if (useDarkIcons && QFile::exists(darkPath)) return darkPath;
+        if (QFile::exists(lightPath)) return lightPath;
+        return darkPath;
+    }
+
+    QIcon themedIcon(const QString& name) const
+    {
+        return QIcon(iconPath(name));
+    }
+
+    bool isSystemPaletteDark() const
+    {
+        const QColor window = QApplication::palette().color(QPalette::Window);
+        return window.lightness() < 128;
+    }
+
+    void refreshIcons()
+    {
+        setWindowIcon(themedIcon("app_icon.svg"));
+        if (tabs && tabs->count() >= 7) {
+            tabs->setTabIcon(0, themedIcon("network.svg"));
+            tabs->setTabIcon(1, themedIcon("send.svg"));
+            tabs->setTabIcon(2, themedIcon("receive.svg"));
+            tabs->setTabIcon(3, themedIcon("wallet.svg"));
+            tabs->setTabIcon(4, themedIcon("transactions.svg"));
+            tabs->setTabIcon(5, themedIcon("mining.svg"));
+            tabs->setTabIcon(6, themedIcon("settings.svg"));
+        }
+
+        if (eulaAction) eulaAction->setIcon(themedIcon("logo.svg"));
+        if (whitepaperAction) whitepaperAction->setIcon(themedIcon("logo.svg"));
+        if (backupAction) backupAction->setIcon(themedIcon("wallet.svg"));
+        if (restoreAction) restoreAction->setIcon(themedIcon("wallet.svg"));
+        if (exitAction) exitAction->setIcon(themedIcon("network-disconnected.svg"));
+
+        if (copyFromBook) copyFromBook->setIcon(themedIcon("wallet.svg"));
+        if (scanQrBtn) scanQrBtn->setIcon(themedIcon("network.svg"));
+        if (sendBtn) sendBtn->setIcon(themedIcon("send.svg"));
+        if (genBtn) genBtn->setIcon(themedIcon("receive.svg"));
+        if (addAddressBtn) addAddressBtn->setIcon(themedIcon("wallet.svg"));
+        if (removeAddressBtn) removeAddressBtn->setIcon(themedIcon("network-disconnected.svg"));
+        if (copyAddressBtn) copyAddressBtn->setIcon(themedIcon("receive.svg"));
+        if (startMiningBtn) startMiningBtn->setIcon(themedIcon("mining.svg"));
+        if (stopMiningBtn) stopMiningBtn->setIcon(themedIcon("network-disconnected.svg"));
+        if (browseDirBtn) browseDirBtn->setIcon(themedIcon("network.svg"));
+        if (encryptBtn) encryptBtn->setIcon(themedIcon("settings.svg"));
+        if (unlockBtn) unlockBtn->setIcon(themedIcon("wallet.svg"));
+
+        const QString statusName = networkConnected ? QStringLiteral("network-connected.svg") : QStringLiteral("network-disconnected.svg");
+        if (networkStatusIcon) {
+            networkStatusIcon->setPixmap(themedIcon(statusName).pixmap(18, 18));
+        }
+    }
+
     void createMenu()
     {
         QMenu* fileMenu = menuBar()->addMenu("File");
+        eulaAction = fileMenu->addAction(themedIcon("logo.svg"), "View EULA");
+        whitepaperAction = fileMenu->addAction(themedIcon("logo.svg"), "Open Whitepaper");
+        backupAction = fileMenu->addAction(themedIcon("wallet.svg"), "Backup wallet");
+        restoreAction = fileMenu->addAction(themedIcon("wallet.svg"), "Restore wallet");
+        exitAction = fileMenu->addAction(themedIcon("network-disconnected.svg"), "Exit");
         QAction* eulaAction = fileMenu->addAction(QIcon(":/icons/logo.svg"), "View EULA");
         QAction* whitepaperAction = fileMenu->addAction(QIcon(":/icons/logo.svg"), "Open Whitepaper");
         QAction* backupAction = fileMenu->addAction(QIcon(":/icons/wallet.svg"), "Backup wallet");
@@ -1157,6 +1229,7 @@ private:
         syncBar->setValue(0);
         networkLbl = new QLabel("Offline", nodeBox);
         networkStatusIcon = new QLabel(nodeBox);
+        networkStatusIcon->setPixmap(themedIcon("network-disconnected.svg").pixmap(18, 18));
         networkStatusIcon->setPixmap(QIcon(":/icons/status-disconnected.svg").pixmap(18, 18));
         QWidget* networkRow = new QWidget(nodeBox);
         QHBoxLayout* networkLayout = new QHBoxLayout(networkRow);
@@ -1194,6 +1267,8 @@ private:
         QFormLayout* f = new QFormLayout();
 
         destEdit = new QLineEdit(w);
+        copyFromBook = new QPushButton(themedIcon("wallet.svg"), "Use selected address", w);
+        scanQrBtn = new QPushButton(themedIcon("network.svg"), "Scan QR", w);
         QPushButton* copyFromBook = new QPushButton(QIcon(":/icons/wallet.svg"), "Use selected address", w);
         QPushButton* scanQrBtn = new QPushButton(QIcon(":/icons/network.svg"), "Scan QR", w);
         connect(scanQrBtn, &QPushButton::clicked, this, &MainWindow::scanQrForDestination);
@@ -1223,6 +1298,7 @@ private:
         connect(feeBox, &QComboBox::currentIndexChanged, this, &MainWindow::updateFeePreview);
         connect(feeRate, qOverload<double>(&QDoubleSpinBox::valueChanged), this, &MainWindow::updateFeePreview);
 
+        sendBtn = new QPushButton(themedIcon("send.svg"), "Send", w);
         QPushButton* sendBtn = new QPushButton(QIcon(":/icons/send.svg"), "Send", w);
         connect(sendBtn, &QPushButton::clicked, this, &MainWindow::confirmAndSend);
 
@@ -1255,6 +1331,7 @@ private:
         qrLabel->setFixedSize(220, 220);
         qrLabel->setFrameShape(QFrame::Box);
 
+        genBtn = new QPushButton(themedIcon("receive.svg"), "Generate address", w);
         QPushButton* genBtn = new QPushButton(QIcon(":/icons/receive.svg"), "Generate address", w);
         connect(genBtn, &QPushButton::clicked, this, &MainWindow::generateAddress);
 
@@ -1279,6 +1356,12 @@ private:
         addressBookTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
         QHBoxLayout* actions = new QHBoxLayout();
+        addAddressBtn = new QPushButton(themedIcon("wallet.svg"), "Add", w);
+        removeAddressBtn = new QPushButton(themedIcon("network-disconnected.svg"), "Remove", w);
+        copyAddressBtn = new QPushButton(themedIcon("receive.svg"), "Copy", w);
+        actions->addWidget(addAddressBtn);
+        actions->addWidget(removeAddressBtn);
+        actions->addWidget(copyAddressBtn);
         QPushButton* addBtn = new QPushButton(QIcon(":/icons/wallet.svg"), "Add", w);
         QPushButton* removeBtn = new QPushButton(QIcon(":/icons/status-disconnected.svg"), "Remove", w);
         QPushButton* copyBtn = new QPushButton(QIcon(":/icons/receive.svg"), "Copy", w);
@@ -1286,9 +1369,9 @@ private:
         actions->addWidget(removeBtn);
         actions->addWidget(copyBtn);
 
-        connect(addBtn, &QPushButton::clicked, this, &MainWindow::addAddressBookEntryDialog);
-        connect(removeBtn, &QPushButton::clicked, this, &MainWindow::removeAddressBookEntryDialog);
-        connect(copyBtn, &QPushButton::clicked, this, &MainWindow::copyAddressFromBook);
+        connect(addAddressBtn, &QPushButton::clicked, this, &MainWindow::addAddressBookEntryDialog);
+        connect(removeAddressBtn, &QPushButton::clicked, this, &MainWindow::removeAddressBookEntryDialog);
+        connect(copyAddressBtn, &QPushButton::clicked, this, &MainWindow::copyAddressFromBook);
 
         v->addWidget(addressBookTable);
         v->addLayout(actions);
@@ -1331,6 +1414,8 @@ private:
         QWidget* w = new QWidget(this);
         QVBoxLayout* v = new QVBoxLayout(w);
         QHBoxLayout* controls = new QHBoxLayout();
+        startMiningBtn = new QPushButton(themedIcon("mining.svg"), "Start mining", w);
+        stopMiningBtn = new QPushButton(themedIcon("network-disconnected.svg"), "Stop", w);
         QPushButton* startBtn = new QPushButton(QIcon(":/icons/mining.svg"), "Start mining", w);
         QPushButton* stopBtn = new QPushButton(QIcon(":/icons/status-disconnected.svg"), "Stop", w);
         cpuThreads = new QSpinBox(w);
@@ -1338,14 +1423,14 @@ private:
         gpuToggle = new QCheckBox("Enable GPU (if available)", w);
         hashrateLbl = new QLabel("0 H/s", w);
 
-        connect(startBtn, &QPushButton::clicked, this, &MainWindow::startMining);
-        connect(stopBtn, &QPushButton::clicked, this, &MainWindow::stopMining);
+        connect(startMiningBtn, &QPushButton::clicked, this, &MainWindow::startMining);
+        connect(stopMiningBtn, &QPushButton::clicked, this, &MainWindow::stopMining);
 
         controls->addWidget(new QLabel("CPU threads", w));
         controls->addWidget(cpuThreads);
         controls->addWidget(gpuToggle);
-        controls->addWidget(startBtn);
-        controls->addWidget(stopBtn);
+        controls->addWidget(startMiningBtn);
+        controls->addWidget(stopMiningBtn);
         v->addLayout(controls);
 
         v->addWidget(new QLabel("Hashrate", w));
@@ -1360,6 +1445,8 @@ private:
         QFormLayout* f = new QFormLayout();
 
         dataDirEdit = new QLineEdit(w);
+        browseDirBtn = new QPushButton(themedIcon("network.svg"), "Browse", w);
+        connect(browseDirBtn, &QPushButton::clicked, this, &MainWindow::selectDataDir);
         QPushButton* browse = new QPushButton(QIcon(":/icons/network.svg"), "Browse", w);
         connect(browse, &QPushButton::clicked, this, &MainWindow::selectDataDir);
 
@@ -1367,7 +1454,7 @@ private:
         QHBoxLayout* dirLayout = new QHBoxLayout(dirWidget);
         dirLayout->setContentsMargins(0,0,0,0);
         dirLayout->addWidget(dataDirEdit);
-        dirLayout->addWidget(browse);
+        dirLayout->addWidget(browseDirBtn);
 
         networkBox = new QComboBox(w);
         networkBox->addItems({"mainnet", "testnet"});
@@ -1379,6 +1466,8 @@ private:
         themeBox->addItems({"System", "Dark", "Light"});
         connect(themeBox, &QComboBox::currentTextChanged, this, &MainWindow::applyTheme);
 
+        encryptBtn = new QPushButton(themedIcon("settings.svg"), "Encrypt wallet", w);
+        unlockBtn = new QPushButton(themedIcon("wallet.svg"), "Unlock wallet", w);
         encryptBtn = new QPushButton(QIcon(":/icons/settings.svg"), "Encrypt wallet", w);
         unlockBtn = new QPushButton(QIcon(":/icons/wallet.svg"), "Unlock wallet", w);
         connect(encryptBtn, &QPushButton::clicked, this, &MainWindow::encryptWallet);
@@ -1480,6 +1569,10 @@ private slots:
             statusText += QStringLiteral(" • %1 H/s").arg(networkHashrate, 0, 'f', 2);
         }
         networkLbl->setText(statusText);
+        networkConnected = peers > 0;
+        if (networkStatusIcon) {
+            const QString statusIconName = networkConnected ? QStringLiteral("network-connected.svg") : QStringLiteral("network-disconnected.svg");
+            networkStatusIcon->setPixmap(themedIcon(statusIconName).pixmap(18, 18));
         if (networkStatusIcon) {
             const QString statusIconPath = peers > 0 ? QStringLiteral(":/icons/status-connected.svg") : QStringLiteral(":/icons/status-disconnected.svg");
             networkStatusIcon->setPixmap(QIcon(statusIconPath).pixmap(18, 18));
@@ -1762,12 +1855,16 @@ private slots:
             p.setColor(QPalette::ButtonText, Qt::white);
             QApplication::setStyle(QStyleFactory::create("Fusion"));
             QApplication::setPalette(p);
+            useDarkIcons = true;
         } else if (theme == "Light") {
             QApplication::setStyle(QStyleFactory::create("Fusion"));
             QApplication::setPalette(QApplication::style()->standardPalette());
+            useDarkIcons = false;
         } else {
             QApplication::setPalette(QApplication::style()->standardPalette());
+            useDarkIcons = isSystemPaletteDark();
         }
+        refreshIcons();
     }
 
     void encryptWallet()
@@ -1904,6 +2001,12 @@ private:
     HardwareWalletBridge* hardware{nullptr};
     QTranslator translator;
 
+    QAction* eulaAction{nullptr};
+    QAction* whitepaperAction{nullptr};
+    QAction* backupAction{nullptr};
+    QAction* restoreAction{nullptr};
+    QAction* exitAction{nullptr};
+
     QTabWidget* tabs{nullptr};
 
     QLabel* heightLbl{nullptr};
@@ -1917,6 +2020,8 @@ private:
     QLabel* hashrateLbl{nullptr};
 
     QLineEdit* destEdit{nullptr};
+    QPushButton* copyFromBook{nullptr};
+    QPushButton* scanQrBtn{nullptr};
     QDoubleSpinBox* amountEdit{nullptr};
     QComboBox* feeBox{nullptr};
     QDoubleSpinBox* feeRate{nullptr};
@@ -1924,9 +2029,13 @@ private:
     QLabel* feePreview{nullptr};
 
     QListWidget* addressList{nullptr};
+    QPushButton* genBtn{nullptr};
     QLabel* qrLabel{nullptr};
 
     QTableWidget* addressBookTable{nullptr};
+    QPushButton* addAddressBtn{nullptr};
+    QPushButton* removeAddressBtn{nullptr};
+    QPushButton* copyAddressBtn{nullptr};
 
     QLabel* rpcErrorLabel{nullptr};
     QComboBox* themeBox{nullptr};
@@ -1938,13 +2047,18 @@ private:
 
     QSpinBox* cpuThreads{nullptr};
     QCheckBox* gpuToggle{nullptr};
+    QPushButton* startMiningBtn{nullptr};
+    QPushButton* stopMiningBtn{nullptr};
 
     QLineEdit* dataDirEdit{nullptr};
     QComboBox* networkBox{nullptr};
     QLineEdit* rpcUserEdit{nullptr};
     QLineEdit* rpcPassEdit{nullptr};
+    QPushButton* browseDirBtn{nullptr};
     QPushButton* encryptBtn{nullptr};
     QPushButton* unlockBtn{nullptr};
+    bool useDarkIcons{false};
+    bool networkConnected{false};
     bool rpcErrorShown{false};
 };
 

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 64" width="256" height="64">
+  <rect width="256" height="64" rx="12" fill="#f6f8fb"/>
+  <circle cx="32" cy="32" r="22" fill="#c59d32" stroke="#1f1f1f" stroke-width="4"/>
+  <path d="M32 14 L20 46 L26 46 L32 32 L38 46 L44 46 Z" fill="#1f1f1f"/>
+  <text x="70" y="40" font-family="'Segoe UI', 'Inter', sans-serif" font-size="26" fill="#1f4f70" font-weight="700">DRACHMA</text>
+  <text x="70" y="22" font-family="'Segoe UI', 'Inter', sans-serif" font-size="10" fill="#4f4f4f">BLOCKCHAIN WALLET</text>
+</svg>

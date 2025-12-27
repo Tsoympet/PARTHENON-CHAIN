@@ -5,6 +5,31 @@
         <file>icons/wallet.svg</file>
         <file>icons/send.svg</file>
         <file>icons/receive.svg</file>
+        <file>icons/transactions.svg</file>
+        <file>icons/mining.svg</file>
+        <file>icons/network.svg</file>
+        <file>icons/network-connected.svg</file>
+        <file>icons/network-disconnected.svg</file>
+        <file>icons/settings.svg</file>
+        <file>icons/status-connected.svg</file>
+        <file>icons/status-disconnected.svg</file>
+        <file>icons/dark/app_icon.svg</file>
+        <file>icons/dark/logo.svg</file>
+        <file>icons/dark/wallet.svg</file>
+        <file>icons/dark/send.svg</file>
+        <file>icons/dark/receive.svg</file>
+        <file>icons/dark/transactions.svg</file>
+        <file>icons/dark/mining.svg</file>
+        <file>icons/dark/network.svg</file>
+        <file>icons/dark/network-connected.svg</file>
+        <file>icons/dark/network-disconnected.svg</file>
+        <file>icons/dark/settings.svg</file>
+        <file>icons/dark/status-connected.svg</file>
+        <file>icons/dark/status-disconnected.svg</file>
+    </qresource>
+    <qresource prefix="/resources">
+        <file>splash.svg</file>
+    </qresource>
         <file>icons/mining.svg</file>
         <file>icons/settings.svg</file>
         <file>icons/network.svg</file>
