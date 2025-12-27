@@ -1,3 +1,35 @@
+# Build outputs
 build/
+dist/
+out/
+
+# Compiled binaries and objects
 *.o
 *.exe
+*.out
+*.a
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+env/
+.env
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE and editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# macOS and Windows
+.DS_Store
+Thumbs.db
