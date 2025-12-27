@@ -4,6 +4,7 @@
 #include "../script/interpreter.h"
 #include <algorithm>
 #include <limits>
+#include <unordered_set>
 
 namespace {
 
@@ -11,6 +12,31 @@ bool IsNullOutPoint(const OutPoint& prevout)
 {
     return std::all_of(prevout.hash.begin(), prevout.hash.end(), [](uint8_t b) { return b == 0; }) &&
            prevout.index == std::numeric_limits<uint32_t>::max();
+}
+
+struct OutPointHasher {
+    std::size_t operator()(const OutPoint& o) const noexcept
+    {
+        size_t h = 0;
+        for (auto b : o.hash) h = (h * 131) ^ b;
+        h ^= static_cast<size_t>(o.index + 0x9e3779b97f4a7c15ULL + (h << 6) + (h >> 2));
+        return h;
+    }
+};
+
+struct OutPointEq {
+    bool operator()(const OutPoint& a, const OutPoint& b) const noexcept
+    {
+        return a.index == b.index && std::equal(a.hash.begin(), a.hash.end(), b.hash.begin());
+    }
+};
+
+bool SafeAdd(uint64_t a, uint64_t b, uint64_t& out)
+{
+    if (a > std::numeric_limits<uint64_t>::max() - b)
+        return false;
+    out = a + b;
+    return true;
 }
 
 bool IsCoinbase(const Transaction& tx)
@@ -33,28 +59,45 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
     if (!IsCoinbase(txs.front()))
         return false;
 
+    if (txs.front().vout.empty())
+        return false;
+
     // Enforce reasonable scriptSig length on coinbase (2-100 bytes)
     const auto& coinbaseSig = txs.front().vin.front().scriptSig;
     if (coinbaseSig.size() < 2 || coinbaseSig.size() > 100)
         return false;
+
+    uint64_t coinbaseOutTotal = 0;
+    for (const auto& out : txs.front().vout) {
+        uint64_t next = 0;
+        if (!SafeAdd(coinbaseOutTotal, out.value, next))
+            return false;
+        coinbaseOutTotal = next;
+        if (!consensus::MoneyRange(out.value, params) || !consensus::MoneyRange(coinbaseOutTotal, params))
+            return false;
+        if (out.scriptPubKey.size() != 32)
+            return false; // enforce schnorr-only pubkeys
+    }
+
+    std::unordered_set<OutPoint, OutPointHasher, OutPointEq> seenPrevouts;
+    uint64_t totalFees = 0;
 
     for (size_t i = 0; i < txs.size(); ++i) {
         const auto& tx = txs[i];
 
         uint64_t totalOut = 0;
         for (const auto& out : tx.vout) {
-            totalOut += out.value;
-            if (!consensus::MoneyRange(totalOut, params))
+            uint64_t next = 0;
+            if (!SafeAdd(totalOut, out.value, next))
+                return false;
+            totalOut = next;
+            if (!consensus::MoneyRange(out.value, params) || !consensus::MoneyRange(totalOut, params))
                 return false;
             if (out.scriptPubKey.size() != 32)
                 return false; // enforce schnorr-only pubkeys
         }
 
         if (i == 0) {
-            // Coinbase may not exceed subsidy (fees not yet tracked in this skeleton)
-            uint64_t subsidy = consensus::GetBlockSubsidy(height, params);
-            if (totalOut > subsidy)
-                return false;
             continue;
         }
 
@@ -64,6 +107,9 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
         if (!lookup)
             return false; // cannot validate spends without a UTXO provider
 
+        if (tx.vin.empty() || tx.vout.empty())
+            return false;
+
         uint64_t totalIn = 0;
         for (size_t inIdx = 0; inIdx < tx.vin.size(); ++inIdx) {
             const auto& in = tx.vin[inIdx];
@@ -72,6 +118,9 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
             if (in.scriptSig.empty())
                 return false;
 
+            if (!seenPrevouts.insert(in.prevout).second)
+                return false; // duplicate spend within block
+
             auto utxo = lookup(in.prevout);
             if (!utxo)
                 return false;
@@ -79,14 +128,32 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
             if (!VerifyScript(tx, inIdx, *utxo))
                 return false;
 
-            totalIn += utxo->value;
+            uint64_t next = 0;
+            if (!SafeAdd(totalIn, utxo->value, next))
+                return false;
+            totalIn = next;
             if (!consensus::MoneyRange(totalIn, params))
                 return false;
         }
 
         if (totalOut > totalIn)
             return false; // overspends
+
+        uint64_t fee = totalIn - totalOut;
+        uint64_t nextFees = 0;
+        if (!SafeAdd(totalFees, fee, nextFees))
+            return false;
+        totalFees = nextFees;
+        if (!consensus::MoneyRange(totalFees, params))
+            return false;
     }
+
+    uint64_t maxCoinbase = consensus::GetBlockSubsidy(height, params);
+    if (!SafeAdd(maxCoinbase, totalFees, maxCoinbase))
+        return false;
+
+    if (coinbaseOutTotal > maxCoinbase)
+        return false;
 
     return true;
 }

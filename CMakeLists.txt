@@ -92,6 +92,10 @@ if(DRACHMA_BUILD_TESTS)
     add_executable(retarget_test tests/pow/retarget_test.cpp)
     target_link_libraries(retarget_test PRIVATE drachma_layer1)
     add_test(NAME retarget_test COMMAND retarget_test)
+
+    add_executable(validation_tests tests/validation/validation_tests.cpp)
+    target_link_libraries(validation_tests PRIVATE drachma_layer1)
+    add_test(NAME validation_tests COMMAND validation_tests)
 endif()
 
 # Install rules
