@@ -1,117 +1,244 @@
 #include "validation.h"
+#include "../pow/difficulty.h"
 #include "../merkle/merkle.h"
-#include "../pow/pow.h"
+#include "../script/interpreter.h"
+#include <openssl/crypto.h>
+#include <algorithm>
+#include <limits>
+#include <unordered_map>
+#include <unordered_set>
+#include <chrono>
 
-namespace validation {
+namespace {
 
-bool CheckTransaction(const Transaction& tx, std::string& error)
+bool IsNullOutPoint(const OutPoint& prevout)
 {
-    if (tx.vin.empty()) {
-        error = "TX has no inputs";
-        return false;
-    }
-    if (tx.vout.empty()) {
-        error = "TX has no outputs";
-        return false;
-    }
+    return std::all_of(prevout.hash.begin(), prevout.hash.end(), [](uint8_t b) { return b == 0; }) &&
+           prevout.index == std::numeric_limits<uint32_t>::max();
+}
 
-    uint64_t outSum = 0;
-    for (const auto& out : tx.vout) {
-        if (out.value == 0) {
-            error = "Zero-value output";
-            return false;
-        }
-        outSum += out.value;
+struct OutPointHasher {
+    std::size_t operator()(const OutPoint& o) const noexcept
+    {
+        size_t h = 0;
+        for (auto b : o.hash) h = (h * 131) ^ b;
+        h ^= static_cast<size_t>(o.index + 0x9e3779b97f4a7c15ULL + (h << 6) + (h >> 2));
+        return h;
     }
+};
 
-    if (tx.isCoinbase()) {
-        if (tx.vin.size() != 1) {
-            error = "Coinbase must have exactly one input";
-            return false;
-        }
-    } else {
-        for (const auto& in : tx.vin) {
-            if (in.prevout.txid.empty()) {
-                error = "Non-coinbase TX with empty prevout";
-                return false;
+struct OutPointEq {
+    bool operator()(const OutPoint& a, const OutPoint& b) const noexcept
+    {
+        return a.index == b.index && std::equal(a.hash.begin(), a.hash.end(), b.hash.begin());
+    }
+};
+
+bool SafeAdd(uint64_t a, uint64_t b, uint64_t& out)
+{
+    if (a > std::numeric_limits<uint64_t>::max() - b)
+        return false;
+    out = a + b;
+    return true;
+}
+
+bool IsCoinbase(const Transaction& tx)
+{
+    return tx.vin.size() == 1 && IsNullOutPoint(tx.vin.front().prevout);
+}
+
+} // namespace
+
+bool ValidateBlockHeader(const BlockHeader& header, const consensus::Params& params, const BlockValidationOptions& opts)
+{
+    if (opts.limiter && !opts.limiter->Consume(opts.limiterWeight))
+        return false;
+
+    if (!powalgo::CheckProofOfWork(BlockHash(header), header.bits, params))
+        return false;
+
+    // Enforce sane timestamp ordering relative to median past and against the
+    // wall clock with modest drift tolerance. medianTimePast must be supplied
+    // by the caller; using zero would skip the ordering rule and is rejected.
+    if (opts.medianTimePast == 0 || header.time <= opts.medianTimePast)
+        return false;
+
+    uint64_t horizon = static_cast<uint64_t>(opts.now) + opts.maxFutureDrift;
+    uint32_t clampedHorizon = horizon > std::numeric_limits<uint32_t>::max()
+        ? std::numeric_limits<uint32_t>::max()
+        : static_cast<uint32_t>(horizon);
+    if (header.time > clampedHorizon)
+        return false;
+
+    return true;
+}
+
+namespace {
+
+class CachedLookup {
+public:
+    CachedLookup(const UTXOLookup& base, size_t capacity)
+        : m_base(base), m_capacity(capacity) {}
+
+    std::optional<TxOut> operator()(const OutPoint& out)
+    {
+        auto it = m_cache.find(out);
+        if (it != m_cache.end())
+            return it->second;
+
+        auto res = m_base ? m_base(out) : std::nullopt;
+        if (res) {
+            if (m_cache.size() >= m_capacity) {
+                // Simple clock-sweep eviction for predictable behaviour.
+                m_cache.erase(m_cache.begin());
             }
+            m_cache.emplace(out, *res);
         }
+        return res;
     }
 
-    return true;
-}
+private:
+    UTXOLookup m_base;
+    size_t m_capacity;
+    std::unordered_map<OutPoint, TxOut, OutPointHasher, OutPointEq> m_cache;
+};
 
-bool CheckBlockStructure(const Block& block, std::string& error)
+} // namespace
+
+bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::Params& params, int height, const UTXOLookup& lookup)
 {
-    if (block.vtx.empty()) {
-        error = "Block has no transactions";
-        return false;
-    }
+    if (txs.empty()) return false;
 
-    if (!block.vtx[0].isCoinbase()) {
-        error = "First TX is not coinbase";
-        return false;
-    }
+    constexpr size_t MAX_TX_SIZE = 1000000; // 1MB hard cap per tx
+    constexpr size_t MAX_BLOCK_WEIGHT = 4000000; // approximate weight limit
+    constexpr uint64_t DUST_THRESHOLD = 546; // satoshi-equivalent dust floor
 
-    for (size_t i = 0; i < block.vtx.size(); ++i) {
-        std::string txerr;
-        if (!CheckTransaction(block.vtx[i], txerr)) {
-            error = "Invalid TX at index " + std::to_string(i) + ": " + txerr;
+    // Coinbase must be first and unique
+    if (!IsCoinbase(txs.front()))
+        return false;
+
+    if (txs.front().vout.empty())
+        return false;
+
+    // Enforce reasonable scriptSig length on coinbase (2-100 bytes)
+    const auto& coinbaseSig = txs.front().vin.front().scriptSig;
+    if (coinbaseSig.size() < 2 || coinbaseSig.size() > 100)
+        return false;
+
+    uint64_t coinbaseOutTotal = 0;
+    for (const auto& out : txs.front().vout) {
+        uint64_t next = 0;
+        if (!SafeAdd(coinbaseOutTotal, out.value, next))
             return false;
+        coinbaseOutTotal = next;
+        if (!consensus::MoneyRange(out.value, params) || !consensus::MoneyRange(coinbaseOutTotal, params))
+            return false;
+        if (out.scriptPubKey.size() != 32)
+            return false; // enforce schnorr-only pubkeys
+    }
+
+    std::unordered_set<OutPoint, OutPointHasher, OutPointEq> seenPrevouts;
+    seenPrevouts.reserve(txs.size() * 2);
+    uint64_t totalFees = 0;
+    size_t runningWeight = 0;
+
+    CachedLookup cachedLookup(lookup, 1024);
+
+    for (size_t i = 0; i < txs.size(); ++i) {
+        const auto& tx = txs[i];
+
+        const size_t txSize = Serialize(tx).size();
+        if (txSize == 0 || txSize > MAX_TX_SIZE)
+            return false;
+        runningWeight += txSize * 4; // legacy weight approximation
+        if (runningWeight > MAX_BLOCK_WEIGHT)
+            return false;
+
+        uint64_t totalOut = 0;
+        for (const auto& out : tx.vout) {
+            uint64_t next = 0;
+            if (!SafeAdd(totalOut, out.value, next))
+                return false;
+            totalOut = next;
+            if (!consensus::MoneyRange(out.value, params) || !consensus::MoneyRange(totalOut, params))
+                return false;
+            if (out.scriptPubKey.size() != 32)
+                return false; // enforce schnorr-only pubkeys
+            if (out.value < DUST_THRESHOLD)
+                return false;
         }
+
+        if (i == 0) {
+            continue;
+        }
+
+        if (IsCoinbase(tx))
+            return false; // only the first tx may be coinbase
+
+        if (!lookup)
+            return false; // cannot validate spends without a UTXO provider
+
+        if (tx.vin.empty() || tx.vout.empty())
+            return false;
+
+        uint64_t totalIn = 0;
+        for (size_t inIdx = 0; inIdx < tx.vin.size(); ++inIdx) {
+            const auto& in = tx.vin[inIdx];
+            if (IsNullOutPoint(in.prevout))
+                return false;
+            if (in.scriptSig.empty())
+                return false;
+            if (in.scriptSig.size() > 1650)
+                return false; // oversized scripts risk DoS
+
+            if (!seenPrevouts.insert(in.prevout).second)
+                return false; // duplicate spend within block
+
+            auto utxo = cachedLookup(in.prevout);
+            if (!utxo)
+                return false;
+
+            if (!VerifyScript(tx, inIdx, *utxo))
+                return false;
+
+            uint64_t next = 0;
+            if (!SafeAdd(totalIn, utxo->value, next))
+                return false;
+            totalIn = next;
+            if (!consensus::MoneyRange(totalIn, params))
+                return false;
+        }
+
+        if (totalOut > totalIn)
+            return false; // overspends
+
+        uint64_t fee = totalIn - totalOut;
+        uint64_t nextFees = 0;
+        if (!SafeAdd(totalFees, fee, nextFees))
+            return false;
+        totalFees = nextFees;
+        if (!consensus::MoneyRange(totalFees, params))
+            return false;
     }
+
+    uint64_t maxCoinbase = consensus::GetBlockSubsidy(height, params);
+    if (!SafeAdd(maxCoinbase, totalFees, maxCoinbase))
+        return false;
+
+    if (coinbaseOutTotal > maxCoinbase)
+        return false;
 
     return true;
 }
 
-bool CheckMerkleRoot(const Block& block, std::string& error)
+bool ValidateBlock(const Block& block, const consensus::Params& params, int height, const UTXOLookup& lookup, const BlockValidationOptions& opts)
 {
-    std::vector<std::vector<uint8_t>> leaves;
-    for (const auto& tx : block.vtx) {
-        auto raw = tx.serialize();
-        leaves.push_back(raw);
-    }
-
-    auto computed = merkle::ComputeMerkleRoot(leaves);
-    if (computed != block.header.merkleRoot) {
-        error = "Merkle root mismatch";
+    if (!ValidateBlockHeader(block.header, params, opts))
         return false;
-    }
-
+    if (!ValidateTransactions(block.transactions, params, height, lookup))
+        return false;
+    const auto merkle = ComputeMerkleRoot(block.transactions);
+    if (CRYPTO_memcmp(merkle.data(), block.header.merkleRoot.data(), merkle.size()) != 0)
+        return false;
     return true;
 }
-
-bool CheckProofOfWork(const BlockHeader& header,
-                      const ConsensusParams& params,
-                      std::string& error)
-{
-    if (!pow::CheckProofOfWork(header.GetHash(), header.nBits, params)) {
-        error = "Invalid proof of work";
-        return false;
-    }
-    return true;
-}
-
-bool ConnectBlock(const Block& block,
-                  Chainstate& chainstate,
-                  uint32_t height,
-                  BlockUndo& undo,
-                  std::string& error)
-{
-    // Structural checks
-    if (!CheckBlockStructure(block, error)) {
-        return false;
-    }
-
-    // Apply TXs to chainstate (UTXO)
-    try {
-        chainstate.ApplyBlock(block.vtx, height, undo);
-    } catch (const std::exception& e) {
-        error = e.what();
-        return false;
-    }
-
-    return true;
-}
-
-} // namespace validation

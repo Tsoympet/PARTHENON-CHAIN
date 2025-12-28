@@ -1,26 +1,33 @@
 #pragma once
-#include <string>
-#include <vector>
-#include <cstdint>
-#include "../tx/transaction.h"
-#include "../chainstate/coins.h"
-#include "../block/block.h"     // χρησιμοποιεί το υπάρχον Block/BlockHeader
+#include "../block/block.h"
 #include "../consensus/params.h"
+#include "anti_dos.h"
+#include <functional>
+#include <optional>
+#include <cstdint>
+#include <ctime>
 
-namespace validation {
+using UTXOLookup = std::function<std::optional<TxOut>(const OutPoint&)>;
 
-bool CheckTransaction(const Transaction& tx, std::string& error);
+struct BlockValidationOptions {
+    // Median time past over the last 11 blocks. Must be provided to enforce
+    // BIP113-style timestamp ordering.
+    uint32_t medianTimePast = 0;
 
-bool CheckBlockStructure(const Block& block, std::string& error);
-bool CheckMerkleRoot(const Block& block, std::string& error);
-bool CheckProofOfWork(const BlockHeader& header,
-                      const ConsensusParams& params,
-                      std::string& error);
+    // Current wall clock (or network-adjusted) time. Defaults to now().
+    uint32_t now = static_cast<uint32_t>(std::time(nullptr));
 
-bool ConnectBlock(const Block& block,
-                  Chainstate& chainstate,
-                  uint32_t height,
-                  BlockUndo& undo,
-                  std::string& error);
+    // Maximum allowed drift in seconds into the future.
+    uint32_t maxFutureDrift = 2 * 60 * 60; // 2 hours
 
-} // namespace validation
+    // Optional rate limiter used to gate validation to avoid DoS. If provided
+    // and Consume fails, validation short-circuits.
+    ValidationRateLimiter* limiter = nullptr;
+
+    // Weight to charge against the limiter per block (defaults to 1 request).
+    uint64_t limiterWeight = 1;
+};
+
+bool ValidateBlockHeader(const BlockHeader& header, const consensus::Params& params, const BlockValidationOptions& opts = {});
+bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::Params& params, int height, const UTXOLookup& lookup = {});
+bool ValidateBlock(const Block& block, const consensus::Params& params, int height, const UTXOLookup& lookup = {}, const BlockValidationOptions& opts = {});
