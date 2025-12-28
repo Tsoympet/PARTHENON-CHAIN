@@ -9,6 +9,8 @@
 #include <optional>
 #include <random>
 
+#include "../../layer1-core/pow/sha256d.h"
+
 namespace net {
 
 using boost::asio::ip::tcp;
@@ -20,6 +22,8 @@ static std::string PadCommand(const std::string& cmd)
     std::memcpy(buf.data(), cmd.data(), std::min(cmd.size(), buf.size()));
     return std::string(buf.data(), buf.size());
 }
+
+static constexpr size_t k_max_payload = 4 * 1024 * 1024; // 4 MiB safety cap
 
 bool BloomFilter::Match(const uint256& h) const
 {
@@ -42,7 +46,7 @@ bool BloomFilter::Match(const uint256& h) const
     return true;
 }
 
-struct P2PNode::PeerState {
+struct P2PNetwork::PeerState {
     tcp::socket socket;
     PeerInfo info;
     std::deque<Message> outbound;
@@ -58,7 +62,7 @@ struct P2PNode::PeerState {
         : socket(io), info(std::move(p)) {}
 };
 
-P2PNode::P2PNode(boost::asio::io_context& io, uint16_t listenPort)
+P2PNetwork::P2PNetwork(boost::asio::io_context& io, uint16_t listenPort)
     : m_io(io), m_acceptor(io), m_timer(io), m_seedTimer(io)
 {
     tcp::endpoint ep(tcp::v6(), listenPort);
@@ -76,39 +80,39 @@ P2PNode::P2PNode(boost::asio::io_context& io, uint16_t listenPort)
     m_acceptor.listen();
 }
 
-P2PNode::~P2PNode()
+P2PNetwork::~P2PNetwork()
 {
     Stop();
 }
 
-void P2PNode::RegisterHandler(const std::string& cmd, Handler h)
+void P2PNetwork::RegisterHandler(const std::string& cmd, Handler h)
 {
     std::lock_guard<std::mutex> g(m_mutex);
     m_handlers[cmd] = std::move(h);
 }
 
-void P2PNode::AddPeerAddress(const std::string& address)
+void P2PNetwork::AddPeerAddress(const std::string& address)
 {
     std::lock_guard<std::mutex> g(m_mutex);
     m_seedAddrs.insert(address);
 }
 
-void P2PNode::SetLocalHeight(uint32_t height)
+void P2PNetwork::SetLocalHeight(uint32_t height)
 {
     m_localHeight = height;
 }
 
-void P2PNode::SetTxProvider(PayloadProvider provider)
+void P2PNetwork::SetTxProvider(PayloadProvider provider)
 {
     m_txProvider = std::move(provider);
 }
 
-void P2PNode::SetBlockProvider(PayloadProvider provider)
+void P2PNetwork::SetBlockProvider(PayloadProvider provider)
 {
     m_blockProvider = std::move(provider);
 }
 
-void P2PNode::Start()
+void P2PNetwork::Start()
 {
     LoadDNSSeeds();
     AcceptLoop();
@@ -116,7 +120,17 @@ void P2PNode::Start()
     ScheduleHeartbeat();
 }
 
-void P2PNode::Stop()
+void P2PNetwork::connect_to_peers()
+{
+    ConnectSeeds();
+}
+
+void P2PNetwork::handle_incoming()
+{
+    AcceptLoop();
+}
+
+void P2PNetwork::Stop()
 {
     m_stopped = true;
     std::lock_guard<std::mutex> g(m_mutex);
@@ -132,27 +146,27 @@ void P2PNode::Stop()
     m_io.poll();
 }
 
-uint16_t P2PNode::ListenPort() const
+uint16_t P2PNetwork::ListenPort() const
 {
     boost::system::error_code ec;
     auto ep = m_acceptor.local_endpoint(ec);
     return ec ? 0 : ep.port();
 }
 
-void P2PNode::Broadcast(const Message& msg)
+void P2PNetwork::Broadcast(const Message& msg)
 {
     std::lock_guard<std::mutex> g(m_mutex);
     for (auto& kv : m_peers) QueueMessage(kv.second, msg);
 }
 
-void P2PNode::SendTo(const std::string& peerId, const Message& msg)
+void P2PNetwork::SendTo(const std::string& peerId, const Message& msg)
 {
     std::lock_guard<std::mutex> g(m_mutex);
     auto it = m_peers.find(peerId);
     if (it != m_peers.end()) QueueMessage(it->second, msg);
 }
 
-void P2PNode::AnnounceInventory(const std::vector<uint256>& txs, const std::vector<uint256>& blocks)
+void P2PNetwork::AnnounceInventory(const std::vector<uint256>& txs, const std::vector<uint256>& blocks)
 {
     std::lock_guard<std::mutex> g(m_mutex);
     for (auto& kv : m_peers) {
@@ -168,7 +182,7 @@ void P2PNode::AnnounceInventory(const std::vector<uint256>& txs, const std::vect
     }
 }
 
-std::vector<PeerInfo> P2PNode::Peers() const
+std::vector<PeerInfo> P2PNetwork::Peers() const
 {
     std::lock_guard<std::mutex> g(m_mutex);
     std::vector<PeerInfo> out;
@@ -176,7 +190,7 @@ std::vector<PeerInfo> P2PNode::Peers() const
     return out;
 }
 
-void P2PNode::AcceptLoop()
+void P2PNetwork::AcceptLoop()
 {
     if (m_stopped) return;
     auto peer = std::make_shared<PeerState>(m_io, PeerInfo{"", "", true});
@@ -195,7 +209,7 @@ void P2PNode::AcceptLoop()
     });
 }
 
-void P2PNode::ConnectSeeds()
+void P2PNetwork::ConnectSeeds()
 {
     if (m_stopped) return;
     std::vector<std::string> seeds;
@@ -239,7 +253,7 @@ void P2PNode::ConnectSeeds()
     });
 }
 
-void P2PNode::LoadDNSSeeds()
+void P2PNetwork::LoadDNSSeeds()
 {
     // mainnet preferred, fallback to testnet
     for (const auto& path : {"mainnet/seeds.json", "testnet/seeds.json"}) {
@@ -265,14 +279,19 @@ void P2PNode::LoadDNSSeeds()
     }
 }
 
-void P2PNode::RegisterPeer(const std::shared_ptr<PeerState>& peer)
+void P2PNetwork::RegisterPeer(const std::shared_ptr<PeerState>& peer)
 {
     std::lock_guard<std::mutex> g(m_mutex);
+    if (m_peers.size() >= m_maxPeers) {
+        boost::system::error_code ec;
+        peer->socket.close(ec);
+        return;
+    }
     m_peers[peer->info.id] = peer;
     WriteLoop(peer);
 }
 
-void P2PNode::QueueMessage(const std::shared_ptr<PeerState>& peer, const Message& msg)
+void P2PNetwork::QueueMessage(const std::shared_ptr<PeerState>& peer, const Message& msg)
 {
     Message queued = msg;
     boost::asio::post(m_io, [this, peer, queued = std::move(queued)]() mutable {
@@ -284,7 +303,7 @@ void P2PNode::QueueMessage(const std::shared_ptr<PeerState>& peer, const Message
     });
 }
 
-void P2PNode::WriteLoop(const std::shared_ptr<PeerState>& peer)
+void P2PNetwork::WriteLoop(const std::shared_ptr<PeerState>& peer)
 {
     Message msg;
     {
@@ -294,9 +313,13 @@ void P2PNode::WriteLoop(const std::shared_ptr<PeerState>& peer)
     }
     std::string cmdPadded = PadCommand(msg.command);
     uint32_t len = static_cast<uint32_t>(msg.payload.size());
-    std::array<uint8_t, 16> header{};
-    std::memcpy(header.data(), cmdPadded.data(), 12);
-    std::memcpy(header.data() + 12, &len, sizeof(len));
+    std::array<uint8_t, 24> header{};
+    std::memcpy(header.data(), &k_message_magic, sizeof(uint32_t));
+    std::memcpy(header.data() + 4, cmdPadded.data(), 12);
+    std::memcpy(header.data() + 16, &len, sizeof(len));
+    uint8_t checksumFull[32]{};
+    sha256d(checksumFull, msg.payload.empty() ? nullptr : msg.payload.data(), msg.payload.size());
+    std::memcpy(header.data() + 20, checksumFull, sizeof(uint32_t));
     std::array<boost::asio::const_buffer, 2> bufs{
         boost::asio::buffer(header),
         boost::asio::buffer(msg.payload)
@@ -314,20 +337,31 @@ void P2PNode::WriteLoop(const std::shared_ptr<PeerState>& peer)
     });
 }
 
-void P2PNode::ReadLoop(const std::shared_ptr<PeerState>& peer)
+void P2PNetwork::ReadLoop(const std::shared_ptr<PeerState>& peer)
 {
-    auto header = std::make_shared<std::array<uint8_t, 16>>();
+    auto header = std::make_shared<std::array<uint8_t, 24>>();
     boost::asio::async_read(peer->socket, boost::asio::buffer(*header), [this, peer, header](const boost::system::error_code& ec, std::size_t) {
         if (m_stopped) return;
         if (ec) { DropPeer(peer->info.id); return; }
-        std::string cmd(reinterpret_cast<char*>(header->data()), 12);
+        uint32_t magic{0};
+        std::memcpy(&magic, header->data(), sizeof(magic));
+        if (magic != k_message_magic) { Ban(peer->info.address); DropPeer(peer->info.id); return; }
+        std::string cmd(reinterpret_cast<char*>(header->data() + 4), 12);
         while (!cmd.empty() && cmd.back() == '\0') cmd.pop_back();
         uint32_t len{0};
-        std::memcpy(&len, header->data() + 12, sizeof(len));
+        std::memcpy(&len, header->data() + 16, sizeof(len));
+        uint32_t checksum{0};
+        std::memcpy(&checksum, header->data() + 20, sizeof(checksum));
+        if (len > k_max_payload) { Ban(peer->info.address); DropPeer(peer->info.id); return; }
         auto payload = std::make_shared<std::vector<uint8_t>>(len);
-        boost::asio::async_read(peer->socket, boost::asio::buffer(*payload), [this, peer, cmd, payload](const boost::system::error_code& ec2, std::size_t) {
+        boost::asio::async_read(peer->socket, boost::asio::buffer(*payload), [this, peer, cmd, payload, checksum](const boost::system::error_code& ec2, std::size_t) {
             if (m_stopped) return;
             if (ec2) { DropPeer(peer->info.id); return; }
+            uint8_t verify[32]{};
+            sha256d(verify, payload->empty() ? nullptr : payload->data(), payload->size());
+            uint32_t calc{0};
+            std::memcpy(&calc, verify, sizeof(calc));
+            if (calc != checksum) { Ban(peer->info.address); DropPeer(peer->info.id); return; }
             Message msg{cmd, std::move(*payload)};
             if (!RateLimit(*peer)) { DropPeer(peer->info.id); return; }
             if (msg.command == "ping") {
@@ -342,7 +376,7 @@ void P2PNode::ReadLoop(const std::shared_ptr<PeerState>& peer)
     });
 }
 
-void P2PNode::Dispatch(const PeerState& peer, const Message& msg)
+void P2PNetwork::Dispatch(const PeerState& peer, const Message& msg)
 {
     std::shared_ptr<PeerState> self;
     {
@@ -362,7 +396,7 @@ void P2PNode::Dispatch(const PeerState& peer, const Message& msg)
     if (h) h(peer.info, msg);
 }
 
-bool P2PNode::RateLimit(PeerState& peer)
+bool P2PNetwork::RateLimit(PeerState& peer)
 {
     auto now = std::chrono::steady_clock::now();
     if (now - peer.windowStart > std::chrono::minutes(1)) {
@@ -378,7 +412,7 @@ bool P2PNode::RateLimit(PeerState& peer)
     return true;
 }
 
-void P2PNode::SendVersion(const std::shared_ptr<PeerState>& peer)
+void P2PNetwork::SendVersion(const std::shared_ptr<PeerState>& peer)
 {
     const uint32_t version = 1;
     std::string nodeId = peer->info.id.empty() ? "" : peer->info.id;
@@ -390,7 +424,7 @@ void P2PNode::SendVersion(const std::shared_ptr<PeerState>& peer)
     QueueMessage(peer, Message{"version", payload});
 }
 
-void P2PNode::CompleteHandshake(const std::shared_ptr<PeerState>& peer, uint32_t remoteHeight, const std::string& remoteId)
+void P2PNetwork::CompleteHandshake(const std::shared_ptr<PeerState>& peer, uint32_t remoteHeight, const std::string& remoteId)
 {
     (void)remoteHeight; // reserved for future sync logic
     peer->gotVersion = true;
@@ -400,7 +434,7 @@ void P2PNode::CompleteHandshake(const std::shared_ptr<PeerState>& peer, uint32_t
     }
 }
 
-void P2PNode::DropPeer(const std::string& id)
+void P2PNetwork::DropPeer(const std::string& id)
 {
     std::lock_guard<std::mutex> g(m_mutex);
     auto it = m_peers.find(id);
@@ -411,7 +445,7 @@ void P2PNode::DropPeer(const std::string& id)
     }
 }
 
-void P2PNode::Ban(const std::string& address)
+void P2PNetwork::Ban(const std::string& address)
 {
     m_banned[address] = std::chrono::steady_clock::now() + m_banTime;
     std::vector<std::string> toDrop;
@@ -423,7 +457,7 @@ void P2PNode::Ban(const std::string& address)
     for (const auto& id : toDrop) DropPeer(id);
 }
 
-bool P2PNode::IsBanned(const std::string& address) const
+bool P2PNetwork::IsBanned(const std::string& address) const
 {
     auto it = m_banned.find(address);
     if (it == m_banned.end()) return false;
@@ -431,13 +465,13 @@ bool P2PNode::IsBanned(const std::string& address) const
     return true;
 }
 
-bool P2PNode::ApplyBloom(const PeerState& peer, const uint256& hash) const
+bool P2PNetwork::ApplyBloom(const PeerState& peer, const uint256& hash) const
 {
     if (peer.filter.Empty()) return true;
     return peer.filter.Match(hash);
 }
 
-void P2PNode::HandleBuiltin(const std::shared_ptr<PeerState>& peer, const Message& msg)
+void P2PNetwork::HandleBuiltin(const std::shared_ptr<PeerState>& peer, const Message& msg)
 {
     if (msg.command == "version") {
         if (msg.payload.size() >= 8) {
@@ -537,7 +571,7 @@ void P2PNode::HandleBuiltin(const std::shared_ptr<PeerState>& peer, const Messag
     }
 }
 
-void P2PNode::SendInv(const std::shared_ptr<PeerState>& peer, const std::vector<uint256>& invs, uint8_t type)
+void P2PNetwork::SendInv(const std::shared_ptr<PeerState>& peer, const std::vector<uint256>& invs, uint8_t type)
 {
     std::vector<uint8_t> payload;
     payload.reserve(invs.size() * 33);
@@ -548,7 +582,7 @@ void P2PNode::SendInv(const std::shared_ptr<PeerState>& peer, const std::vector<
     QueueMessage(peer, Message{"inv", payload});
 }
 
-void P2PNode::SendGetData(const std::shared_ptr<PeerState>& peer, const std::vector<uint256>& hashes, uint8_t type)
+void P2PNetwork::SendGetData(const std::shared_ptr<PeerState>& peer, const std::vector<uint256>& hashes, uint8_t type)
 {
     std::vector<uint8_t> payload;
     payload.reserve(hashes.size() * 33);
@@ -559,12 +593,12 @@ void P2PNode::SendGetData(const std::shared_ptr<PeerState>& peer, const std::vec
     QueueMessage(peer, Message{"getdata", payload});
 }
 
-void P2PNode::SendPayload(const std::shared_ptr<PeerState>& peer, const std::string& cmd, const std::vector<uint8_t>& payload)
+void P2PNetwork::SendPayload(const std::shared_ptr<PeerState>& peer, const std::string& cmd, const std::vector<uint8_t>& payload)
 {
     QueueMessage(peer, Message{cmd, payload});
 }
 
-void P2PNode::ScheduleHeartbeat()
+void P2PNetwork::ScheduleHeartbeat()
 {
     m_timer.expires_after(std::chrono::seconds(30));
     m_timer.async_wait([this](const boost::system::error_code& ec) {

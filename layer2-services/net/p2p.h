@@ -37,18 +37,20 @@ struct BloomFilter {
     bool Match(const uint256& h) const;
 };
 
-class P2PNode {
+class P2PNetwork {
 public:
     using Handler = std::function<void(const PeerInfo&, const Message&)>;
     using PayloadProvider = std::function<std::optional<std::vector<uint8_t>>(const uint256&)>;
 
-    explicit P2PNode(boost::asio::io_context& io, uint16_t listenPort);
-    ~P2PNode();
+    explicit P2PNetwork(boost::asio::io_context& io, uint16_t listenPort);
+    ~P2PNetwork();
 
     void RegisterHandler(const std::string& cmd, Handler h);
     void AddPeerAddress(const std::string& address);
     void Start();
     void Stop();
+    void connect_to_peers();
+    void handle_incoming();
     uint16_t ListenPort() const;
     void Broadcast(const Message& msg);
     void SendTo(const std::string& peerId, const Message& msg);
@@ -60,6 +62,8 @@ public:
 
 private:
     struct PeerState;
+
+    static constexpr uint32_t k_message_magic = 0xd1a0c0deU;
 
     void AcceptLoop();
     void ConnectSeeds();
@@ -96,9 +100,12 @@ private:
     PayloadProvider m_blockProvider;
     uint32_t m_localHeight{0};
     const size_t m_maxMsgsPerMinute{200};
+    const size_t m_maxPeers{64};
     const int m_banThreshold{100};
     const std::chrono::minutes m_banTime{10};
     bool m_stopped{false};
 };
+
+using P2PNode = P2PNetwork; // backward compatibility for existing call sites
 
 } // namespace net
