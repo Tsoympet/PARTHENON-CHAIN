@@ -24,7 +24,10 @@ jobs:
 
     env:
       VERSION: ${{ github.ref_name }}
-      CCACHE_DIR: ${{ runner.temp }}/ccache
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      GPG_KEY: ${{ secrets.GPG_KEY }}
+      GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+      HAS_GPG_KEY: ${{ secrets.GPG_KEY != '' }}
 
     steps:
       - name: Checkout
@@ -168,19 +171,14 @@ jobs:
           fi
 
       - name: Import GPG key (optional)
-        if: secrets.GPG_KEY != ''
+        if: env.HAS_GPG_KEY == 'true'
         shell: bash
-        env:
-          GPG_KEY: ${{ secrets.GPG_KEY }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
           echo "$GPG_KEY" | gpg --batch --yes --import
 
       - name: Sign artifacts (optional)
-        if: secrets.GPG_KEY != ''
+        if: env.HAS_GPG_KEY == 'true'
         shell: bash
-        env:
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
           cd dist/${{ matrix.os }}
           for f in *; do
@@ -210,6 +208,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       VERSION: ${{ github.ref_name }}
+      GPG_KEY: ${{ secrets.GPG_KEY }}
+      GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+      HAS_GPG_KEY: ${{ secrets.GPG_KEY != '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -230,10 +231,7 @@ jobs:
           fi
 
       - name: Import GPG key (optional)
-        if: secrets.GPG_KEY != ''
-        env:
-          GPG_KEY: ${{ secrets.GPG_KEY }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        if: env.HAS_GPG_KEY == 'true'
         run: echo "$GPG_KEY" | gpg --batch --yes --import
 
       - name: Create GitHub Release
