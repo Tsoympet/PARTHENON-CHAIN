@@ -1,5 +1,9 @@
 #include "merkle.h"
+
+#include "../crypto/tagged_hash.h"
+
 #include <cstring>
+#include <span>
 #include <stdexcept>
 
 uint256 ComputeMerkleRoot(const std::vector<Transaction>& txs)
@@ -23,7 +27,7 @@ uint256 ComputeMerkleRoot(const std::vector<Transaction>& txs)
             uint8_t concat[64];
             std::memcpy(concat, layer[i].data(), 32);
             std::memcpy(concat + 32, layer[i + 1].data(), 32);
-            next.push_back(TaggedHash("MERKLE", concat, sizeof(concat)));
+            next.push_back(tagged_hash("MERKLE", std::span<const uint8_t>(concat, sizeof(concat))));
         }
         layer.swap(next);
     }

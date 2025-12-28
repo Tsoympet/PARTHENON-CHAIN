@@ -1,20 +1,45 @@
 #include "tagged_hash.h"
-#include <cstring>
+
+#include <openssl/sha.h>
+
 #include <vector>
 
-uint256 TaggedHash(
-    const std::string& tag,
-    const uint8_t* data,
-    size_t len)
-{
-    auto tagHash = SHA256(reinterpret_cast<const uint8_t*>(tag.data()), tag.size());
+namespace {
 
-    // Build the preimage: tagHash || tagHash || data
-    std::vector<uint8_t> preimage;
-    preimage.reserve(tagHash.size() * 2 + len);
-    preimage.insert(preimage.end(), tagHash.begin(), tagHash.end());
-    preimage.insert(preimage.end(), tagHash.begin(), tagHash.end());
-    preimage.insert(preimage.end(), data, data + len);
+// Helper: compute SHA256 over arbitrary buffers.
+static bool sha256_once(const uint8_t* data, size_t len, uint8_t out[32]) {
+    if (!data || !out) {
+        return false;
+    }
+    SHA256_CTX ctx{};
+    return SHA256_Init(&ctx) == 1 &&
+           SHA256_Update(&ctx, data, len) == 1 &&
+           SHA256_Final(out, &ctx) == 1;
+}
 
-    return SHA256(preimage.data(), preimage.size());
+}  // namespace
+
+uint256 tagged_hash(const std::string& tag, const std::span<const uint8_t> data) {
+    uint8_t tag_digest[32]{};
+    uint256 result{};
+
+    // Hash the tag string once.
+    if (!sha256_once(reinterpret_cast<const uint8_t*>(tag.data()), tag.size(), tag_digest)) {
+        return result;
+    }
+
+    // Prepare SHA256(tag_hash || tag_hash || data).
+    SHA256_CTX ctx{};
+    if (SHA256_Init(&ctx) != 1) {
+        return result;
+    }
+
+    const bool updated = SHA256_Update(&ctx, tag_digest, sizeof(tag_digest)) == 1 &&
+                         SHA256_Update(&ctx, tag_digest, sizeof(tag_digest)) == 1 &&
+                         (data.empty() || SHA256_Update(&ctx, data.data(), data.size()) == 1);
+
+    if (!updated || SHA256_Final(result.data(), &ctx) != 1) {
+        result.fill(0);
+    }
+    return result;
 }

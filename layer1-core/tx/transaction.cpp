@@ -1,5 +1,9 @@
 #include "transaction.h"
+
+#include "../crypto/tagged_hash.h"
+
 #include <cstring>
+#include <span>
 #include <stdexcept>
 
 static void WriteUint32(std::vector<uint8_t>& out, uint32_t v)
@@ -98,7 +102,7 @@ Transaction DeserializeTransaction(const std::vector<uint8_t>& data)
 uint256 TransactionHash(const Transaction& tx)
 {
     auto bytes = Serialize(tx);
-    return TaggedHash("TX", bytes.data(), bytes.size());
+    return tagged_hash("TX", std::span<const uint8_t>(bytes.data(), bytes.size()));
 }
 
 uint256 Transaction::GetHash() const

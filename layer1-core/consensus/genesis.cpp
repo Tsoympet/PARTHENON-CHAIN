@@ -6,6 +6,7 @@
 #include <array>
 #include <boost/multiprecision/cpp_int.hpp>
 #include <limits>
+#include <span>
 #include <stdexcept>
 #include <vector>
 
@@ -61,7 +62,7 @@ cpp_int ToInteger(const std::array<uint8_t, 32>& target)
 
 uint256 ComputeBlockHash(const BlockHeader& header)
 {
-    return TaggedHash("BLOCK", reinterpret_cast<const uint8_t*>(&header), sizeof(BlockHeader));
+    return tagged_hash("BLOCK", std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(&header), sizeof(BlockHeader)));
 }
 
 bool CheckProofOfWork(const BlockHeader& header)
