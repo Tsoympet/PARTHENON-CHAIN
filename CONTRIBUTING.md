@@ -28,6 +28,15 @@ By participating, you agree to abide by the [Code of Conduct](CODE_OF_CONDUCT.md
 - **Layer 3 (Desktop):** Prioritize UX clarity and user safety. Avoid adding implicit trust assumptions.
 - **Scripts/Miners/Docs:** Ensure transparency and reproducibility. Avoid opaque binaries or vendor-specific dependencies without justification.
 
+## Security-Critical Contributions
+
+Consensus, cryptography, and wallet key-handling changes require extra scrutiny:
+
+- Open a draft PR early with a clear risk section and test plan; flag as **consensus/crypto** in the template.
+- Require at least two reviewers familiar with consensus/crypto code, plus fuzz/regression coverage for boundary cases.
+- Include test vectors, adversarial scenarios (reorgs, malformed messages), and performance impact notes.
+- Expect longer review cycles; avoid combining refactors with behavior changes in these areas.
+
 ## Coding Style
 
 - **Language Standard:** C++17 for core components. Use modern idioms conservatively and prefer clarity over cleverness.

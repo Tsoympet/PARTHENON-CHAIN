@@ -1,0 +1,7 @@
+{
+  "platform": "immunefi",
+  "status": "planned",
+  "contact": "security@drachma.org",
+  "scope": ["consensus", "networking", "wallet", "miners", "build"],
+  "notes": "Bug bounty program will launch with mainnet release candidate; rewards and rules forthcoming."
+}
