@@ -4,6 +4,18 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version_tag:
+        description: "Version label to use when manually triggering the workflow"
+        required: true
+        default: "v0.0.0-devtest"
+      publish_release:
+        description: "Publish a GitHub release (leave false for dry-run builds)"
+        required: true
+        default: "false"
+        type: choice
+        options: ["false", "true"]
 
 permissions:
   contents: write
@@ -23,8 +35,11 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
     env:
-      VERSION: ${{ github.ref_name }}
-      CCACHE_DIR: ${{ runner.temp }}/ccache
+      VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version_tag || github.ref_name }}
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      GPG_KEY: ${{ secrets.GPG_KEY }}
+      GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+      HAS_GPG_KEY: ${{ secrets.GPG_KEY != '' }}
 
     steps:
       - name: Checkout
@@ -168,19 +183,14 @@ jobs:
           fi
 
       - name: Import GPG key (optional)
-        if: secrets.GPG_KEY != ''
+        if: env.HAS_GPG_KEY == 'true'
         shell: bash
-        env:
-          GPG_KEY: ${{ secrets.GPG_KEY }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
           echo "$GPG_KEY" | gpg --batch --yes --import
 
       - name: Sign artifacts (optional)
-        if: secrets.GPG_KEY != ''
+        if: env.HAS_GPG_KEY == 'true'
         shell: bash
-        env:
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
           cd dist/${{ matrix.os }}
           for f in *; do
@@ -209,7 +219,11 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     env:
-      VERSION: ${{ github.ref_name }}
+      VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version_tag || github.ref_name }}
+      GPG_KEY: ${{ secrets.GPG_KEY }}
+      GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+      HAS_GPG_KEY: ${{ secrets.GPG_KEY != '' }}
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.publish_release == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -230,10 +244,7 @@ jobs:
           fi
 
       - name: Import GPG key (optional)
-        if: secrets.GPG_KEY != ''
-        env:
-          GPG_KEY: ${{ secrets.GPG_KEY }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        if: env.HAS_GPG_KEY == 'true'
         run: echo "$GPG_KEY" | gpg --batch --yes --import
 
       - name: Create GitHub Release
