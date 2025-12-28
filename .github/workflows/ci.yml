@@ -22,4 +22,4 @@ jobs:
 
       - name: Test
         run: ctest --test-dir build --output-on-failure
-CODECOV_TOKEN=bacfe94a-4168-4328-88a6-9584a651cd1d
+
