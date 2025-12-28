@@ -26,9 +26,10 @@ bool schnorr_verify(const uint8_t* public_key_33_compressed,
                     const uint8_t* sig_64);
 
 // Convenience wrapper used by legacy call sites that provide an x-only public
-// key, raw message bytes, and a 64-byte signature. The wrapper hashes the
-// message with SHA-256 and feeds a 33-byte even-parity compressed public key
-// into the lower-level schnorr_verify routine.
+// key, raw message bytes, and a 64-byte signature. When the message is already
+// a 32-byte digest (as with BIP-340 test vectors), the digest is used as-is;
+// otherwise the message is hashed with SHA-256 before verifying with the
+// lower-level schnorr_verify routine.
 bool VerifySchnorr(const std::array<uint8_t, 32>& pubkey_x,
                    const std::array<uint8_t, 64>& sig,
                    const std::vector<uint8_t>& msg);

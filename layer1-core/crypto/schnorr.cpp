@@ -423,16 +423,23 @@ bool schnorr_verify(const uint8_t* public_key_33_compressed,
 bool VerifySchnorr(const std::array<uint8_t, 32>& pubkey_x,
                    const std::array<uint8_t, 64>& sig,
                    const std::vector<uint8_t>& msg) {
+    // If the caller already provides a 32-byte digest (as used by BIP-340
+    // vectors), avoid hashing again. Otherwise, hash the raw bytes so legacy
+    // call sites keep their behavior.
     std::array<uint8_t, 32> msg_hash{};
-    SHA256_CTX ctx;
-    if (SHA256_Init(&ctx) != 1) {
-        return false;
-    }
-    if (!msg.empty() && SHA256_Update(&ctx, msg.data(), msg.size()) != 1) {
-        return false;
-    }
-    if (SHA256_Final(msg_hash.data(), &ctx) != 1) {
-        return false;
+    if (msg.size() == msg_hash.size()) {
+        std::copy(msg.begin(), msg.end(), msg_hash.begin());
+    } else {
+        SHA256_CTX ctx;
+        if (SHA256_Init(&ctx) != 1) {
+            return false;
+        }
+        if (!msg.empty() && SHA256_Update(&ctx, msg.data(), msg.size()) != 1) {
+            return false;
+        }
+        if (SHA256_Final(msg_hash.data(), &ctx) != 1) {
+            return false;
+        }
     }
 
     std::array<uint8_t, 33> compressed_pub{};
