@@ -1,1 +1,34 @@
+codecov:
+  max_report_age: 1
+  require_ci_to_pass: false
+  token: bacfe94a-4168-4328-88a6-9584a651cd1d
 
+comment:
+  behavior: default
+  layout: reach, diff, flags, files
+  require_changes:
+    - 0
+
+coverage:
+  precision: 2
+  range:
+    - 50.0
+    - 100.0
+  round: down
+  status:
+    patch:
+      default:
+        informational: true
+        target: auto
+        threshold: 5.0
+    project:
+      default:
+        informational: true
+        target: auto
+        threshold: 5.0
+
+ignore:
+  - (?s:tests/.*)\Z
+  - (?s:docs/.*)\Z
+  - (?s:.*/build/.*)\Z
+  - (?s:.*/_deps/.*)\Z
