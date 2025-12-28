@@ -44,6 +44,9 @@ jobs:
 
       # Keep all your existing steps up to "Upload artifacts" – they are solid with minor path tweaks if needed
 
+      - name: Prepare build output directory
+        run: mkdir -p dist/${{ matrix.os }}
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -62,10 +65,31 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Prepare artifact directory
+        run: mkdir -p artifacts
+
       - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+          pattern: release-*
+          merge-multiple: false
+          if-no-artifacts-found: error
+
+      - name: Validate downloaded artifacts
+        run: |
+          if [ ! -d artifacts ]; then
+            echo "Artifact directory is missing after download."
+            exit 1
+          fi
+
+          echo "Downloaded artifact directories:"
+          find artifacts -maxdepth 1 -mindepth 1 -type d -print | sed 's/^/ - /'
+
+          if ! find artifacts -type f -print -quit | grep -q .; then
+            echo "No artifacts downloaded from build job. Ensure 'Upload artifacts' succeeds."
+            exit 1
+          fi
 
       - name: Display structure and flatten
         run: |
