@@ -24,6 +24,10 @@ Use this checklist when cutting a new tag (e.g., `v0.1.0-rc`). Copy into the Git
   - [ ] Upload binaries/installers, `checksums.txt`, SBOM, and signatures.
   - [ ] Mark as pre-release for `-rc`/`-testnet` tags.
 - [ ] Update docs/website links if download URLs changed.
+- [ ] Publish container images to GitHub Packages (GHCR):
+  - [ ] Choose **Container registry (ghcr.io)** when prompted to publish the first package.
+  - [ ] Tag images as `ghcr.io/<org>/drachmad:<tag>` and `ghcr.io/<org>/drachma-wallet:<tag>` (matching the Git tag).
+  - [ ] Push with `docker login ghcr.io` + `docker push`; confirm the packages appear under the **Packages** tab.
 
 ## Announce
 - [ ] Post release notes and download links to Matrix/Discord/Reddit/X.
