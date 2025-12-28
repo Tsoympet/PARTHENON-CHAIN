@@ -87,6 +87,7 @@ jobs:
           find artifacts -maxdepth 1 -mindepth 1 -type d -print | sed 's/^/ - /'
 
           if ! find artifacts -type f -print -quit | grep -q .; then
+          if [ -z "$(find artifacts -type f 2>/dev/null)" ]; then
             echo "No artifacts downloaded from build job. Ensure 'Upload artifacts' succeeds."
             exit 1
           fi
