@@ -9,6 +9,7 @@
 [![GitHub Forks](https://img.shields.io/github/forks/Tsoympet/BlockChainDrachma?style=social)](https://github.com/Tsoympet/BlockChainDrachma/network/members)
 [![Open Issues](https://img.shields.io/github/issues/Tsoympet/BlockChainDrachma)](https://github.com/Tsoympet/BlockChainDrachma/issues)
 [![Security Policy](https://img.shields.io/badge/Security-Policy-orange)](SECURITY.md)
+[![Audit Status](https://img.shields.io/badge/Audit-In%20preparation-blueviolet)](docs/audit-guide.md)
 [![Discussions](https://img.shields.io/badge/Discussions-join-blue.svg)](#community--support)
 [![Roadmap](https://img.shields.io/badge/Roadmap-See%20plans-8A2BE2)](ROADMAP.md)
 
@@ -182,6 +183,16 @@ Use this checklist before connecting to mainnet or distributing binaries:
 - **Docs in motion:** Roadmaps and technical parameters may shift after audit feedback; always consult the latest tagged release notes.
 
 Mainnet procedures and host preparation steps are detailed in [`docs/deployment.md`](docs/deployment.md) and security reviews are outlined in [`docs/audit-guide.md`](docs/audit-guide.md).
+
+---
+
+## Security
+
+- Review the [Security Policy](SECURITY.md) for responsible disclosure and response timelines.
+- Consult the [Security Audit Guide](docs/audit-guide.md) for scope, fuzzing targets, and testnet/regtest setups.
+- See the [Threat Model](docs/threat-model.md) for adversaries, assets, and mitigations guiding validation and monitoring.
+
+Security-impacting changes and reports are welcomed; consensus/crypto modifications require additional review as noted in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
