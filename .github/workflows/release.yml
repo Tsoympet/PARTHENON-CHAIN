@@ -4,6 +4,18 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version_tag:
+        description: "Version label to use when manually triggering the workflow"
+        required: true
+        default: "v0.0.0-devtest"
+      publish_release:
+        description: "Publish a GitHub release (leave false for dry-run builds)"
+        required: true
+        default: "false"
+        type: choice
+        options: ["false", "true"]
 
 permissions:
   contents: write
@@ -23,8 +35,8 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
     env:
-      VERSION: ${{ github.ref_name }}
-      CCACHE_DIR: ${{ runner.temp }}/ccache
+      VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version_tag || github.ref_name }}
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
 
     steps:
       - name: Checkout
@@ -42,14 +54,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential ninja-build cmake pkg-config \
             qtbase6-dev qttools6-dev-tools qt6-base-dev qt6-tools-dev-tools qt6-l10n-tools qt6-svg-dev \
-            libx11-xcb-dev patchelf libgl1-mesa-dev gpg \
+            libx11-xcb-dev patchelf libgl1-mesa-dev \
             libfuse2 wget
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
           brew update
-          brew install cmake ninja qt@6 coreutils gpg syft
+          brew install cmake ninja qt@6 coreutils syft
           echo "/opt/homebrew/opt/qt@6/bin" >> $GITHUB_PATH
 
       - name: Install dependencies (Windows)
@@ -57,7 +69,7 @@ jobs:
         shell: powershell
         run: |
           choco install -y cmake --installargs 'ADD_CMAKE_TO_PATH=1'
-          choco install -y ninja gnupg syft
+          choco install -y ninja syft
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v3
@@ -167,27 +179,6 @@ jobs:
             sha256sum * > checksums.txt
           fi
 
-      - name: Import GPG key (optional)
-        if: secrets.GPG_KEY != ''
-        shell: bash
-        env:
-          GPG_KEY: ${{ secrets.GPG_KEY }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        run: |
-          echo "$GPG_KEY" | gpg --batch --yes --import
-
-      - name: Sign artifacts (optional)
-        if: secrets.GPG_KEY != ''
-        shell: bash
-        env:
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        run: |
-          cd dist/${{ matrix.os }}
-          for f in *; do
-            [ -f "$f" ] || continue
-            gpg --batch --yes --passphrase "$GPG_PASSPHRASE" --output "$f.sig" --detach-sign "$f"
-          done
-
       - name: Generate SBOM
         shell: bash
         run: |
@@ -205,11 +196,12 @@ jobs:
           path: dist/${{ matrix.os }}
 
   publish:
+    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.publish_release == 'true' }}
     name: Publish release
     needs: build
     runs-on: ubuntu-latest
     env:
-      VERSION: ${{ github.ref_name }}
+      VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version_tag || github.ref_name }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -228,13 +220,6 @@ jobs:
             echo "Release ${VERSION}" > release_notes.md
             echo "See CHANGELOG.md for details." >> release_notes.md
           fi
-
-      - name: Import GPG key (optional)
-        if: secrets.GPG_KEY != ''
-        env:
-          GPG_KEY: ${{ secrets.GPG_KEY }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        run: echo "$GPG_KEY" | gpg --batch --yes --import
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
