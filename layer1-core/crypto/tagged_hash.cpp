@@ -19,7 +19,7 @@ static bool sha256_once(const uint8_t* data, size_t len, uint8_t out[32]) {
 
 }  // namespace
 
-uint256 tagged_hash(const std::string& tag, const std::span<const uint8_t> data) {
+uint256 tagged_hash(const std::string& tag, const uint8_t* data, size_t size) {
     uint8_t tag_digest[32]{};
     uint256 result{};
 
@@ -36,7 +36,7 @@ uint256 tagged_hash(const std::string& tag, const std::span<const uint8_t> data)
 
     const bool updated = SHA256_Update(&ctx, tag_digest, sizeof(tag_digest)) == 1 &&
                          SHA256_Update(&ctx, tag_digest, sizeof(tag_digest)) == 1 &&
-                         (data.empty() || SHA256_Update(&ctx, data.data(), data.size()) == 1);
+                         (size == 0 || SHA256_Update(&ctx, data, size) == 1);
 
     if (!updated || SHA256_Final(result.data(), &ctx) != 1) {
         result.fill(0);
