@@ -143,7 +143,7 @@ bool BridgeManager::Refund(const std::string& lockId, uint64_t currentHeight)
     auto existing = GetLock(lockId);
     if (!existing) return false;
     auto lock = *existing;
-    if (lock.claimed || lock.refunded) return false;
+    if (lock.refunded) return false;
     if (currentHeight < lock.timeoutHeight) return false;
 
     lock.refunded = true;
