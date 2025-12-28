@@ -104,7 +104,7 @@ DRACHMA keeps the base layer minimal. A merge-mined PoW sidechain adds a **modif
 - **Balances:** view mainnet DRM and sidechain wDRM separately.
 - **Bridge:** lock DRM to mint wDRM; burn wDRM to unlock DRM using the peg bridge.
 - **Smart contracts:** paste ABI JSON or use ERC-20/721 presets, then call or send transactions to contracts.
-- **NFTs:** browse owned tokens, transfer them, and mint if a contract allows it.
+- **NFTs:** browse owned tokens, transfer them, mint with metadata URIs (IPFS gateway supported), and manage approvals/operators.
 - **dApps:** launch a built-in WebEngine browser pointed at a local or configurable gateway (default `http://localhost:8080`).
 
 Sidechain support can be disabled entirely in **Settings → Sidechain support**. When disabled, the tab hides and the mainnet wallet remains unchanged.

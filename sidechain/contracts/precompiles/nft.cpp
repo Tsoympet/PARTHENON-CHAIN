@@ -9,6 +9,8 @@ namespace {
 constexpr uint64_t k_gas_mint = 50'000;
 constexpr uint64_t k_gas_transfer = 25'000;
 constexpr uint64_t k_gas_owner_of = 5'000;
+constexpr uint64_t k_gas_metadata = 2'000;
+constexpr uint64_t k_gas_approval = 8'000;
 
 std::array<uint8_t, 32> to_bytes32(const uint256& value) {
     std::array<uint8_t, 32> out{};
@@ -48,6 +50,28 @@ std::string nft_precompile::encode_token_key(const uint256& token_id) const {
     return key;
 }
 
+std::string nft_precompile::encode_metadata_key(const uint256& token_id) const {
+    const auto bytes = to_bytes32(mask_word(token_id));
+    std::string key = "nft:meta:";
+    key.append(reinterpret_cast<const char*>(bytes.data()), bytes.size());
+    return key;
+}
+
+std::string nft_precompile::encode_operator_key(const address& owner, const address& operator_addr) const {
+    std::string key = "nft:op:";
+    key.append(encode_address(owner));
+    key.push_back(':');
+    key.append(encode_address(operator_addr));
+    return key;
+}
+
+std::string nft_precompile::encode_token_approval_key(const uint256& token_id) const {
+    const auto bytes = to_bytes32(mask_word(token_id));
+    std::string key = "nft:approval:";
+    key.append(reinterpret_cast<const char*>(bytes.data()), bytes.size());
+    return key;
+}
+
 std::string nft_precompile::encode_address(const address& addr) {
     return std::string(reinterpret_cast<const char*>(addr.data()), addr.size());
 }
@@ -60,7 +84,7 @@ bool nft_precompile::decode_address(const std::string& value, address& out) {
     return true;
 }
 
-nft_result nft_precompile::mint(const uint256& token_id, const address& to) {
+nft_result nft_precompile::mint(const uint256& token_id, const address& to, const std::string& metadata_uri) {
     nft_result result{};
     result.gas_used = k_gas_mint;
 
@@ -72,14 +96,55 @@ nft_result nft_precompile::mint(const uint256& token_id, const address& to) {
         return result;
     }
 
-    status = db_->Put(leveldb::WriteOptions(), token_key, encode_address(to));
+    leveldb::WriteOptions write_opts;
+    status = db_->Put(write_opts, token_key, encode_address(to));
     if (!status.ok()) {
         result.error = status.ToString();
         return result;
     }
 
+    if (!metadata_uri.empty()) {
+        status = db_->Put(write_opts, encode_metadata_key(token_id), metadata_uri);
+        if (!status.ok()) {
+            result.error = status.ToString();
+            return result;
+        }
+    }
+
     result.success = true;
     result.owner = to;
+    result.metadata_uri = metadata_uri;
+    return result;
+}
+
+nft_result nft_precompile::burn(const address& owner, const uint256& token_id) {
+    nft_result result{};
+    result.gas_used = k_gas_transfer;
+
+    const std::string token_key = encode_token_key(token_id);
+    std::string stored_owner;
+    auto status = db_->Get(leveldb::ReadOptions(), token_key, &stored_owner);
+    if (!status.ok()) {
+        result.error = "token not minted";
+        return result;
+    }
+
+    address current_owner{};
+    if (!decode_address(stored_owner, current_owner) || !addresses_equal(current_owner, owner)) {
+        result.error = "burn not authorized";
+        return result;
+    }
+
+    leveldb::WriteOptions write_opts;
+    status = db_->Delete(write_opts, token_key);
+    if (!status.ok()) {
+        result.error = status.ToString();
+        return result;
+    }
+    db_->Delete(write_opts, encode_metadata_key(token_id));
+    db_->Delete(write_opts, encode_token_approval_key(token_id));
+
+    result.success = true;
     return result;
 }
 
@@ -101,19 +166,95 @@ nft_result nft_precompile::transfer(const address& from, const address& to, cons
         return result;
     }
 
-    if (!addresses_equal(current_owner, from)) {
+    std::string token_approval;
+    db_->Get(leveldb::ReadOptions(), encode_token_approval_key(token_id), &token_approval);
+    address approved_operator{};
+    bool has_token_approval = decode_address(token_approval, approved_operator);
+
+    std::string operator_flag;
+    const bool operator_whitelisted = db_->Get(leveldb::ReadOptions(), encode_operator_key(current_owner, from), &operator_flag).ok();
+
+    if (!addresses_equal(current_owner, from) && !operator_whitelisted && (!has_token_approval || !addresses_equal(approved_operator, from))) {
         result.error = "transfer not authorized";
         return result;
     }
 
-    status = db_->Put(leveldb::WriteOptions(), token_key, encode_address(to));
+    leveldb::WriteOptions write_opts;
+    status = db_->Put(write_opts, token_key, encode_address(to));
+    if (!status.ok()) {
+        result.error = status.ToString();
+        return result;
+    }
+
+    db_->Delete(write_opts, encode_token_approval_key(token_id));
+
+    result.success = true;
+    result.owner = to;
+    return result;
+}
+
+nft_result nft_precompile::approve(const address& owner, const address& operator_addr, const uint256& token_id) {
+    nft_result result{};
+    result.gas_used = k_gas_approval;
+
+    const std::string token_key = encode_token_key(token_id);
+    std::string stored_owner;
+    auto status = db_->Get(leveldb::ReadOptions(), token_key, &stored_owner);
+    if (!status.ok()) {
+        result.error = "token not minted";
+        return result;
+    }
+    address current_owner{};
+    if (!decode_address(stored_owner, current_owner) || !addresses_equal(current_owner, owner)) {
+        result.error = "approve not authorized";
+        return result;
+    }
+
+    status = db_->Put(leveldb::WriteOptions(), encode_token_approval_key(token_id), encode_address(operator_addr));
     if (!status.ok()) {
         result.error = status.ToString();
         return result;
     }
 
     result.success = true;
-    result.owner = to;
+    result.approved = true;
+    return result;
+}
+
+nft_result nft_precompile::set_approval_for_all(const address& owner, const address& operator_addr, bool approved) {
+    nft_result result{};
+    result.gas_used = k_gas_approval;
+
+    const std::string key = encode_operator_key(owner, operator_addr);
+    leveldb::WriteOptions write_opts;
+    if (approved) {
+        auto status = db_->Put(write_opts, key, "1");
+        if (!status.ok()) {
+            result.error = status.ToString();
+            return result;
+        }
+    } else {
+        db_->Delete(write_opts, key);
+    }
+
+    result.success = true;
+    result.approved = approved;
+    return result;
+}
+
+nft_result nft_precompile::token_uri(const uint256& token_id) const {
+    nft_result result{};
+    result.gas_used = k_gas_metadata;
+
+    std::string uri;
+    auto status = db_->Get(leveldb::ReadOptions(), encode_metadata_key(token_id), &uri);
+    if (!status.ok()) {
+        result.error = "metadata not set";
+        return result;
+    }
+
+    result.success = true;
+    result.metadata_uri = uri;
     return result;
 }
 

@@ -77,6 +77,15 @@ bool charge_gas(uint64_t& gas_used, uint64_t gas_limit, uint64_t base_cost, uint
     return gas_used <= gas_limit;
 }
 
+cpp_int signed_value(const cpp_int& value) {
+    const cpp_int masked = mask_word(value);
+    const cpp_int sign_bit = cpp_int(1) << (k_word_bits - 1);
+    if ((masked & sign_bit) != 0) {
+        return masked - (cpp_int(1) << k_word_bits);
+    }
+    return masked;
+}
+
 bool to_uint64_safe(const cpp_int& value, uint64_t& out) {
     if (value < 0 || value > std::numeric_limits<uint64_t>::max()) {
         return false;
@@ -188,14 +197,26 @@ evm_result execute(const evm_code& bytecode, const evm_state& state, uint64_t ga
         {0x02, 5},   // MUL
         {0x03, 3},   // SUB
         {0x04, 5},   // DIV
+        {0x06, 5},   // MOD
+        {0x07, 8},   // SMOD
+        {0x08, 8},   // ADDMOD
+        {0x09, 8},   // MULMOD
+        {0x0a, 10},  // EXP
+        {0x0b, 3},   // SIGNEXTEND
         {0x10, 3},   // LT
         {0x11, 3},   // GT
+        {0x12, 3},   // SLT
+        {0x13, 3},   // SGT
         {0x14, 3},   // EQ
         {0x15, 3},   // ISZERO
         {0x16, 3},   // AND
         {0x17, 3},   // OR
         {0x18, 3},   // XOR
         {0x19, 2},   // NOT
+        {0x1a, 3},   // BYTE
+        {0x1b, 3},   // SHL
+        {0x1c, 3},   // SHR
+        {0x1d, 3},   // SAR
         {0x20, 30},  // KECCAK256
         {0x50, 2},   // POP
         {0x51, 3},   // MLOAD
@@ -300,6 +321,78 @@ evm_result execute(const evm_code& bytecode, const evm_state& state, uint64_t ga
                 }
                 break;
             }
+            case 0x06: {  // MOD
+                const cpp_int denominator = stack_pop(ctx);
+                const cpp_int numerator = stack_pop(ctx);
+                if (!ctx.halted) {
+                    if (denominator == 0) {
+                        stack_push(ctx, cpp_int(0));
+                    } else {
+                        stack_push(ctx, numerator % denominator);
+                    }
+                }
+                break;
+            }
+            case 0x07: {  // SMOD
+                const cpp_int denominator = signed_value(stack_pop(ctx));
+                const cpp_int numerator = signed_value(stack_pop(ctx));
+                if (!ctx.halted) {
+                    if (denominator == 0) {
+                        stack_push(ctx, cpp_int(0));
+                    } else {
+                        stack_push(ctx, numerator % denominator);
+                    }
+                }
+                break;
+            }
+            case 0x08: {  // ADDMOD
+                const cpp_int modulus = stack_pop(ctx);
+                const cpp_int a = stack_pop(ctx);
+                const cpp_int b = stack_pop(ctx);
+                if (!ctx.halted) {
+                    if (modulus == 0) {
+                        stack_push(ctx, cpp_int(0));
+                    } else {
+                        stack_push(ctx, mask_word((a + b) % modulus));
+                    }
+                }
+                break;
+            }
+            case 0x09: {  // MULMOD
+                const cpp_int modulus = stack_pop(ctx);
+                const cpp_int a = stack_pop(ctx);
+                const cpp_int b = stack_pop(ctx);
+                if (!ctx.halted) {
+                    if (modulus == 0) {
+                        stack_push(ctx, cpp_int(0));
+                    } else {
+                        stack_push(ctx, mask_word((a * b) % modulus));
+                    }
+                }
+                break;
+            }
+            case 0x0a: {  // EXP
+                const cpp_int exponent = stack_pop(ctx);
+                const cpp_int base = stack_pop(ctx);
+                if (!ctx.halted) {
+                    stack_push(ctx, boost::multiprecision::pow(base, exponent));
+                }
+                break;
+            }
+            case 0x0b: {  // SIGNEXTEND
+                const cpp_int byte_index = stack_pop(ctx);
+                const cpp_int value = stack_pop(ctx);
+                if (!ctx.halted) {
+                    if (byte_index >= k_word_bits / 8) {
+                        stack_push(ctx, value);
+                    } else {
+                        const unsigned shift = static_cast<unsigned>((k_word_bits / 8 - 1 - byte_index.convert_to<unsigned>()) * 8);
+                        const cpp_int masked = mask_word(value << shift) >> shift;
+                        stack_push(ctx, masked);
+                    }
+                }
+                break;
+            }
             case 0x10: {  // LT
                 const cpp_int a = stack_pop(ctx);
                 const cpp_int b = stack_pop(ctx);
@@ -311,6 +404,22 @@ evm_result execute(const evm_code& bytecode, const evm_state& state, uint64_t ga
             case 0x11: {  // GT
                 const cpp_int a = stack_pop(ctx);
                 const cpp_int b = stack_pop(ctx);
+                if (!ctx.halted) {
+                    stack_push(ctx, a > b ? cpp_int(1) : cpp_int(0));
+                }
+                break;
+            }
+            case 0x12: {  // SLT
+                const cpp_int a = signed_value(stack_pop(ctx));
+                const cpp_int b = signed_value(stack_pop(ctx));
+                if (!ctx.halted) {
+                    stack_push(ctx, a < b ? cpp_int(1) : cpp_int(0));
+                }
+                break;
+            }
+            case 0x13: {  // SGT
+                const cpp_int a = signed_value(stack_pop(ctx));
+                const cpp_int b = signed_value(stack_pop(ctx));
                 if (!ctx.halted) {
                     stack_push(ctx, a > b ? cpp_int(1) : cpp_int(0));
                 }
@@ -359,6 +468,55 @@ evm_result execute(const evm_code& bytecode, const evm_state& state, uint64_t ga
                 const cpp_int value = stack_pop(ctx);
                 if (!ctx.halted) {
                     stack_push(ctx, mask_word(~value));
+                }
+                break;
+            }
+            case 0x1a: {  // BYTE
+                const cpp_int index = stack_pop(ctx);
+                const cpp_int value = stack_pop(ctx);
+                if (!ctx.halted) {
+                    if (index >= 32) {
+                        stack_push(ctx, cpp_int(0));
+                    } else {
+                        const auto bytes = to_bytes32(value);
+                        stack_push(ctx, cpp_int(bytes[static_cast<size_t>(index.convert_to<unsigned>())]));
+                    }
+                }
+                break;
+            }
+            case 0x1b: {  // SHL
+                const cpp_int shift = stack_pop(ctx);
+                const cpp_int value = stack_pop(ctx);
+                if (!ctx.halted) {
+                    if (shift >= k_word_bits) {
+                        stack_push(ctx, cpp_int(0));
+                    } else {
+                        stack_push(ctx, mask_word(value << shift));
+                    }
+                }
+                break;
+            }
+            case 0x1c: {  // SHR
+                const cpp_int shift = stack_pop(ctx);
+                const cpp_int value = stack_pop(ctx);
+                if (!ctx.halted) {
+                    if (shift >= k_word_bits) {
+                        stack_push(ctx, cpp_int(0));
+                    } else {
+                        stack_push(ctx, mask_word(value >> shift));
+                    }
+                }
+                break;
+            }
+            case 0x1d: {  // SAR
+                const cpp_int shift = stack_pop(ctx);
+                const cpp_int value = signed_value(stack_pop(ctx));
+                if (!ctx.halted) {
+                    if (shift >= k_word_bits) {
+                        stack_push(ctx, value < 0 ? cpp_int(-1) : cpp_int(0));
+                    } else {
+                        stack_push(ctx, mask_word(value >> shift));
+                    }
                 }
                 break;
             }
