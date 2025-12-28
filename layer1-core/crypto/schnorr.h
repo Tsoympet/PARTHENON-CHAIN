@@ -25,6 +25,15 @@ bool schnorr_verify(const uint8_t* public_key_33_compressed,
                     const uint8_t* msg_hash_32,
                     const uint8_t* sig_64);
 
+// Batch verification for multiple independent signatures. All vector inputs
+// must be identical in length. Returns true if every signature validates.
+// This routine mixes random coefficients to prevent attackers from crafting
+// degenerate batches and falls back to scalar verification when inputs are
+// inconsistent.
+bool schnorr_batch_verify(const std::vector<std::array<uint8_t, 33>>& pubkeys,
+                          const std::vector<std::array<uint8_t, 32>>& msg_hashes,
+                          const std::vector<std::array<uint8_t, 64>>& signatures);
+
 // Convenience wrapper used by legacy call sites that provide an x-only public
 // key, raw message bytes, and a 64-byte signature. When the message is already
 // a 32-byte digest (as with BIP-340 test vectors), the digest is used as-is;

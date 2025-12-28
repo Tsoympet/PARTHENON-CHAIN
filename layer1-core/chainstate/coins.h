@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <algorithm>
 #include <memory>
+#include <vector>
 
 #ifdef DRACHMA_HAVE_LEVELDB
 #include <leveldb/db.h>
@@ -35,6 +36,13 @@ public:
     void SpendUTXO(const OutPoint& out);
     void Flush() const;
 
+    // Simple transactional API used by block validation to stage updates before
+    // finalizing a new tip. Rollback restores the in-memory view without
+    // touching persistent storage.
+    void BeginTransaction();
+    void Commit();
+    void Rollback();
+
     std::size_t CachedEntries() const;
 
 private:
@@ -43,6 +51,15 @@ private:
     mutable std::unordered_map<OutPoint, TxOut, OutPointHash, OutPointEq> cache;
     std::size_t maxCacheEntries;
     mutable std::mutex mu;
+    bool inTransaction{false};
+    struct ChangeLog {
+        OutPoint out;
+        bool hadOld{false};
+        TxOut oldValue{};
+        bool hadNew{false};
+        TxOut newValue{};
+    };
+    std::vector<ChangeLog> pending;
 
 #ifdef DRACHMA_HAVE_LEVELDB
     std::unique_ptr<leveldb::DB> db;

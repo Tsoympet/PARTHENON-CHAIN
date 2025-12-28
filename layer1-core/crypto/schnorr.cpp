@@ -159,6 +159,28 @@ static bn_ptr compute_bip340_nonce(const BIGNUM* seckey,
     return k;
 }
 
+// Produce a uniform random scalar in [1, order-1].
+static bn_ptr random_scalar(const BIGNUM* order, BN_CTX* ctx) {
+    if (!order || !ctx) {
+        return bn_ptr(nullptr, &BN_clear_free);
+    }
+    std::array<uint8_t, 32> buf{};
+    bn_ptr scalar(nullptr, &BN_clear_free);
+    do {
+        if (!fill_random(buf.data())) {
+            return bn_ptr(nullptr, &BN_clear_free);
+        }
+        scalar = bn_from_bytes(buf.data(), buf.size());
+        if (!scalar) {
+            return scalar;
+        }
+        if (BN_mod(scalar.get(), scalar.get(), order, ctx) != 1) {
+            return bn_ptr(nullptr, &BN_clear_free);
+        }
+    } while (BN_is_zero(scalar.get()));
+    return scalar;
+}
+
 }  // namespace
 
 bool schnorr_sign(const uint8_t* private_key,
@@ -418,6 +440,137 @@ bool schnorr_verify(const uint8_t* public_key_33_compressed,
     const bool x_matches = CRYPTO_memcmp(rx_bytes.data(), r_bytes.data(), rx_bytes.size()) == 0;
 
     return y_even && x_matches;
+}
+
+bool schnorr_batch_verify(const std::vector<std::array<uint8_t, 33>>& pubkeys,
+                          const std::vector<std::array<uint8_t, 32>>& msg_hashes,
+                          const std::vector<std::array<uint8_t, 64>>& signatures) {
+    const size_t n = pubkeys.size();
+    if (n == 0 || msg_hashes.size() != n || signatures.size() != n) {
+        return false;
+    }
+
+    ec_group_ptr group = make_secp256k1_group();
+    if (!group) {
+        return false;
+    }
+
+    bn_ctx_ptr ctx(BN_CTX_new(), &BN_CTX_free);
+    if (!ctx) {
+        return false;
+    }
+    bn_ctx_guard guard(ctx.get());
+
+    bn_ptr order(BN_new(), &BN_clear_free);
+    bn_ptr p(BN_new(), &BN_clear_free);
+    bn_ptr a(BN_new(), &BN_clear_free);
+    bn_ptr b(BN_new(), &BN_clear_free);
+    if (!order || !p || !a || !b ||
+        EC_GROUP_get_order(group.get(), order.get(), ctx.get()) != 1 ||
+        EC_GROUP_get_curve_GFp(group.get(), p.get(), a.get(), b.get(), ctx.get()) != 1) {
+        return false;
+    }
+
+    bn_ptr scalar_sum(BN_new(), &BN_clear_free);
+    if (!scalar_sum || BN_zero(scalar_sum.get()) != 1) {
+        return false;
+    }
+
+    ec_point_ptr rhs(EC_POINT_new(group.get()), &EC_POINT_free);
+    if (!rhs || EC_POINT_set_to_infinity(group.get(), rhs.get()) != 1) {
+        return false;
+    }
+
+    for (size_t i = 0; i < n; ++i) {
+        const auto& sig = signatures[i];
+        bn_ptr r = bn_from_bytes(sig.data(), 32);
+        bn_ptr s = bn_from_bytes(sig.data() + 32, 32);
+        if (!r || !s) {
+            return false;
+        }
+        if (BN_is_negative(r.get()) || BN_cmp(r.get(), p.get()) >= 0 ||
+            BN_is_negative(s.get()) || BN_cmp(s.get(), order.get()) >= 0) {
+            return false;
+        }
+
+        // decompress R with even Y
+        std::array<uint8_t, 33> r_comp{};
+        r_comp[0] = 0x02;
+        if (!bn_to_fixed_32(r.get(), r_comp.data() + 1)) {
+            return false;
+        }
+        ec_point_ptr R = load_public_point(group.get(), r_comp.data(), ctx.get());
+        if (!R || EC_POINT_is_at_infinity(group.get(), R.get()) == 1) {
+            return false;
+        }
+
+        // load public key
+        ec_point_ptr P = load_public_point(group.get(), pubkeys[i].data(), ctx.get());
+        if (!P) {
+            return false;
+        }
+
+        // challenge e = tagged hash(r || px || m)
+        bn_ptr px(BN_new(), &BN_clear_free);
+        if (!px || EC_POINT_get_affine_coordinates_GFp(group.get(), P.get(), px.get(), nullptr, ctx.get()) != 1) {
+            return false;
+        }
+        std::array<uint8_t, 32> pub_x{};
+        if (!bn_to_fixed_32(px.get(), pub_x.data())) {
+            return false;
+        }
+        std::vector<uint8_t> preimage;
+        preimage.insert(preimage.end(), sig.begin(), sig.begin() + 32);
+        preimage.insert(preimage.end(), pub_x.begin(), pub_x.end());
+        preimage.insert(preimage.end(), msg_hashes[i].begin(), msg_hashes[i].end());
+        const auto challenge = tagged_hash("BIP0340/challenge", preimage.data(), preimage.size());
+        bn_ptr e = bn_from_bytes(challenge.data(), challenge.size());
+        if (!e || BN_mod(e.get(), e.get(), order.get(), ctx.get()) != 1) {
+            return false;
+        }
+
+        bn_ptr ai = random_scalar(order.get(), ctx.get());
+        if (!ai) {
+            return false;
+        }
+
+        bn_ptr tmp(BN_new(), &BN_clear_free);
+        if (!tmp || BN_mod_mul(tmp.get(), ai.get(), s.get(), order.get(), ctx.get()) != 1) {
+            return false;
+        }
+        if (BN_mod_add(scalar_sum.get(), scalar_sum.get(), tmp.get(), order.get(), ctx.get()) != 1) {
+            return false;
+        }
+
+        // rhs += ai * R
+        ec_point_ptr aR(EC_POINT_new(group.get()), &EC_POINT_free);
+        if (!aR || EC_POINT_mul(group.get(), aR.get(), nullptr, R.get(), ai.get(), ctx.get()) != 1) {
+            return false;
+        }
+        if (EC_POINT_add(group.get(), rhs.get(), rhs.get(), aR.get(), ctx.get()) != 1) {
+            return false;
+        }
+
+        // rhs += ai*e*P
+        bn_ptr ae(BN_new(), &BN_clear_free);
+        if (!ae || BN_mod_mul(ae.get(), ai.get(), e.get(), order.get(), ctx.get()) != 1) {
+            return false;
+        }
+        ec_point_ptr aeP(EC_POINT_new(group.get()), &EC_POINT_free);
+        if (!aeP || EC_POINT_mul(group.get(), aeP.get(), nullptr, P.get(), ae.get(), ctx.get()) != 1) {
+            return false;
+        }
+        if (EC_POINT_add(group.get(), rhs.get(), rhs.get(), aeP.get(), ctx.get()) != 1) {
+            return false;
+        }
+    }
+
+    ec_point_ptr lhs(EC_POINT_new(group.get()), &EC_POINT_free);
+    if (!lhs || EC_POINT_mul(group.get(), lhs.get(), scalar_sum.get(), nullptr, nullptr, ctx.get()) != 1) {
+        return false;
+    }
+
+    return EC_POINT_cmp(group.get(), lhs.get(), rhs.get(), ctx.get()) == 0;
 }
 
 bool VerifySchnorr(const std::array<uint8_t, 32>& pubkey_x,

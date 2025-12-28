@@ -73,10 +73,21 @@ TxOut Chainstate::GetUTXO(const OutPoint& out) const
 void Chainstate::AddUTXO(const OutPoint& out, const TxOut& txout)
 {
     std::lock_guard<std::mutex> l(mu);
+    auto itExisting = utxos.find(out);
+    if (inTransaction) {
+        ChangeLog change;
+        change.out = out;
+        change.hadOld = itExisting != utxos.end();
+        if (change.hadOld) change.oldValue = itExisting->second;
+        change.hadNew = true;
+        change.newValue = txout;
+        pending.push_back(change);
+    }
+
     utxos[out] = txout;
     cache[out] = txout;
 #ifdef DRACHMA_HAVE_LEVELDB
-    if (useDb) {
+    if (useDb && !inTransaction) {
         leveldb::WriteBatch batch;
         // value layout: [value(8)][scriptPubKey]
         std::string value;
@@ -100,10 +111,18 @@ void Chainstate::SpendUTXO(const OutPoint& out)
     std::lock_guard<std::mutex> l(mu);
     auto it = utxos.find(out);
     if (it == utxos.end()) throw std::runtime_error("spend missing utxo");
+    if (inTransaction) {
+        ChangeLog change;
+        change.out = out;
+        change.hadOld = true;
+        change.oldValue = it->second;
+        change.hadNew = false;
+        pending.push_back(change);
+    }
     utxos.erase(it);
     cache.erase(out);
 #ifdef DRACHMA_HAVE_LEVELDB
-    if (useDb) {
+    if (useDb && !inTransaction) {
         leveldb::WriteBatch batch;
         std::string key;
         key.reserve(out.hash.size() + sizeof(out.index));
@@ -169,7 +188,7 @@ void Chainstate::Persist() const
     std::lock_guard<std::mutex> l(mu);
 #ifdef DRACHMA_HAVE_LEVELDB
     if (useDb) {
-        return; // LevelDB writes are handled incrementally in Add/Spend
+        return; // LevelDB writes are handled incrementally in Add/Spend/Commit
     }
 #endif
     std::ofstream out(storagePath, std::ios::binary | std::ios::trunc);
@@ -197,6 +216,70 @@ void Chainstate::MaybeEvict() const
     while (cache.size() > target && it != cache.end()) {
         it = cache.erase(it);
     }
+}
+
+void Chainstate::BeginTransaction()
+{
+    std::lock_guard<std::mutex> l(mu);
+    pending.clear();
+    inTransaction = true;
+}
+
+void Chainstate::Commit()
+{
+    std::lock_guard<std::mutex> l(mu);
+    if (!inTransaction) return;
+
+#ifdef DRACHMA_HAVE_LEVELDB
+    if (useDb && !pending.empty()) {
+        leveldb::WriteBatch batch;
+        for (const auto& change : pending) {
+            std::string key;
+            key.reserve(change.out.hash.size() + sizeof(change.out.index));
+            key.append(reinterpret_cast<const char*>(change.out.hash.data()), change.out.hash.size());
+            key.append(reinterpret_cast<const char*>(&change.out.index), sizeof(change.out.index));
+            if (change.hadNew) {
+                std::string value;
+                value.resize(sizeof(change.newValue.value));
+                std::memcpy(value.data(), &change.newValue.value, sizeof(change.newValue.value));
+                value.append(reinterpret_cast<const char*>(change.newValue.scriptPubKey.data()), change.newValue.scriptPubKey.size());
+                batch.Put(key, value);
+            } else {
+                batch.Delete(key);
+            }
+        }
+        PersistBatch(batch);
+    }
+    const bool use_db = useDb;
+#else
+    const bool use_db = false;
+    (void)pending;
+#endif
+
+    if (!use_db) {
+        Persist();
+    }
+
+    pending.clear();
+    inTransaction = false;
+}
+
+void Chainstate::Rollback()
+{
+    std::lock_guard<std::mutex> l(mu);
+    if (!inTransaction) return;
+
+    for (auto it = pending.rbegin(); it != pending.rend(); ++it) {
+        if (it->hadOld) {
+            utxos[it->out] = it->oldValue;
+            cache[it->out] = it->oldValue;
+        } else {
+            utxos.erase(it->out);
+            cache.erase(it->out);
+        }
+    }
+    pending.clear();
+    inTransaction = false;
 }
 
 #ifdef DRACHMA_HAVE_LEVELDB

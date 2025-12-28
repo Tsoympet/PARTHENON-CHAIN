@@ -2,6 +2,9 @@
 
 #include <openssl/sha.h>
 
+#include <array>
+#include <mutex>
+#include <unordered_map>
 #include <vector>
 
 namespace {
@@ -20,12 +23,23 @@ static bool sha256_once(const uint8_t* data, size_t len, uint8_t out[32]) {
 }  // namespace
 
 uint256 tagged_hash(const std::string& tag, const uint8_t* data, size_t size) {
-    uint8_t tag_digest[32]{};
     uint256 result{};
 
-    // Hash the tag string once.
-    if (!sha256_once(reinterpret_cast<const uint8_t*>(tag.data()), tag.size(), tag_digest)) {
-        return result;
+    static std::unordered_map<std::string, std::array<uint8_t, 32>> tag_cache;
+    static std::mutex cache_mu;
+
+    std::array<uint8_t, 32> tag_digest{};
+    {
+        std::lock_guard<std::mutex> l(cache_mu);
+        auto it = tag_cache.find(tag);
+        if (it != tag_cache.end()) {
+            tag_digest = it->second;
+        } else {
+            if (!sha256_once(reinterpret_cast<const uint8_t*>(tag.data()), tag.size(), tag_digest.data())) {
+                return result;
+            }
+            tag_cache.emplace(tag, tag_digest);
+        }
     }
 
     // Prepare SHA256(tag_hash || tag_hash || data).

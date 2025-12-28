@@ -109,6 +109,10 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
 {
     if (txs.empty()) return false;
 
+    constexpr size_t MAX_TX_SIZE = 1000000; // 1MB hard cap per tx
+    constexpr size_t MAX_BLOCK_WEIGHT = 4000000; // approximate weight limit
+    constexpr uint64_t DUST_THRESHOLD = 546; // satoshi-equivalent dust floor
+
     // Coinbase must be first and unique
     if (!IsCoinbase(txs.front()))
         return false;
@@ -136,11 +140,19 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
     std::unordered_set<OutPoint, OutPointHasher, OutPointEq> seenPrevouts;
     seenPrevouts.reserve(txs.size() * 2);
     uint64_t totalFees = 0;
+    size_t runningWeight = 0;
 
     CachedLookup cachedLookup(lookup, 1024);
 
     for (size_t i = 0; i < txs.size(); ++i) {
         const auto& tx = txs[i];
+
+        const size_t txSize = Serialize(tx).size();
+        if (txSize == 0 || txSize > MAX_TX_SIZE)
+            return false;
+        runningWeight += txSize * 4; // legacy weight approximation
+        if (runningWeight > MAX_BLOCK_WEIGHT)
+            return false;
 
         uint64_t totalOut = 0;
         for (const auto& out : tx.vout) {
@@ -152,6 +164,8 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
                 return false;
             if (out.scriptPubKey.size() != 32)
                 return false; // enforce schnorr-only pubkeys
+            if (out.value < DUST_THRESHOLD)
+                return false;
         }
 
         if (i == 0) {
@@ -174,6 +188,8 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
                 return false;
             if (in.scriptSig.empty())
                 return false;
+            if (in.scriptSig.size() > 1650)
+                return false; // oversized scripts risk DoS
 
             if (!seenPrevouts.insert(in.prevout).second)
                 return false; // duplicate spend within block
