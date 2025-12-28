@@ -1,0 +1,8 @@
+<!doctype html>
+<html><body>
+<h1>Address {{ address }}</h1>
+<p>Balance: {{ balance.balance }}</p>
+<ul>
+{% for tx in history %}<li><a href="/tx/{{ tx }}">{{ tx }}</a></li>{% endfor %}
+</ul>
+</body></html>

@@ -119,6 +119,29 @@ services:
     ports:
       - "3000:3000"
 
+  explorer:
+    build:
+      context: .
+      dockerfile: explorer/Dockerfile
+    container_name: drachma-explorer
+    restart: unless-stopped
+    environment:
+      DRACHMA_RPC_URL: http://drachma-node-1:18332
+      DRACHMA_RPC_USER: user
+      DRACHMA_RPC_PASS: pass
+    depends_on:
+      - drachma-node-1
+
+  explorer-proxy:
+    image: nginx:alpine
+    container_name: drachma-explorer-proxy
+    depends_on:
+      - explorer
+    volumes:
+      - ./explorer/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "8088:80"
+
   node-monitor:
     build: .
     image: drachma/tools:latest

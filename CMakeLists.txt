@@ -8,10 +8,14 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 option(DRACHMA_BUILD_TESTS "Build Drachma test executables" ON)
 option(DRACHMA_BUILD_GUI "Build the Qt desktop wallet" OFF)
 option(DRACHMA_COVERAGE "Enable coverage instrumentation" OFF)
+option(DRACHMA_ENABLE_OPENCL "Enable OpenCL miner" OFF)
 
 find_package(OpenSSL REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system)
 find_package(CUDAToolkit QUIET)
+if(DRACHMA_ENABLE_OPENCL)
+    find_package(OpenCL QUIET)
+endif()
 
 find_path(LEVELDB_INCLUDE_DIR leveldb/db.h)
 find_library(LEVELDB_LIBRARY leveldb)
@@ -116,6 +120,23 @@ if(CUDAToolkit_FOUND)
         miners/gpu-cuda/host.cpp)
     target_link_libraries(drachma_cuda_miner PRIVATE CUDA::cudart)
     set_target_properties(drachma_cuda_miner PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+endif()
+
+if(DRACHMA_ENABLE_OPENCL AND OpenCL_FOUND)
+    add_executable(drachma_opencl_miner
+        miners/gpu-opencl/kernel.cl
+        miners/gpu-opencl/host.cpp)
+    target_include_directories(drachma_opencl_miner PRIVATE ${OpenCL_INCLUDE_DIRS})
+    target_link_libraries(drachma_opencl_miner PRIVATE ${OpenCL_LIBRARIES})
+    target_compile_definitions(drachma_opencl_miner PRIVATE CL_TARGET_OPENCL_VERSION=120)
+endif()
+
+if(DRACHMA_BUILD_GUI)
+    find_package(Qt5 COMPONENTS Widgets Network Gui REQUIRED)
+    add_executable(drachma_wallet
+        layer3-app/qt/main.cpp)
+    target_link_libraries(drachma_wallet PRIVATE Qt5::Widgets Qt5::Network Qt5::Gui)
+    target_compile_definitions(drachma_wallet PRIVATE QT_NO_KEYWORDS)
 endif()
 
 # Optional Qt GUI (off by default to avoid toolchain requirement in CI)

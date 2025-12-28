@@ -1,0 +1,10 @@
+<!doctype html>
+<html><body>
+<h1>Drachma Explorer</h1>
+<p>Hashrate: {{ stats.networkhashps }}</p>
+<p>Blocks: {{ stats.blocks }}</p>
+<form action="/block/" method="get" onsubmit="location='/block/'+this.height.value;return false;">
+<input name="height" placeholder="Block height" />
+<button type="submit">Lookup</button>
+</form>
+</body></html>
