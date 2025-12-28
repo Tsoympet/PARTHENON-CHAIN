@@ -12,7 +12,7 @@ struct OutPoint {
 struct TxIn {
     OutPoint prevout;
     std::vector<uint8_t> scriptSig;
-    uint32_t sequence;
+    uint32_t sequence{0xffffffff};
 };
 
 struct TxOut {

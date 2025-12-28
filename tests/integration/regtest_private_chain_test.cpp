@@ -24,6 +24,11 @@ Block MakePrivateBlock(const uint256& prev, uint32_t time, const consensus::Para
 
     block.transactions.push_back(coinbase);
     block.header.merkleRoot = ComputeMerkleRoot(block.transactions);
+
+    // Quickly grind a valid nonce under the very easy regtest target so header validation passes.
+    while (!powalgo::CheckProofOfWork(BlockHash(block.header), block.header.bits, params)) {
+        ++block.header.nonce;
+    }
     return block;
 }
 
