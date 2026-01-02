@@ -95,6 +95,20 @@ target_link_libraries(drachma_sidechain_evm
     PUBLIC OpenSSL::Crypto
 )
 
+add_library(drachma_sidechain_wasm
+    sidechain/wasm/runtime/engine.cpp
+    sidechain/wasm/gas/model.cpp
+    sidechain/wasm/validator/validator.cpp
+    sidechain/state/state_store.cpp
+    sidechain/rpc/wasm_rpc.cpp
+)
+
+target_include_directories(drachma_sidechain_wasm
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/sidechain
+        ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
 # Layer 2: services and orchestration
 add_library(drachma_layer2
     layer2-services/policy/policy.cpp
@@ -323,6 +337,10 @@ if(DRACHMA_BUILD_TESTS)
     add_executable(peg_bridge_test tests/sidechain/peg_bridge_test.cpp)
     target_link_libraries(peg_bridge_test PRIVATE drachma_sidechain_evm GTest::gtest_main)
     gtest_discover_tests(peg_bridge_test)
+
+    add_executable(sidechain_wasm_execution_test tests/sidechain/wasm_execution_test.cpp)
+    target_link_libraries(sidechain_wasm_execution_test PRIVATE drachma_sidechain_wasm GTest::gtest_main)
+    gtest_discover_tests(sidechain_wasm_execution_test)
 
     function(drachma_add_fuzz_target target source)
         add_executable(${target} ${source})
