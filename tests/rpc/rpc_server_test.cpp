@@ -51,7 +51,7 @@ TEST(RPC, EndpointsRespond)
     store.Import(id, priv);
     wallet::WalletBackend wallet(store);
     OutPoint op{}; op.hash.fill(1); op.index = 0;
-    TxOut out; out.value = 5000; wallet.AddUTXO(op, out);
+    TxOut out; out.value = 5000; out.assetId = static_cast<uint8_t>(AssetId::DRACHMA); wallet.AddUTXO(op, out);
 
     txindex::TxIndex index;
     index.AddBlock(op.hash, 0);
@@ -67,6 +67,7 @@ TEST(RPC, EndpointsRespond)
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
     std::string balance = RpcCall(io, 19600, "{\"method\":\"getbalance\",\"params\":null}");
+    EXPECT_NE(balance.find("asset1"), std::string::npos);
     EXPECT_NE(balance.find("5000"), std::string::npos);
 
     std::string height = RpcCall(io, 19600, "{\"method\":\"getblockcount\",\"params\":null}");

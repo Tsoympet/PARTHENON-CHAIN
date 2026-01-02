@@ -54,14 +54,39 @@ struct Params {
     uint32_t nPoSTargetSpacing{0};
     uint32_t nPoSRewardRatioNum{1};
     uint32_t nPoSRewardRatioDen{2};
+
+    // Multi-asset activation height (regenesis/fork point).
+    uint32_t nMultiAssetActivationHeight{0};
 };
 
 const Params& Main();
 const Params& Testnet();
 
+// Asset-specific monetary policy.
+struct AssetPolicy {
+    uint8_t assetId;
+    bool powAllowed;
+    bool posAllowed;
+    uint32_t powHalvingInterval;
+    uint64_t powInitialSubsidy;
+    uint64_t maxMoney;
+    uint32_t posSlotSpacing;
+    double posApr;
+    bool posEth2Curve;
+    uint64_t posSupplyTarget;
+    uint32_t minStakeAgeSlots;
+};
+
+const AssetPolicy& GetAssetPolicy(uint8_t assetId);
+bool IsMultiAssetActive(const Params& params, int height);
+
 // Monetary policy helpers.
 uint64_t GetBlockSubsidy(int height, const Params& params);
+uint64_t GetBlockSubsidy(int height, const Params& params, uint8_t assetId);
+uint64_t GetPoSReward(uint64_t stakeValue, const Params& params, uint8_t assetId);
+uint64_t GetMaxMoney(const Params& params, uint8_t assetId);
 uint64_t GetMaxMoney(const Params& params);
+bool MoneyRange(uint64_t amount, const Params& params, uint8_t assetId);
 bool MoneyRange(uint64_t amount, const Params& params);
 
 } // namespace consensus

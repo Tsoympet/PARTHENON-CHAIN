@@ -9,6 +9,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <cstring>
+#include <unordered_map>
 #include <openssl/sha.h>
 
 #include "rpcserver.h"
@@ -60,13 +61,35 @@ void RPCServer::SetBlockStorePath(std::string path)
 
 void RPCServer::AttachCoreHandlers(mempool::Mempool& pool, wallet::WalletBackend& wallet, txindex::TxIndex& index, net::P2PNode& p2p)
 {
+    auto formatBalances = [](const std::unordered_map<uint8_t, uint64_t>& balances) {
+        std::stringstream ss;
+        ss << "{";
+        bool first = true;
+        for (const auto& kv : balances) {
+            if (!first) ss << ",";
+            ss << "\"asset" << static_cast<int>(kv.first) << "\":" << kv.second;
+            first = false;
+        }
+        ss << "}";
+        return ss.str();
+    };
+
     pool.SetOnAccept([&p2p](const Transaction& tx) {
         auto payload = Serialize(tx);
         p2p.Broadcast(net::Message{"tx", payload});
     });
 
-    Register("getbalance", [&wallet](const std::string&) {
-        return std::to_string(wallet.GetBalance());
+    Register("getbalance", [&wallet, &formatBalances](const std::string& params) {
+        auto trimmed = TrimQuotes(params);
+        if (!trimmed.empty() && trimmed != "null") {
+            try {
+                uint8_t asset = static_cast<uint8_t>(std::stoul(trimmed));
+                return std::to_string(wallet.GetBalance(asset));
+            } catch (...) {
+                return std::string("null");
+            }
+        }
+        return formatBalances(wallet.GetBalances());
     });
 
     Register("getblockcount", [&index](const std::string&) {
@@ -96,9 +119,17 @@ void RPCServer::AttachCoreHandlers(mempool::Mempool& pool, wallet::WalletBackend
         return std::string("null");
     });
 
-    Register("getutxos", [&wallet](const std::string&) {
-        // lightweight balance view
-        return std::to_string(wallet.GetBalance());
+    Register("getutxos", [&wallet, &formatBalances](const std::string& params) {
+        auto trimmed = TrimQuotes(params);
+        if (!trimmed.empty() && trimmed != "null") {
+            try {
+                uint8_t asset = static_cast<uint8_t>(std::stoul(trimmed));
+                return std::to_string(wallet.GetBalance(asset));
+            } catch (...) {
+                return std::string("null");
+            }
+        }
+        return formatBalances(wallet.GetBalances());
     });
 
     Register("estimatefee", [&pool](const std::string& params) {
@@ -377,4 +408,3 @@ std::pair<std::string, std::string> RPCServer::ParseJsonRpc(const std::string& b
 }
 
 } // namespace rpc
-

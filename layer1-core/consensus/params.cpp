@@ -1,6 +1,8 @@
 #include "params.h"
 #include <algorithm>
+#include <cmath>
 #include <limits>
+#include "../tx/transaction.h"
 
 namespace {
 constexpr uint64_t COIN = 100000000ULL;
@@ -30,7 +32,8 @@ static Params mainParams {
     500,               // nPoSMinStakeDepth
     90,                // nPoSTargetSpacing (seconds)
     1,                 // PoS reward numerator
-    2                  // PoS reward denominator (50% of PoW)
+    2,                 // PoS reward denominator (50% of PoW)
+    1                  // nMultiAssetActivationHeight
 };
 
 static Params testParams {
@@ -53,33 +56,122 @@ static Params testParams {
     50,
     90,
     1,
-    2
+    2,
+    1
 };
 
 const Params& Main()    { return mainParams; }
 const Params& Testnet() { return testParams; }
 
-uint64_t GetBlockSubsidy(int height, const Params& params)
+namespace {
+
+constexpr uint32_t YEAR_SECONDS = 365 * 24 * 3600;
+constexpr double MIN_POS_REWARD_UNIT = 1.0;
+
+const AssetPolicy& DefaultPolicy()
+{
+    static AssetPolicy fallback{
+        static_cast<uint8_t>(AssetId::DRACHMA), true, true, 210000, 50 * COIN, 42000000ULL * COIN, 600, 0.04, false, 42000000ULL * COIN, 144};
+    return fallback;
+}
+
+} // namespace
+
+const AssetPolicy& GetAssetPolicy(uint8_t assetId)
+{
+    static const AssetPolicy kPolicies[] = {
+        {static_cast<uint8_t>(AssetId::TALANTON), true, false, 210000, 50 * COIN, 21000000ULL * COIN, 600, 0.0, false, 21000000ULL * COIN, 0},
+        {static_cast<uint8_t>(AssetId::DRACHMA), true, true, 210000, 50 * COIN, 42000000ULL * COIN, 600, 0.04, false, 42000000ULL * COIN, 144},
+        {static_cast<uint8_t>(AssetId::OBOLOS), false, true, 0, 0, 61000000ULL * COIN, 600, 0.05, true, 61000000ULL * COIN, 144},
+    };
+
+    for (const auto& policy : kPolicies) {
+        if (policy.assetId == assetId)
+            return policy;
+    }
+    return DefaultPolicy();
+}
+
+bool IsMultiAssetActive(const Params& params, int height)
+{
+    return height >= static_cast<int>(params.nMultiAssetActivationHeight);
+}
+
+uint64_t GetBlockSubsidy(int height, const Params& params, uint8_t assetId)
 {
     if (height < 0) return 0;
 
-    int halvings = height / static_cast<int>(params.nSubsidyHalvingInterval);
+    const auto& policy = GetAssetPolicy(assetId);
+    if (!policy.powAllowed)
+        return 0;
+
+    const uint32_t halvingInterval = policy.powHalvingInterval ? policy.powHalvingInterval : params.nSubsidyHalvingInterval;
+    int halvings = height / static_cast<int>(halvingInterval);
     if (halvings >= 64) // protect against shift overflow
         return 0;
 
-    uint64_t subsidy = 50 * COIN;
+    uint64_t subsidy = policy.powInitialSubsidy ? policy.powInitialSubsidy : 50 * COIN;
     subsidy >>= halvings;
     return subsidy;
 }
 
+uint64_t GetBlockSubsidy(int height, const Params& params)
+{
+    return GetBlockSubsidy(height, params, static_cast<uint8_t>(AssetId::DRACHMA));
+}
+
+uint64_t GetPoSReward(uint64_t stakeValue, const Params& params, uint8_t assetId)
+{
+    const auto& policy = GetAssetPolicy(assetId);
+    if (!policy.posAllowed || stakeValue == 0)
+        return 0;
+
+    const uint32_t slot = policy.posSlotSpacing ? policy.posSlotSpacing : params.nPoSTargetSpacing;
+    const double slotsPerYear = slot ? (static_cast<double>(YEAR_SECONDS) / static_cast<double>(slot)) : 0.0;
+    if (slotsPerYear == 0.0)
+        return 0;
+
+    double annualRate = policy.posApr;
+    if (policy.posEth2Curve) {
+        // Approximate Eth2-style curve: taper from 5% at low stake toward 1.5% near full participation.
+        double participation = static_cast<double>(stakeValue) / static_cast<double>(policy.posSupplyTarget ? policy.posSupplyTarget : policy.maxMoney);
+        if (participation > 1.0) participation = 1.0;
+        const double maxRate = 0.05;
+        const double minRate = 0.015;
+        annualRate = maxRate - (maxRate - minRate) * participation;
+    }
+
+    if (annualRate <= 0.0)
+        return 0;
+
+    double perSlotRate = annualRate / slotsPerYear;
+    double reward = static_cast<double>(stakeValue) * perSlotRate;
+    if (reward <= 0.0 && stakeValue)
+        reward = MIN_POS_REWARD_UNIT; // minimum unit to avoid zeroing tiny stakes
+    return static_cast<uint64_t>(reward);
+}
+
+uint64_t GetMaxMoney(const Params& params, uint8_t assetId)
+{
+    const auto& policy = GetAssetPolicy(assetId);
+    if (policy.maxMoney)
+        return policy.maxMoney;
+    return params.nMaxMoneyOut;
+}
+
 uint64_t GetMaxMoney(const Params& params)
 {
-    return params.nMaxMoneyOut;
+    return GetMaxMoney(params, static_cast<uint8_t>(AssetId::DRACHMA));
 }
 
 bool MoneyRange(uint64_t amount, const Params& params)
 {
-    return amount <= params.nMaxMoneyOut;
+    return MoneyRange(amount, params, static_cast<uint8_t>(AssetId::DRACHMA));
+}
+
+bool MoneyRange(uint64_t amount, const Params& params, uint8_t assetId)
+{
+    return amount <= GetMaxMoney(params, assetId);
 }
 
 } // namespace consensus

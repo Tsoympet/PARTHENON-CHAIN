@@ -112,6 +112,7 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
 {
     if (txs.empty()) return false;
 
+    const bool multiAssetActive = consensus::IsMultiAssetActive(params, height);
     constexpr size_t MAX_TX_SIZE = 1000000; // 1MB hard cap per tx
     constexpr size_t MAX_BLOCK_WEIGHT = 4000000; // approximate weight limit
     constexpr uint64_t DUST_THRESHOLD = 546; // satoshi-equivalent dust floor
@@ -152,13 +153,20 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
             if (!SafeAdd(coinbaseOutTotal, out.value, next))
                 return false;
             coinbaseOutTotal = next;
-            if (!consensus::MoneyRange(out.value, params) || !consensus::MoneyRange(coinbaseOutTotal, params))
+            const uint8_t assetForRange = coinbaseAsset.value_or(static_cast<uint8_t>(AssetId::DRACHMA));
+            if (!consensus::MoneyRange(out.value, params, assetForRange) || !consensus::MoneyRange(coinbaseOutTotal, params, assetForRange))
                 return false;
             if (out.scriptPubKey.size() != 32)
                 return false; // enforce schnorr-only pubkeys
         }
         if (!coinbaseAsset || !checkAsset(coinbaseAsset, txs.front().vin.front().assetId))
             return false;
+
+        if (multiAssetActive) {
+            const auto& policy = consensus::GetAssetPolicy(*coinbaseAsset);
+            if (!policy.powAllowed)
+                return false;
+        }
 
         uint64_t totalFees = 0;
 
@@ -181,7 +189,8 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
                 if (!SafeAdd(totalOut, out.value, next))
                     return false;
                 totalOut = next;
-                if (!consensus::MoneyRange(out.value, params) || !consensus::MoneyRange(totalOut, params))
+                const uint8_t assetForRange = txAsset.value_or(out.assetId);
+                if (!consensus::MoneyRange(out.value, params, assetForRange) || !consensus::MoneyRange(totalOut, params, assetForRange))
                     return false;
                 if (out.scriptPubKey.size() != 32)
                     return false; // enforce schnorr-only pubkeys
@@ -230,7 +239,7 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
                 if (!SafeAdd(totalIn, utxo->value, next))
                     return false;
                 totalIn = next;
-                if (!consensus::MoneyRange(totalIn, params))
+                if (!consensus::MoneyRange(totalIn, params, txAsset.value_or(in.assetId)))
                     return false;
             }
 
@@ -246,7 +255,9 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
                 return false;
         }
 
-        uint64_t maxCoinbase = consensus::GetBlockSubsidy(height, params);
+        uint64_t maxCoinbase = multiAssetActive && coinbaseAsset
+            ? consensus::GetBlockSubsidy(height, params, *coinbaseAsset)
+            : consensus::GetBlockSubsidy(height, params);
         if (!SafeAdd(maxCoinbase, totalFees, maxCoinbase))
             return false;
 
@@ -280,6 +291,12 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
         return false;
     if (!checkAsset(stakeAsset, stakeIn.assetId))
         return false;
+
+    if (multiAssetActive) {
+        const auto& policy = consensus::GetAssetPolicy(*stakeAsset);
+        if (!policy.posAllowed)
+            return false;
+    }
 
     auto stakedUtxo = cachedLookup(stakeIn.prevout);
     if (!stakedUtxo || stakeIn.assetId != stakedUtxo->assetId || !checkAsset(stakeAsset, stakedUtxo->assetId))
@@ -328,7 +345,8 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
         if (!addSafe(totalOutputs, out.value, nxt))
             return false;
         totalOutputs = nxt;
-        if (!consensus::MoneyRange(out.value, params) || !consensus::MoneyRange(totalOutputs, params))
+        const uint8_t rangeAsset = stakeAsset.value_or(out.assetId);
+        if (!consensus::MoneyRange(out.value, params, rangeAsset) || !consensus::MoneyRange(totalOutputs, params, rangeAsset))
             return false;
         if (out.scriptPubKey.size() != 32)
             return false;
@@ -362,7 +380,8 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
             if (!addSafe(txOutSum, out.value, nxt))
                 return false;
             txOutSum = nxt;
-            if (!consensus::MoneyRange(out.value, params) || !consensus::MoneyRange(txOutSum, params))
+            const uint8_t assetForRange = txAsset.value_or(out.assetId);
+            if (!consensus::MoneyRange(out.value, params, assetForRange) || !consensus::MoneyRange(txOutSum, params, assetForRange))
                 return false;
             if (out.scriptPubKey.size() != 32)
                 return false;
@@ -387,7 +406,7 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
             if (!addSafe(txInSum, utxo->value, nxt))
                 return false;
             txInSum = nxt;
-            if (!consensus::MoneyRange(utxo->value, params) || !consensus::MoneyRange(txInSum, params))
+            if (!consensus::MoneyRange(utxo->value, params, txAsset.value_or(in.assetId)) || !consensus::MoneyRange(txInSum, params, txAsset.value_or(in.assetId)))
                 return false;
             if (!VerifyScript(tx, inIdx, *utxo))
                 return false;
@@ -403,12 +422,14 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
         if (!addSafe(totalOutputs, txOutSum, nxt))
             return false;
         totalOutputs = nxt;
-        if (!consensus::MoneyRange(totalInputs, params) || !consensus::MoneyRange(totalOutputs, params))
+        const uint8_t assetForRange = txAsset.value_or(stakeAsset.value_or(static_cast<uint8_t>(AssetId::DRACHMA)));
+        if (!consensus::MoneyRange(totalInputs, params, assetForRange) || !consensus::MoneyRange(totalOutputs, params, assetForRange))
             return false;
     }
 
-    uint64_t subsidy = consensus::GetBlockSubsidy(height, params);
-    subsidy = subsidy * params.nPoSRewardRatioNum / params.nPoSRewardRatioDen;
+    uint64_t subsidy = multiAssetActive && stakeAsset
+        ? consensus::GetPoSReward(stakedUtxo->value, params, *stakeAsset)
+        : consensus::GetBlockSubsidy(height, params) * params.nPoSRewardRatioNum / params.nPoSRewardRatioDen;
     if (totalOutputs < totalInputs)
         return false;
     if (totalOutputs - totalInputs > subsidy)

@@ -34,6 +34,8 @@ public:
     void SetUTXOLookup(UTXOLookup lookup);
     void SyncFromLayer1(const std::vector<OutPoint>& watchlist);
     uint64_t GetBalance() const;
+    uint64_t GetBalance(uint8_t assetId) const;
+    std::unordered_map<uint8_t, uint64_t> GetBalances() const;
     Transaction CreateSpend(const std::vector<TxOut>& outputs, const KeyId& from, uint64_t fee);
 
     // HD + multisig helpers
@@ -46,7 +48,7 @@ public:
     Transaction CreateMultisigSpend(const std::vector<TxOut>& outputs, const std::vector<OutPoint>& coins, const std::vector<PrivKey>& keys, uint8_t threshold, uint64_t fee);
 
 private:
-    std::vector<UTXO> SelectCoins(uint64_t amount) const;
+    std::vector<UTXO> SelectCoins(uint64_t amount, std::optional<uint8_t> assetId = std::nullopt) const;
     std::vector<uint8_t> SignDigest(const PrivKey& key, const Transaction& tx, size_t inputIndex) const;
     PubKey DerivePub(const PrivKey& priv) const;
     void RemoveCoins(const std::vector<OutPoint>& used);

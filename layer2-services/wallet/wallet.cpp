@@ -152,11 +152,31 @@ uint64_t WalletBackend::GetBalance() const
     return total;
 }
 
-std::vector<UTXO> WalletBackend::SelectCoins(uint64_t amount) const
+uint64_t WalletBackend::GetBalance(uint8_t assetId) const
+{
+    std::lock_guard<std::mutex> g(m_mutex);
+    uint64_t total = 0;
+    for (const auto& u : m_utxos) {
+        if (u.txout.assetId == assetId)
+            total += u.txout.value;
+    }
+    return total;
+}
+
+std::unordered_map<uint8_t, uint64_t> WalletBackend::GetBalances() const
+{
+    std::lock_guard<std::mutex> g(m_mutex);
+    std::unordered_map<uint8_t, uint64_t> totals;
+    for (const auto& u : m_utxos) totals[u.txout.assetId] += u.txout.value;
+    return totals;
+}
+
+std::vector<UTXO> WalletBackend::SelectCoins(uint64_t amount, std::optional<uint8_t> assetId) const
 {
     std::vector<UTXO> chosen;
     uint64_t acc = 0;
     for (const auto& u : m_utxos) {
+        if (assetId && u.txout.assetId != *assetId) continue;
         chosen.push_back(u);
         acc += u.txout.value;
         if (acc >= amount) break;
@@ -190,14 +210,14 @@ Transaction WalletBackend::CreateSpend(const std::vector<TxOut>& outputs, const 
     if (!m_store.Get(from, key)) throw std::runtime_error("missing key");
     uint64_t value = fee;
     for (const auto& o : outputs) value += o.value;
-    auto coins = SelectCoins(value);
+    std::optional<uint8_t> spendAsset;
+    for (const auto& o : outputs) enforce_single_asset(spendAsset, o.assetId);
+    auto coins = SelectCoins(value, spendAsset);
     if (coins.empty())
         throw std::runtime_error("no inputs selected");
 
     Transaction tx;
     tx.vout = outputs;
-    std::optional<uint8_t> spendAsset;
-    for (const auto& o : outputs) enforce_single_asset(spendAsset, o.assetId);
     uint64_t inTotal = 0;
     for (const auto& c : coins) {
         enforce_single_asset(spendAsset, c.txout.assetId);

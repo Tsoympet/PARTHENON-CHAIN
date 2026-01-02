@@ -160,5 +160,39 @@ int main()
         assert(!ValidateTransactions(txs, params, 5, lookup));
     }
 
+    // PoW coinbase must not mint PoS-only assets.
+    {
+        Transaction cb = MakeCoinbase(consensus::GetBlockSubsidy(1, params));
+        cb.vout[0].assetId = static_cast<uint8_t>(AssetId::OBOLOS);
+        cb.vin[0].assetId = cb.vout[0].assetId;
+        std::vector<Transaction> txs{cb};
+        assert(!ValidateTransactions(txs, params, 1));
+    }
+
+    // PoS blocks cannot stake PoW-only assets (TLN).
+    {
+        UTXOSet utxos;
+        OutPoint prev = MakeOutPoint(0xEF, 0);
+        TxOut stakeOut = MakeTxOut(1000, static_cast<uint8_t>(AssetId::TALANTON));
+        utxos[prev] = stakeOut;
+
+        Transaction stake;
+        stake.vin.resize(1);
+        stake.vin[0].prevout = prev;
+        stake.vin[0].scriptSig = {0x01};
+        stake.vin[0].sequence = 0xffffffff;
+        stake.vin[0].assetId = static_cast<uint8_t>(AssetId::TALANTON);
+        stake.vout.push_back(MakeTxOut(0, stakeOut.assetId));
+        stake.vout.push_back(MakeTxOut(1000, stakeOut.assetId));
+
+        std::vector<Transaction> txs{stake};
+        auto lookup = [&utxos](const OutPoint& op) -> std::optional<TxOut> {
+            auto it = utxos.find(op);
+            if (it == utxos.end()) return std::nullopt;
+            return it->second;
+        };
+        assert(!ValidateTransactions(txs, params, 2, lookup, true, params.nGenesisBits, 100));
+    }
+
     return 0;
 }
