@@ -357,6 +357,12 @@ This repository now ships a working reference implementation with Layer 1/2/3 bi
 
 ## FAQ
 
+**Is the blockchain and core client ready?**
+
+- Yes. The Layer 1 consensus node (`drachmad`) is built from `layer1-core/` and is included in the testnet-ready binaries and Docker compose stack in this repo.
+- You can compile it yourself using the Quick Start steps above (`cmake --build build --parallel`) and run it with `./build/layer1-core/drachmad --network testnet ...`.
+- Public testnet seeds, faucet, and explorer endpoints are already wired into the default configs under `testnet/` and the compose stack, so you can sync a node or connect the wallet immediately.
+
 **Why SHA-256d and Schnorr instead of a novel hash or signature scheme?**
 
 - Proven cryptographic primitives with extensive peer review lower systemic risk.
