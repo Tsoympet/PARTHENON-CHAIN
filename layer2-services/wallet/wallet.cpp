@@ -19,6 +19,7 @@ using ec_group_ptr = std::unique_ptr<EC_GROUP, decltype(&EC_GROUP_free)>;
 using ec_point_ptr = std::unique_ptr<EC_POINT, decltype(&EC_POINT_free)>;
 using bn_ptr = std::unique_ptr<BIGNUM, decltype(&BN_clear_free)>;
 using bn_ctx_ptr = std::unique_ptr<BN_CTX, decltype(&BN_CTX_free)>;
+constexpr size_t XONLY_PUBKEY_SIZE = 32;
 
 ec_group_ptr make_group()
 {
@@ -37,8 +38,8 @@ bn_ptr bn_from_bytes(const uint8_t* data, size_t len)
 
 std::vector<uint8_t> to_xonly(const PubKey& pub)
 {
-    if (pub.size() < 33) return {};
-    return std::vector<uint8_t>(pub.begin() + 1, pub.end());
+    if (pub.size() < XONLY_PUBKEY_SIZE + 1) return {};
+    return std::vector<uint8_t>(pub.end() - XONLY_PUBKEY_SIZE, pub.end());
 }
 
 bool bn_to_32(const BIGNUM* bn, uint8_t out[32])
@@ -196,7 +197,7 @@ Transaction WalletBackend::CreateSpend(const std::vector<TxOut>& outputs, const 
     }
     if (inTotal > value) {
         auto changeScript = to_xonly(derive_pubkey(key));
-        if (changeScript.size() != 32) throw std::runtime_error("failed to derive change pubkey");
+        if (changeScript.size() != XONLY_PUBKEY_SIZE) throw std::runtime_error("failed to derive change pubkey");
         TxOut change{inTotal - value, changeScript};
         tx.vout.push_back(change);
     }
@@ -344,7 +345,7 @@ Transaction WalletBackend::CreateMultisigSpend(const std::vector<TxOut>& outputs
         if (!changeTemplate) {
             changeTemplate = *maybe;
         } else if (changeTemplate->scriptPubKey != maybe->scriptPubKey) {
-            throw std::runtime_error("mixed multisig scripts in change selection");
+            throw std::runtime_error("mixed script templates in change selection");
         }
         inTotal += maybe->value;
     }

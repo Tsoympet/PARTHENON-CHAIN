@@ -5,6 +5,7 @@
 #include <array>
 #include <cstring>
 #include <stdexcept>
+#include <limits>
 #include <openssl/sha.h>
 
 static void WriteUint32(std::vector<uint8_t>& out, uint32_t v)
@@ -105,6 +106,8 @@ std::array<uint8_t, 32> ComputeInputDigest(const Transaction& tx, size_t inputIn
     Transaction sanitized = tx;
     for (auto& in : sanitized.vin) in.scriptSig.clear();
     auto ser = Serialize(sanitized);
+    if (inputIndex > std::numeric_limits<uint32_t>::max())
+        throw std::runtime_error("input index overflow");
     uint32_t idx = static_cast<uint32_t>(inputIndex);
     std::array<uint8_t, 32> digest{};
     SHA256_CTX ctx;
