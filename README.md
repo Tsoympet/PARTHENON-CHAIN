@@ -327,7 +327,7 @@ drachma-blockchain/
 ├─ miners/ # Reference CPU & GPU miners
 ├─ testnet/ # Test network parameters
 ├─ docs/ # Technical documentation
-├─ tests/ # Test skeletons
+├─ tests/ # Unit, integration, and fuzz tests
 ├─ common/ # Shared utilities
 └─ scripts/ # Build and run scripts
 ```
@@ -336,7 +336,7 @@ drachma-blockchain/
 
 ## Roadmap (Proposed)
 
-- ✅ Establish repository structure and CI for skeleton components
+- ✅ Maintain repository structure and CI across components
 - 🔄 Complete Layer 1 validation logic and state transitions
 - 🔄 Harden P2P networking, mempool policy, and wallet services
 - 🔄 Finalize reference miners with reproducible build scripts (CPU/GPU)
@@ -351,8 +351,7 @@ More detail is available in [`docs/roadmap.md`](docs/roadmap.md).
 
 ## Status
 
-This repository currently contains a **complete structural skeleton** with placeholders.
-Implementation is intended to be added incrementally with full review of consensus-critical components.
+This repository now ships a working reference implementation with Layer 1/2/3 binaries, miners, and ctests wired into CI. Remaining hardening items and edge-case gaps are tracked in [`docs/AUDIT.md`](docs/AUDIT.md).
 
 ---
 

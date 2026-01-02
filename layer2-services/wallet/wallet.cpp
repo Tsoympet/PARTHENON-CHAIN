@@ -19,6 +19,7 @@ using ec_group_ptr = std::unique_ptr<EC_GROUP, decltype(&EC_GROUP_free)>;
 using ec_point_ptr = std::unique_ptr<EC_POINT, decltype(&EC_POINT_free)>;
 using bn_ptr = std::unique_ptr<BIGNUM, decltype(&BN_clear_free)>;
 using bn_ctx_ptr = std::unique_ptr<BN_CTX, decltype(&BN_CTX_free)>;
+constexpr size_t XONLY_PUBKEY_SIZE = 32;
 
 ec_group_ptr make_group()
 {
@@ -33,6 +34,12 @@ bool valid_secret(const BIGNUM* k, const BIGNUM* order)
 bn_ptr bn_from_bytes(const uint8_t* data, size_t len)
 {
     return bn_ptr(BN_bin2bn(data, static_cast<int>(len), nullptr), &BN_clear_free);
+}
+
+std::vector<uint8_t> to_xonly(const PubKey& pub)
+{
+    if (pub.size() != XONLY_PUBKEY_SIZE + 1) throw std::runtime_error("unexpected pubkey size");
+    return std::vector<uint8_t>(pub.begin() + 1, pub.begin() + 1 + XONLY_PUBKEY_SIZE);
 }
 
 bool bn_to_32(const BIGNUM* bn, uint8_t out[32])
@@ -158,19 +165,16 @@ PubKey WalletBackend::DerivePub(const PrivKey& priv) const
 
 std::vector<uint8_t> WalletBackend::SignDigest(const PrivKey& key, const Transaction& tx, size_t inputIndex) const
 {
-    auto ser = Serialize(tx);
-    std::vector<uint8_t> digest(32);
-    SHA256_CTX ctx;
-    SHA256_Init(&ctx);
-    SHA256_Update(&ctx, ser.data(), ser.size());
-    SHA256_Update(&ctx, &inputIndex, sizeof(inputIndex));
-    SHA256_Final(digest.data(), &ctx);
-
-    unsigned int len = 0;
-    std::vector<uint8_t> sig(EVP_MAX_MD_SIZE);
-    HMAC(EVP_sha256(), key.data(), key.size(), digest.data(), digest.size(), sig.data(), &len);
-    sig.resize(len);
-    return sig;
+    auto digest = ComputeInputDigest(tx, inputIndex);
+    std::array<uint8_t, 64> sig{};
+    std::array<uint8_t, 32> aux{};
+    unsigned int aux_len = 0;
+    HMAC(EVP_sha256(), key.data(), key.size(), digest.data(), digest.size(), aux.data(), &aux_len);
+    if (aux_len != 32u)
+        throw std::runtime_error("deterministic aux must be 32 bytes");
+    if (!schnorr_sign_with_aux(key.data(), digest.data(), aux.data(), sig.data()))
+        throw std::runtime_error("schnorr sign failed");
+    return std::vector<uint8_t>(sig.begin(), sig.end());
 }
 
 Transaction WalletBackend::CreateSpend(const std::vector<TxOut>& outputs, const KeyId& from, uint64_t fee)
@@ -192,7 +196,9 @@ Transaction WalletBackend::CreateSpend(const std::vector<TxOut>& outputs, const 
         inTotal += c.txout.value;
     }
     if (inTotal > value) {
-        TxOut change{inTotal - value, {0x6a}}; // OP_RETURN placeholder for change script
+        auto changeScript = to_xonly(derive_pubkey(key));
+        if (changeScript.size() != XONLY_PUBKEY_SIZE) throw std::runtime_error("invalid pubkey size for change output");
+        TxOut change{inTotal - value, changeScript};
         tx.vout.push_back(change);
     }
 
@@ -328,18 +334,27 @@ Transaction WalletBackend::CreateMultisigSpend(const std::vector<TxOut>& outputs
     Transaction tx;
     tx.vout = outputs;
     uint64_t inTotal = 0;
-    for (const auto& c : coins) {
+    std::optional<TxOut> changeTemplate;
+    for (const auto& prev : coins) {
         TxIn in;
-        in.prevout = c;
+        in.prevout = prev;
         in.sequence = 0xffffffff;
         tx.vin.push_back(in);
-        auto maybe = m_lookup ? m_lookup(c) : std::optional<TxOut>{};
+        auto maybe = m_lookup ? m_lookup(prev) : std::optional<TxOut>{};
         if (!maybe) throw std::runtime_error("missing utxo");
+        if (!changeTemplate) {
+            changeTemplate = *maybe;
+        } else if (changeTemplate->scriptPubKey != maybe->scriptPubKey) {
+            // Keep change under the same locking script as the gathered inputs to avoid weakening spend conditions when mixing policies.
+            throw std::runtime_error("cannot create change output: input UTXOs have different script types");
+        }
         inTotal += maybe->value;
     }
     if (inTotal < fee) throw std::runtime_error("fee too high");
     if (inTotal > fee) {
-        TxOut change{inTotal - fee, {0x6a}};
+        if (!changeTemplate) throw std::runtime_error("missing change template");
+        // Multisig change must mirror the gathered script, not the single-sig x-only helper used in CreateSpend.
+        TxOut change{inTotal - fee, changeTemplate->scriptPubKey};
         tx.vout.push_back(change);
     }
 

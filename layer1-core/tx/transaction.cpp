@@ -2,8 +2,11 @@
 
 #include "../crypto/tagged_hash.h"
 
+#include <array>
 #include <cstring>
 #include <stdexcept>
+#include <limits>
+#include <openssl/sha.h>
 
 static void WriteUint32(std::vector<uint8_t>& out, uint32_t v)
 {
@@ -49,6 +52,8 @@ static std::vector<uint8_t> ReadVarBytes(const std::vector<uint8_t>& data, size_
     offset += len;
     return out;
 }
+
+static const std::vector<uint8_t> EMPTY_SCRIPT;
 
 std::vector<uint8_t> Serialize(const Transaction& tx)
 {
@@ -96,6 +101,42 @@ Transaction DeserializeTransaction(const std::vector<uint8_t>& data)
     if (offset != data.size())
         throw std::runtime_error("unexpected trailing data");
     return tx;
+}
+
+std::array<uint8_t, 32> ComputeInputDigest(const Transaction& tx, size_t inputIndex)
+{
+    // Counts and indices are serialized as 32-bit values; reject impossible sizes early for consistency with the wire format.
+    if (tx.vin.size() > std::numeric_limits<uint32_t>::max())
+        throw std::runtime_error("too many inputs");
+    if (inputIndex > std::numeric_limits<uint32_t>::max())
+        throw std::runtime_error("input index overflow");
+    if (inputIndex >= tx.vin.size())
+        throw std::runtime_error("input index out of range");
+
+    std::vector<uint8_t> ser;
+    WriteUint32(ser, tx.version);
+    WriteUint32(ser, static_cast<uint32_t>(tx.vin.size()));
+    for (const auto& in : tx.vin) {
+        ser.insert(ser.end(), in.prevout.hash.begin(), in.prevout.hash.end());
+        WriteUint32(ser, in.prevout.index);
+        WriteVarBytes(ser, EMPTY_SCRIPT);
+        WriteUint32(ser, in.sequence);
+    }
+    WriteUint32(ser, static_cast<uint32_t>(tx.vout.size()));
+    for (const auto& o : tx.vout) {
+        WriteUint64(ser, o.value);
+        WriteVarBytes(ser, o.scriptPubKey);
+    }
+    WriteUint32(ser, tx.lockTime);
+
+    uint32_t idx = static_cast<uint32_t>(inputIndex);
+    std::array<uint8_t, 32> digest{};
+    SHA256_CTX ctx;
+    SHA256_Init(&ctx);
+    SHA256_Update(&ctx, ser.data(), ser.size());
+    SHA256_Update(&ctx, &idx, sizeof(idx));
+    SHA256_Final(digest.data(), &ctx);
+    return digest;
 }
 
 uint256 TransactionHash(const Transaction& tx)

@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include <vector>
 #include <cstdint>
 #include <string>
@@ -32,6 +33,7 @@ struct Transaction {
 // Serialization helpers
 std::vector<uint8_t> Serialize(const Transaction& tx);
 Transaction DeserializeTransaction(const std::vector<uint8_t>& data);
+std::array<uint8_t, 32> ComputeInputDigest(const Transaction& tx, size_t inputIndex);
 
 // Utility for tagged hash of a transaction
 uint256 TransactionHash(const Transaction& tx);
