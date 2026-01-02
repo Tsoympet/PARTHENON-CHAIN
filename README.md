@@ -40,6 +40,7 @@ Always verify signatures and checksums before running binaries.
 
 - **Latest downloads:** [GitHub Releases](https://github.com/Tsoympet/BlockChainDrachma/releases) (tar.gz/AppImage for Linux, `.zip`/`.exe` for Windows, `.dmg` for macOS).
 - **Build from source:** See [`docs/building.md`](docs/building.md) for platform-specific setup and Qt deployment tips.
+- **One-line installers:** `scripts/install-linux.sh`, `scripts/install-macos.sh`, and `scripts/install-windows.ps1` mirror Bitcoin Core’s install flow and drop `drachmad`, `drachma-cli`, and optional `drachma-qt` into your PATH.
 - **Docker quickstart:**
   ```bash
   docker-compose up -d
@@ -60,7 +61,7 @@ Always verify signatures and checksums before running binaries.
    ```
 3. **Compile:**
    ```bash
-   cmake --build build --parallel
+   cmake --build build --parallel --target drachmad drachma_cli
    ```
 4. **(Optional) Run tests:**
    ```bash
@@ -73,15 +74,21 @@ Always verify signatures and checksums before running binaries.
 
 ## Running the Node, Miner, and Wallet
 
-- **Start a testnet node:**
+- **Start a testnet node (multi-asset aware):**
   ```bash
   ./build/layer1-core/drachmad --datadir ~/.drachma --network testnet --listen --rpcuser=user --rpcpassword=pass
+  ```
+- **Query balances per asset (TLN/DRM/OBL) and staking state:**
+  ```bash
+  ./build/layer1-core/drachma-cli -rpcuser=user -rpcpassword=pass getbalance
+  ./build/layer1-core/drachma-cli -rpcuser=user -rpcpassword=pass getbalance \"DRM\"
+  ./build/layer1-core/drachma-cli -rpcuser=user -rpcpassword=pass getstakinginfo
   ```
 - **Connect the desktop wallet (Layer 3 app):**
   ```bash
   ./build/layer3-app/drachma-wallet --connect 127.0.0.1:9333
   ```
-- **CPU mining to your node:**
+- **CPU mining to your node (TLN-only PoW):**
   ```bash
   ./build/miners/cpu-miner/drachma-cpuminer --rpc http://user:pass@127.0.0.1:8332 --threads 4
   ```

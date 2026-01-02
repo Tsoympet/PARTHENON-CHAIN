@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "timestamp": 1735689600,
+  "bits": "1f00ffff",
+  "nonce": 0,
+  "merkleRoot": "0000000000000000000000000000000000000000000000000000000000000000",
+  "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "message": "DRACHMA TESTNET",
+  "multiAssetActivationHeight": 1,
+  "assets": {
+    "TLN": { "id": 0, "powAllowed": true,  "posAllowed": false, "slotSpacing": 600, "apr": 0.0,  "maxMoney": 2100000000000000 },
+    "DRM": { "id": 1, "powAllowed": true,  "posAllowed": true,  "slotSpacing": 600, "apr": 0.04, "maxMoney": 4200000000000000 },
+    "OBL": { "id": 2, "powAllowed": false, "posAllowed": true,  "slotSpacing": 600, "apr": 0.05, "maxMoney": 6100000000000000 }
+  },
+  "note": "Mine fresh testnet genesis values when regenesis occurs; placeholders are zeros until regenerated."
+}

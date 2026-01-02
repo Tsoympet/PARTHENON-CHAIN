@@ -13,6 +13,8 @@
 #include <openssl/sha.h>
 
 #include "rpcserver.h"
+#include "../../layer1-core/consensus/params.h"
+#include "../../layer1-core/tx/transaction.h"
 
 namespace http = boost::beast::http;
 
@@ -65,13 +67,31 @@ void RPCServer::AttachCoreHandlers(mempool::Mempool& pool, wallet::WalletBackend
         std::stringstream ss;
         ss << "{";
         bool first = true;
-        for (const auto& kv : balances) {
+        for (const auto& policy : consensus::GetAllAssetPolicies()) {
+            auto it = balances.find(policy.assetId);
+            uint64_t value = it == balances.end() ? 0 : it->second;
             if (!first) ss << ",";
-            ss << "\"asset" << static_cast<int>(kv.first) << "\":" << kv.second;
+            ss << "\"" << consensus::AssetSymbol(policy.assetId) << "\":" << value;
             first = false;
         }
         ss << "}";
         return ss.str();
+    };
+
+    auto parseAssetParam = [](const std::string& param, uint8_t& out) {
+        if (param.empty() || param == "null")
+            return false;
+        if (consensus::ParseAssetSymbol(param, out))
+            return true;
+        try {
+            uint8_t candidate = static_cast<uint8_t>(std::stoul(param));
+            if (IsValidAssetId(candidate)) {
+                out = candidate;
+                return true;
+            }
+        } catch (...) {
+        }
+        return false;
     };
 
     pool.SetOnAccept([&p2p](const Transaction& tx) {
@@ -79,15 +99,13 @@ void RPCServer::AttachCoreHandlers(mempool::Mempool& pool, wallet::WalletBackend
         p2p.Broadcast(net::Message{"tx", payload});
     });
 
-    Register("getbalance", [&wallet, &formatBalances](const std::string& params) {
+    Register("getbalance", [&wallet, &formatBalances, &parseAssetParam](const std::string& params) {
         auto trimmed = TrimQuotes(params);
         if (!trimmed.empty() && trimmed != "null") {
-            try {
-                uint8_t asset = static_cast<uint8_t>(std::stoul(trimmed));
-                return std::to_string(wallet.GetBalance(asset));
-            } catch (...) {
+            uint8_t asset{0};
+            if (!parseAssetParam(trimmed, asset))
                 return std::string("null");
-            }
+            return std::to_string(wallet.GetBalance(asset));
         }
         return formatBalances(wallet.GetBalances());
     });
@@ -119,15 +137,13 @@ void RPCServer::AttachCoreHandlers(mempool::Mempool& pool, wallet::WalletBackend
         return std::string("null");
     });
 
-    Register("getutxos", [&wallet, &formatBalances](const std::string& params) {
+    Register("getutxos", [&wallet, &formatBalances, &parseAssetParam](const std::string& params) {
         auto trimmed = TrimQuotes(params);
         if (!trimmed.empty() && trimmed != "null") {
-            try {
-                uint8_t asset = static_cast<uint8_t>(std::stoul(trimmed));
-                return std::to_string(wallet.GetBalance(asset));
-            } catch (...) {
+            uint8_t asset{0};
+            if (!parseAssetParam(trimmed, asset))
                 return std::string("null");
-            }
+            return std::to_string(wallet.GetBalance(asset));
         }
         return formatBalances(wallet.GetBalances());
     });
@@ -153,6 +169,53 @@ void RPCServer::AttachCoreHandlers(mempool::Mempool& pool, wallet::WalletBackend
 
     Register("sendrawtransaction", [this](const std::string& params) {
         return GetHandler("sendtx")(params);
+    });
+
+    Register("getstakinginfo", [&wallet](const std::string&) {
+        std::stringstream ss;
+        ss << "{";
+        bool first = true;
+        for (const auto& policy : consensus::GetAllAssetPolicies()) {
+            if (!first) ss << ",";
+            ss << "\"" << consensus::AssetSymbol(policy.assetId) << "\":{";
+            ss << "\"posAllowed\":" << (policy.posAllowed ? "true" : "false") << ",";
+            ss << "\"balance\":" << wallet.GetBalance(policy.assetId) << ",";
+            ss << "\"slotSpacing\":" << policy.posSlotSpacing << ",";
+            ss << "\"apr\":" << policy.posApr << "}";
+            first = false;
+        }
+        ss << "}";
+        return ss.str();
+    });
+
+    Register("getassetpolicy", [&](const std::string& params) {
+        auto trimmed = TrimQuotes(params);
+        std::stringstream ss;
+        ss << "{";
+        bool first = true;
+        for (const auto& policy : consensus::GetAllAssetPolicies()) {
+            if (!first) ss << ",";
+            ss << "\"" << consensus::AssetSymbol(policy.assetId) << "\":{";
+            ss << "\"id\":" << static_cast<int>(policy.assetId) << ",";
+            ss << "\"powAllowed\":" << (policy.powAllowed ? "true" : "false") << ",";
+            ss << "\"posAllowed\":" << (policy.posAllowed ? "true" : "false") << ",";
+            ss << "\"halvingInterval\":" << policy.powHalvingInterval << ",";
+            ss << "\"initialSubsidy\":" << policy.powInitialSubsidy << ",";
+            ss << "\"maxMoney\":" << policy.maxMoney << ",";
+            ss << "\"posSlotSpacing\":" << policy.posSlotSpacing << ",";
+            ss << "\"posApr\":" << policy.posApr << ",";
+            ss << "\"posEth2Curve\":" << (policy.posEth2Curve ? "true" : "false") << ",";
+            ss << "\"minStakeAgeSlots\":" << policy.minStakeAgeSlots << "}";
+            first = false;
+        }
+        if (!trimmed.empty() && trimmed != "null") {
+            uint8_t asset{0};
+            if (parseAssetParam(trimmed, asset)) {
+                ss << ",\"active\":" << static_cast<int>(asset);
+            }
+        }
+        ss << "}";
+        return ss.str();
     });
 }
 

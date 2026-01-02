@@ -12,6 +12,8 @@
 
 namespace {
 
+constexpr uint8_t kPowAssetId = static_cast<uint8_t>(AssetId::TALANTON);
+
 bool IsNullOutPoint(const OutPoint& prevout)
 {
     return std::all_of(prevout.hash.begin(), prevout.hash.end(), [](uint8_t b) { return b == 0; }) &&
@@ -163,6 +165,8 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
             return false;
 
         if (multiAssetActive) {
+            if (*coinbaseAsset != kPowAssetId)
+                return false;
             const auto& policy = consensus::GetAssetPolicy(*coinbaseAsset);
             if (!policy.powAllowed)
                 return false;

@@ -67,6 +67,7 @@ namespace {
 
 constexpr uint32_t YEAR_SECONDS = 365 * 24 * 3600;
 constexpr double MIN_POS_REWARD_UNIT = 1.0;
+constexpr size_t kAssetCount = static_cast<size_t>(AssetId::OBOLOS) + 1;
 
 const AssetPolicy& DefaultPolicy()
 {
@@ -90,6 +91,34 @@ const AssetPolicy& GetAssetPolicy(uint8_t assetId)
             return policy;
     }
     return DefaultPolicy();
+}
+
+std::vector<AssetPolicy> GetAllAssetPolicies()
+{
+    std::vector<AssetPolicy> out;
+    out.reserve(kAssetCount);
+    out.push_back(GetAssetPolicy(static_cast<uint8_t>(AssetId::TALANTON)));
+    out.push_back(GetAssetPolicy(static_cast<uint8_t>(AssetId::DRACHMA)));
+    out.push_back(GetAssetPolicy(static_cast<uint8_t>(AssetId::OBOLOS)));
+    return out;
+}
+
+const char* AssetSymbol(uint8_t assetId)
+{
+    switch (static_cast<AssetId>(assetId)) {
+        case AssetId::TALANTON: return "TLN";
+        case AssetId::DRACHMA:  return "DRM";
+        case AssetId::OBOLOS:   return "OBL";
+    }
+    return "UNKNOWN";
+}
+
+bool ParseAssetSymbol(const std::string& symbol, uint8_t& out)
+{
+    if (symbol == "TLN" || symbol == "talanton") { out = static_cast<uint8_t>(AssetId::TALANTON); return true; }
+    if (symbol == "DRM" || symbol == "drachma")  { out = static_cast<uint8_t>(AssetId::DRACHMA);  return true; }
+    if (symbol == "OBL" || symbol == "obolos")   { out = static_cast<uint8_t>(AssetId::OBOLOS);   return true; }
+    return false;
 }
 
 bool IsMultiAssetActive(const Params& params, int height)
@@ -117,7 +146,7 @@ uint64_t GetBlockSubsidy(int height, const Params& params, uint8_t assetId)
 
 uint64_t GetBlockSubsidy(int height, const Params& params)
 {
-    return GetBlockSubsidy(height, params, static_cast<uint8_t>(AssetId::DRACHMA));
+    return GetBlockSubsidy(height, params, static_cast<uint8_t>(AssetId::TALANTON));
 }
 
 uint64_t GetPoSReward(uint64_t stakeValue, const Params& params, uint8_t assetId)

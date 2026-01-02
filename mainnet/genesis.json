@@ -11,5 +11,11 @@
   "defaultPort": 9333,
   "powLimit": "00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
   "subsidyHalvingInterval": 210000,
+  "multiAssetActivationHeight": 1,
+  "assets": {
+    "TLN": { "id": 0, "powAllowed": true,  "posAllowed": false, "slotSpacing": 600, "apr": 0.0,  "maxMoney": 2100000000000000 },
+    "DRM": { "id": 1, "powAllowed": true,  "posAllowed": true,  "slotSpacing": 600, "apr": 0.04, "maxMoney": 4200000000000000 },
+    "OBL": { "id": 2, "powAllowed": false, "posAllowed": true,  "slotSpacing": 600, "apr": 0.05, "maxMoney": 6100000000000000 }
+  },
   "note": "Verify these fields against compiled constants before launch and during audits."
 }

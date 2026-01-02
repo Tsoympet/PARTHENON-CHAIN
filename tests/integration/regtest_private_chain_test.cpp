@@ -20,7 +20,8 @@ Block MakePrivateBlock(const uint256& prev, uint32_t time, const consensus::Para
     coinbase.vin.resize(1);
     coinbase.vin[0].prevout.index = std::numeric_limits<uint32_t>::max();
     coinbase.vin[0].scriptSig = {0x00, 0x01};
-    coinbase.vout.push_back({50 * 100'000'000ULL, std::vector<uint8_t>(32, 0x99)});
+    coinbase.vin[0].assetId = static_cast<uint8_t>(AssetId::TALANTON);
+    coinbase.vout.push_back({50 * 100'000'000ULL, std::vector<uint8_t>(32, 0x99), static_cast<uint8_t>(AssetId::TALANTON)});
 
     block.transactions.push_back(coinbase);
     block.header.merkleRoot = ComputeMerkleRoot(block.transactions);

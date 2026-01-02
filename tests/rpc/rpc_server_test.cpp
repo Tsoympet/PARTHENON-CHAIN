@@ -67,14 +67,21 @@ TEST(RPC, EndpointsRespond)
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
     std::string balance = RpcCall(io, 19600, "{\"method\":\"getbalance\",\"params\":null}");
-    EXPECT_NE(balance.find("asset1"), std::string::npos);
+    EXPECT_NE(balance.find("\"DRM\""), std::string::npos);
     EXPECT_NE(balance.find("5000"), std::string::npos);
+    EXPECT_NE(balance.find("\"TLN\""), std::string::npos);
+    EXPECT_NE(balance.find("\"OBL\""), std::string::npos);
 
     std::string height = RpcCall(io, 19600, "{\"method\":\"getblockcount\",\"params\":null}");
     EXPECT_NE(height.find("1"), std::string::npos);
 
     std::string error = RpcCall(io, 19600, "{\"method\":\"unknown\",\"params\":null}");
     EXPECT_NE(error.find("error"), std::string::npos);
+
+    std::string staking = RpcCall(io, 19600, "{\"method\":\"getstakinginfo\",\"params\":null}");
+    EXPECT_NE(staking.find("\"DRM\""), std::string::npos);
+    EXPECT_NE(staking.find("\"OBL\""), std::string::npos);
+    EXPECT_NE(staking.find("\"posAllowed\":true"), std::string::npos);
 
     io.stop();
     t.join();

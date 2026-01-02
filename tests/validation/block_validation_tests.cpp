@@ -33,6 +33,8 @@ Transaction MakeCoinbase(uint64_t value)
     tx.vin[0].sequence = 0xffffffff;
     tx.vout[0].value = value;
     tx.vout[0].scriptPubKey.assign(32, 0x01);
+    tx.vin[0].assetId = static_cast<uint8_t>(AssetId::TALANTON);
+    tx.vout[0].assetId = static_cast<uint8_t>(AssetId::TALANTON);
     return tx;
 }
 
@@ -67,7 +69,7 @@ int main()
         block.header.bits = params.nGenesisBits;
         block.header.time = 1600;
         block.header.version = 1;
-        block.transactions.push_back(MakeCoinbase(consensus::GetBlockSubsidy(1, params)));
+        block.transactions.push_back(MakeCoinbase(consensus::GetBlockSubsidy(1, params, static_cast<uint8_t>(AssetId::TALANTON))));
         block.header.merkleRoot = ComputeMerkleRoot(block.transactions);
         BlockValidationOptions opts;
         opts.medianTimePast = block.header.time - 1;
@@ -81,7 +83,7 @@ int main()
         block.header.bits = params.nGenesisBits;
         block.header.time = 1700;
         block.header.version = 1;
-        block.transactions.push_back(MakeCoinbase(consensus::GetBlockSubsidy(2, params)));
+        block.transactions.push_back(MakeCoinbase(consensus::GetBlockSubsidy(2, params, static_cast<uint8_t>(AssetId::TALANTON))));
         block.header.merkleRoot.fill(0xFF);
         BlockValidationOptions opts;
         opts.medianTimePast = block.header.time - 1;

@@ -27,6 +27,8 @@ Transaction MakeCoinbase(uint64_t value)
     tx.vin[0].sequence = 0xffffffff;
     tx.vout[0].value = value;
     tx.vout[0].scriptPubKey.assign(32, 0x01);
+    tx.vin[0].assetId = static_cast<uint8_t>(AssetId::TALANTON);
+    tx.vout[0].assetId = static_cast<uint8_t>(AssetId::TALANTON);
     return tx;
 }
 
@@ -44,7 +46,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
         // Drive transaction deserialization with arbitrary bytes.
         Transaction tx = DeserializeTransaction(buf);
         std::vector<Transaction> blockTxs;
-        blockTxs.push_back(MakeCoinbase(consensus::GetBlockSubsidy(1, params)));
+        blockTxs.push_back(MakeCoinbase(consensus::GetBlockSubsidy(1, params, static_cast<uint8_t>(AssetId::TALANTON))));
         blockTxs.push_back(tx);
         (void)ValidateTransactions(blockTxs, params, 1, {});
     } catch (const std::exception&) {

@@ -32,7 +32,7 @@ OutPoint MakeOutPoint(uint8_t seed, uint32_t index)
     return op;
 }
 
-TxOut MakeTxOut(uint64_t value, uint8_t asset = static_cast<uint8_t>(AssetId::DRACHMA))
+TxOut MakeTxOut(uint64_t value, uint8_t asset = static_cast<uint8_t>(AssetId::TALANTON))
 {
     TxOut out{};
     out.value = value;
@@ -49,7 +49,7 @@ Transaction MakeCoinbase(uint64_t value)
     coinbase.vin[0].scriptSig = {0x01, 0x02};
     coinbase.vin[0].sequence = 0xffffffff;
     TxOut reward = MakeTxOut(value);
-    coinbase.vin[0].assetId = static_cast<uint8_t>(AssetId::DRACHMA);
+    coinbase.vin[0].assetId = static_cast<uint8_t>(AssetId::TALANTON);
     coinbase.vout.push_back(reward);
     return coinbase;
 }
@@ -65,14 +65,14 @@ int main()
     // Valid coinbase-only block at height 1 should pass.
     {
         std::vector<Transaction> txs;
-        txs.push_back(MakeCoinbase(consensus::GetBlockSubsidy(1, params)));
+        txs.push_back(MakeCoinbase(consensus::GetBlockSubsidy(1, params, static_cast<uint8_t>(AssetId::TALANTON))));
         assert(ValidateTransactions(txs, params, 1));
     }
 
     // Coinbase cannot overpay subsidy when no fees exist.
     {
         std::vector<Transaction> txs;
-        txs.push_back(MakeCoinbase(consensus::GetBlockSubsidy(1, params) + 1));
+        txs.push_back(MakeCoinbase(consensus::GetBlockSubsidy(1, params, static_cast<uint8_t>(AssetId::TALANTON)) + 1));
         assert(!ValidateTransactions(txs, params, 1));
     }
 
@@ -85,7 +85,7 @@ int main()
 
     // Reject duplicate prevouts inside the same block before script execution.
     {
-        Transaction cb = MakeCoinbase(consensus::GetBlockSubsidy(2, params));
+        Transaction cb = MakeCoinbase(consensus::GetBlockSubsidy(2, params, static_cast<uint8_t>(AssetId::TALANTON)));
         Transaction spend;
         spend.vout.push_back(MakeTxOut(50));
         spend.vin.resize(2);
@@ -104,7 +104,7 @@ int main()
 
     // Reject spends that reference missing UTXOs.
     {
-        Transaction cb = MakeCoinbase(consensus::GetBlockSubsidy(3, params));
+        Transaction cb = MakeCoinbase(consensus::GetBlockSubsidy(3, params, static_cast<uint8_t>(AssetId::TALANTON)));
         Transaction spend;
         spend.vout.push_back(MakeTxOut(25));
         spend.vin.resize(1);
@@ -122,7 +122,7 @@ int main()
 
     // Reject mixed-asset outputs within a single transaction.
     {
-        Transaction cb = MakeCoinbase(consensus::GetBlockSubsidy(4, params));
+        Transaction cb = MakeCoinbase(consensus::GetBlockSubsidy(4, params, static_cast<uint8_t>(AssetId::TALANTON)));
         Transaction spend;
         spend.vout.push_back(MakeTxOut(10, static_cast<uint8_t>(AssetId::DRACHMA)));
         spend.vout.push_back(MakeTxOut(5, static_cast<uint8_t>(AssetId::OBOLOS)));
@@ -142,7 +142,7 @@ int main()
 
     // Reject asset-id mismatch between input tag and referenced UTXO/output.
     {
-        Transaction cb = MakeCoinbase(consensus::GetBlockSubsidy(5, params));
+        Transaction cb = MakeCoinbase(consensus::GetBlockSubsidy(5, params, static_cast<uint8_t>(AssetId::TALANTON)));
         Transaction spend;
         spend.vout.push_back(MakeTxOut(8, static_cast<uint8_t>(AssetId::DRACHMA)));
         spend.vin.resize(1);
@@ -162,7 +162,7 @@ int main()
 
     // PoW coinbase must not mint PoS-only assets.
     {
-        Transaction cb = MakeCoinbase(consensus::GetBlockSubsidy(1, params));
+        Transaction cb = MakeCoinbase(consensus::GetBlockSubsidy(1, params, static_cast<uint8_t>(AssetId::TALANTON)));
         cb.vout[0].assetId = static_cast<uint8_t>(AssetId::OBOLOS);
         cb.vin[0].assetId = cb.vout[0].assetId;
         std::vector<Transaction> txs{cb};

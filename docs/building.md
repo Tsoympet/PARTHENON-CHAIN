@@ -60,10 +60,10 @@ cd BlockChainDrachma
 # Configure
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 
-# Build daemons and miners
-cmake --build build --parallel
+# Build daemons, CLI, and miners
+cmake --build build --parallel --target drachmad drachma_cli drachma_cpu_miner
 ```
-Binaries appear under `build/layer1-core/` (node) and `build/miners/`.
+Binaries appear under `build/layer1-core/` (node + cli) and `build/miners/`.
 
 ## Build the Qt desktop wallet
 ```bash
@@ -106,7 +106,7 @@ The wallet binary lives under `build-wallet/` (for example `build-wallet/drachma
   ```
 - Package the node and wallet separately (zip/installer). A simple zip example:
   ```powershell
-  Compress-Archive -Path build\layer1-core\drachmad.exe,build\miners\* -DestinationPath drachma-vX.Y.Z-windows-x64.zip
+  Compress-Archive -Path build\layer1-core\drachmad.exe,build\layer1-core\drachma-cli.exe,build\miners\* -DestinationPath drachma-vX.Y.Z-windows-x64.zip
   Compress-Archive -Path build-wallet\* -DestinationPath drachma-wallet-vX.Y.Z-windows-x64.zip
   ```
 

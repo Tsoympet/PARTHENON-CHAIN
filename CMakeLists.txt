@@ -122,6 +122,15 @@ target_link_libraries(drachma_layer2
 )
 target_link_libraries(drachma_layer2 PUBLIC LevelDB::LevelDB)
 
+# Core daemon and CLI
+add_executable(drachmad layer1-core/drachmad.cpp)
+target_link_libraries(drachmad PRIVATE drachma_layer2 Boost::system)
+set_target_properties(drachmad PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/layer1-core OUTPUT_NAME "drachmad")
+
+add_executable(drachma_cli layer1-core/drachma_cli.cpp)
+target_link_libraries(drachma_cli PRIVATE Boost::system)
+set_target_properties(drachma_cli PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/layer1-core OUTPUT_NAME "drachma-cli")
+
 # Miners
 add_executable(drachma_cpu_miner miners/cpu/main.cpp miners/stratum.cpp)
 target_include_directories(drachma_cpu_miner PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/layer1-core)
@@ -183,6 +192,7 @@ if(DRACHMA_BUILD_GUI)
     add_executable(drachma_qt ${DRACHMA_QT_SOURCES} ${DRACHMA_QT_RESOURCES})
     target_include_directories(drachma_qt PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/layer1-core ${CMAKE_CURRENT_SOURCE_DIR}/layer2-services)
     target_link_libraries(drachma_qt PRIVATE ${DRACHMA_QT_LIBS} OpenSSL::SSL OpenSSL::Crypto drachma_layer2)
+    set_target_properties(drachma_qt PROPERTIES OUTPUT_NAME "drachma-qt")
 endif()
 
 # Tests
@@ -340,7 +350,7 @@ if(DRACHMA_BUILD_TESTS)
 endif()
 
 # Install rules
-install(TARGETS drachma_layer1 drachma_layer2 drachma_cpu_miner
+install(TARGETS drachma_layer1 drachma_layer2 drachma_cpu_miner drachmad drachma_cli
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib

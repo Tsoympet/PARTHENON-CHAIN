@@ -4,6 +4,7 @@
 #include <map>
 #include <limits>
 #include <string>
+#include <vector>
 #include "../block/block.h"
 
 namespace consensus {
@@ -78,6 +79,9 @@ struct AssetPolicy {
 };
 
 const AssetPolicy& GetAssetPolicy(uint8_t assetId);
+std::vector<AssetPolicy> GetAllAssetPolicies();
+const char* AssetSymbol(uint8_t assetId);
+bool ParseAssetSymbol(const std::string& symbol, uint8_t& out);
 bool IsMultiAssetActive(const Params& params, int height);
 
 // Monetary policy helpers.
