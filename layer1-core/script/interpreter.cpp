@@ -26,6 +26,7 @@ bool VerifyScript(const Transaction& tx, size_t inputIndex, const TxOut& utxo)
     std::array<uint8_t,32> pubkey{};
     std::copy(utxo.scriptPubKey.begin(), utxo.scriptPubKey.end(), pubkey.begin());
 
-    auto msg = Serialize(tx);
+    auto digest = ComputeInputDigest(tx, inputIndex);
+    std::vector<uint8_t> msg(digest.begin(), digest.end());
     return VerifySchnorr(pubkey, sig, msg);
 }

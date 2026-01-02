@@ -35,6 +35,12 @@ bn_ptr bn_from_bytes(const uint8_t* data, size_t len)
     return bn_ptr(BN_bin2bn(data, static_cast<int>(len), nullptr), &BN_clear_free);
 }
 
+std::vector<uint8_t> to_xonly(const PubKey& pub)
+{
+    if (pub.size() < 33) return {};
+    return std::vector<uint8_t>(pub.begin() + 1, pub.end());
+}
+
 bool bn_to_32(const BIGNUM* bn, uint8_t out[32])
 {
     return BN_bn2binpad(bn, out, 32) == 32;
@@ -158,19 +164,14 @@ PubKey WalletBackend::DerivePub(const PrivKey& priv) const
 
 std::vector<uint8_t> WalletBackend::SignDigest(const PrivKey& key, const Transaction& tx, size_t inputIndex) const
 {
-    auto ser = Serialize(tx);
-    std::vector<uint8_t> digest(32);
-    SHA256_CTX ctx;
-    SHA256_Init(&ctx);
-    SHA256_Update(&ctx, ser.data(), ser.size());
-    SHA256_Update(&ctx, &inputIndex, sizeof(inputIndex));
-    SHA256_Final(digest.data(), &ctx);
-
-    unsigned int len = 0;
-    std::vector<uint8_t> sig(EVP_MAX_MD_SIZE);
-    HMAC(EVP_sha256(), key.data(), key.size(), digest.data(), digest.size(), sig.data(), &len);
-    sig.resize(len);
-    return sig;
+    auto digest = ComputeInputDigest(tx, inputIndex);
+    std::array<uint8_t, 64> sig{};
+    std::array<uint8_t, 32> aux{};
+    unsigned int aux_len = 0;
+    HMAC(EVP_sha256(), key.data(), key.size(), digest.data(), digest.size(), aux.data(), &aux_len);
+    if (!schnorr_sign_with_aux(key.data(), digest.data(), aux.data(), sig.data()))
+        throw std::runtime_error("schnorr sign failed");
+    return std::vector<uint8_t>(sig.begin(), sig.end());
 }
 
 Transaction WalletBackend::CreateSpend(const std::vector<TxOut>& outputs, const KeyId& from, uint64_t fee)
@@ -192,7 +193,9 @@ Transaction WalletBackend::CreateSpend(const std::vector<TxOut>& outputs, const 
         inTotal += c.txout.value;
     }
     if (inTotal > value) {
-        TxOut change{inTotal - value, {0x6a}}; // OP_RETURN placeholder for change script
+        auto changeScript = to_xonly(derive_pubkey(key));
+        if (changeScript.size() != 32) throw std::runtime_error("failed to derive change pubkey");
+        TxOut change{inTotal - value, changeScript};
         tx.vout.push_back(change);
     }
 
@@ -339,7 +342,9 @@ Transaction WalletBackend::CreateMultisigSpend(const std::vector<TxOut>& outputs
     }
     if (inTotal < fee) throw std::runtime_error("fee too high");
     if (inTotal > fee) {
-        TxOut change{inTotal - fee, {0x6a}};
+        auto changeScript = to_xonly(derive_pubkey(keys.front()));
+        if (changeScript.size() != 32) throw std::runtime_error("failed to derive change pubkey");
+        TxOut change{inTotal - fee, changeScript};
         tx.vout.push_back(change);
     }
 

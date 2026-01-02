@@ -2,8 +2,10 @@
 
 #include "../crypto/tagged_hash.h"
 
+#include <array>
 #include <cstring>
 #include <stdexcept>
+#include <openssl/sha.h>
 
 static void WriteUint32(std::vector<uint8_t>& out, uint32_t v)
 {
@@ -96,6 +98,21 @@ Transaction DeserializeTransaction(const std::vector<uint8_t>& data)
     if (offset != data.size())
         throw std::runtime_error("unexpected trailing data");
     return tx;
+}
+
+std::array<uint8_t, 32> ComputeInputDigest(const Transaction& tx, size_t inputIndex)
+{
+    Transaction sanitized = tx;
+    for (auto& in : sanitized.vin) in.scriptSig.clear();
+    auto ser = Serialize(sanitized);
+    uint32_t idx = static_cast<uint32_t>(inputIndex);
+    std::array<uint8_t, 32> digest{};
+    SHA256_CTX ctx;
+    SHA256_Init(&ctx);
+    SHA256_Update(&ctx, ser.data(), ser.size());
+    SHA256_Update(&ctx, &idx, sizeof(idx));
+    SHA256_Final(digest.data(), &ctx);
+    return digest;
 }
 
 uint256 TransactionHash(const Transaction& tx)
