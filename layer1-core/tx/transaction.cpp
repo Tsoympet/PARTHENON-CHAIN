@@ -103,11 +103,28 @@ Transaction DeserializeTransaction(const std::vector<uint8_t>& data)
 
 std::array<uint8_t, 32> ComputeInputDigest(const Transaction& tx, size_t inputIndex)
 {
-    Transaction sanitized = tx;
-    for (auto& in : sanitized.vin) in.scriptSig.clear();
-    auto ser = Serialize(sanitized);
+    if (tx.vin.size() > std::numeric_limits<uint32_t>::max())
+        throw std::runtime_error("too many inputs");
     if (inputIndex > std::numeric_limits<uint32_t>::max())
         throw std::runtime_error("input index overflow");
+
+    std::vector<uint8_t> ser;
+    WriteUint32(ser, tx.version);
+    WriteUint32(ser, static_cast<uint32_t>(tx.vin.size()));
+    static const std::vector<uint8_t> emptyScript;
+    for (const auto& in : tx.vin) {
+        ser.insert(ser.end(), in.prevout.hash.begin(), in.prevout.hash.end());
+        WriteUint32(ser, in.prevout.index);
+        WriteVarBytes(ser, emptyScript);
+        WriteUint32(ser, in.sequence);
+    }
+    WriteUint32(ser, static_cast<uint32_t>(tx.vout.size()));
+    for (const auto& o : tx.vout) {
+        WriteUint64(ser, o.value);
+        WriteVarBytes(ser, o.scriptPubKey);
+    }
+    WriteUint32(ser, tx.lockTime);
+
     uint32_t idx = static_cast<uint32_t>(inputIndex);
     std::array<uint8_t, 32> digest{};
     SHA256_CTX ctx;

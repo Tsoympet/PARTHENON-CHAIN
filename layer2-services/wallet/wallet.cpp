@@ -39,7 +39,7 @@ bn_ptr bn_from_bytes(const uint8_t* data, size_t len)
 std::vector<uint8_t> to_xonly(const PubKey& pub)
 {
     if (pub.size() < XONLY_PUBKEY_SIZE + 1) return {};
-    return std::vector<uint8_t>(pub.end() - XONLY_PUBKEY_SIZE, pub.end());
+    return std::vector<uint8_t>(pub.begin() + 1, pub.begin() + 1 + XONLY_PUBKEY_SIZE);
 }
 
 bool bn_to_32(const BIGNUM* bn, uint8_t out[32])
@@ -345,7 +345,7 @@ Transaction WalletBackend::CreateMultisigSpend(const std::vector<TxOut>& outputs
         if (!changeTemplate) {
             changeTemplate = *maybe;
         } else if (changeTemplate->scriptPubKey != maybe->scriptPubKey) {
-            throw std::runtime_error("mixed script templates in change selection");
+            throw std::runtime_error("cannot create change output: input UTXOs have different script types");
         }
         inTotal += maybe->value;
     }
