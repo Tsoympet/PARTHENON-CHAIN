@@ -108,6 +108,8 @@ std::array<uint8_t, 32> ComputeInputDigest(const Transaction& tx, size_t inputIn
         throw std::runtime_error("too many inputs");
     if (inputIndex > std::numeric_limits<uint32_t>::max())
         throw std::runtime_error("input index overflow");
+    if (inputIndex >= tx.vin.size())
+        throw std::runtime_error("input index out of range");
 
     std::vector<uint8_t> ser;
     WriteUint32(ser, tx.version);

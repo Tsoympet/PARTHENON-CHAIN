@@ -38,7 +38,7 @@ bn_ptr bn_from_bytes(const uint8_t* data, size_t len)
 
 std::vector<uint8_t> to_xonly(const PubKey& pub)
 {
-    if (pub.size() < XONLY_PUBKEY_SIZE + 1) return {};
+    if (pub.size() != XONLY_PUBKEY_SIZE + 1) return {};
     return std::vector<uint8_t>(pub.begin() + 1, pub.begin() + 1 + XONLY_PUBKEY_SIZE);
 }
 
@@ -353,6 +353,7 @@ Transaction WalletBackend::CreateMultisigSpend(const std::vector<TxOut>& outputs
     if (inTotal < fee) throw std::runtime_error("fee too high");
     if (inTotal > fee) {
         if (!changeTemplate) throw std::runtime_error("missing change template");
+        // Multisig change must mirror the gathered script, not the single-sig x-only helper used in CreateSpend.
         TxOut change{inTotal - fee, changeTemplate->scriptPubKey};
         tx.vout.push_back(change);
     }
