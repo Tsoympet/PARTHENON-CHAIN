@@ -197,7 +197,7 @@ Transaction WalletBackend::CreateSpend(const std::vector<TxOut>& outputs, const 
     }
     if (inTotal > value) {
         auto changeScript = to_xonly(derive_pubkey(key));
-        if (changeScript.size() != XONLY_PUBKEY_SIZE) throw std::runtime_error("failed to derive change pubkey");
+        if (changeScript.size() != XONLY_PUBKEY_SIZE) throw std::runtime_error("invalid pubkey size for change output");
         TxOut change{inTotal - value, changeScript};
         tx.vout.push_back(change);
     }
@@ -335,12 +335,12 @@ Transaction WalletBackend::CreateMultisigSpend(const std::vector<TxOut>& outputs
     tx.vout = outputs;
     uint64_t inTotal = 0;
     std::optional<TxOut> changeTemplate;
-    for (const auto& c : coins) {
+    for (const auto& prev : coins) {
         TxIn in;
-        in.prevout = c;
+        in.prevout = prev;
         in.sequence = 0xffffffff;
         tx.vin.push_back(in);
-        auto maybe = m_lookup ? m_lookup(c) : std::optional<TxOut>{};
+        auto maybe = m_lookup ? m_lookup(prev) : std::optional<TxOut>{};
         if (!maybe) throw std::runtime_error("missing utxo");
         if (!changeTemplate) {
             changeTemplate = *maybe;
