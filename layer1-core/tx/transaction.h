@@ -5,6 +5,13 @@
 #include <string>
 #include "../crypto/tagged_hash.h"
 
+enum class AssetId : uint8_t { TALANTON = 0, DRACHMA = 1, OBOLOS = 2 };
+
+inline bool IsValidAssetId(uint8_t id)
+{
+    return id <= static_cast<uint8_t>(AssetId::OBOLOS);
+}
+
 struct OutPoint {
     uint256 hash;
     uint32_t index;
@@ -14,11 +21,13 @@ struct TxIn {
     OutPoint prevout;
     std::vector<uint8_t> scriptSig;
     uint32_t sequence{0xffffffff};
+    uint8_t assetId{static_cast<uint8_t>(AssetId::DRACHMA)};
 };
 
 struct TxOut {
     uint64_t value;
     std::vector<uint8_t> scriptPubKey;
+    uint8_t assetId{static_cast<uint8_t>(AssetId::DRACHMA)};
 };
 
 struct Transaction {

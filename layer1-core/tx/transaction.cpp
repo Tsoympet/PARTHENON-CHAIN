@@ -14,6 +14,11 @@ static void WriteUint32(std::vector<uint8_t>& out, uint32_t v)
         out.push_back(static_cast<uint8_t>((v >> (8 * i)) & 0xFF));
 }
 
+static void WriteUint8(std::vector<uint8_t>& out, uint8_t v)
+{
+    out.push_back(v);
+}
+
 static uint32_t ReadUint32(const std::vector<uint8_t>& data, size_t& offset)
 {
     if (offset + 4 > data.size()) throw std::runtime_error("deserialize uint32 overflow");
@@ -36,6 +41,12 @@ static uint64_t ReadUint64(const std::vector<uint8_t>& data, size_t& offset)
     for (int i = 0; i < 8; ++i)
         v |= static_cast<uint64_t>(data[offset++]) << (8 * i);
     return v;
+}
+
+static uint8_t ReadUint8(const std::vector<uint8_t>& data, size_t& offset)
+{
+    if (offset + 1 > data.size()) throw std::runtime_error("deserialize uint8 overflow");
+    return data[offset++];
 }
 
 static void WriteVarBytes(std::vector<uint8_t>& out, const std::vector<uint8_t>& bytes)
@@ -63,11 +74,13 @@ std::vector<uint8_t> Serialize(const Transaction& tx)
     for (const auto& in : tx.vin) {
         out.insert(out.end(), in.prevout.hash.begin(), in.prevout.hash.end());
         WriteUint32(out, in.prevout.index);
+        WriteUint8(out, in.assetId);
         WriteVarBytes(out, in.scriptSig);
         WriteUint32(out, in.sequence);
     }
     WriteUint32(out, static_cast<uint32_t>(tx.vout.size()));
     for (const auto& o : tx.vout) {
+        WriteUint8(out, o.assetId);
         WriteUint64(out, o.value);
         WriteVarBytes(out, o.scriptPubKey);
     }
@@ -88,12 +101,14 @@ Transaction DeserializeTransaction(const std::vector<uint8_t>& data)
         std::memcpy(tx.vin[i].prevout.hash.data(), data.data() + offset, tx.vin[i].prevout.hash.size());
         offset += tx.vin[i].prevout.hash.size();
         tx.vin[i].prevout.index = ReadUint32(data, offset);
+        tx.vin[i].assetId = ReadUint8(data, offset);
         tx.vin[i].scriptSig = ReadVarBytes(data, offset);
         tx.vin[i].sequence = ReadUint32(data, offset);
     }
     uint32_t voutSize = ReadUint32(data, offset);
     tx.vout.resize(voutSize);
     for (uint32_t i = 0; i < voutSize; ++i) {
+        tx.vout[i].assetId = ReadUint8(data, offset);
         tx.vout[i].value = ReadUint64(data, offset);
         tx.vout[i].scriptPubKey = ReadVarBytes(data, offset);
     }
@@ -119,11 +134,13 @@ std::array<uint8_t, 32> ComputeInputDigest(const Transaction& tx, size_t inputIn
     for (const auto& in : tx.vin) {
         ser.insert(ser.end(), in.prevout.hash.begin(), in.prevout.hash.end());
         WriteUint32(ser, in.prevout.index);
+        WriteUint8(ser, in.assetId);
         WriteVarBytes(ser, EMPTY_SCRIPT);
         WriteUint32(ser, in.sequence);
     }
     WriteUint32(ser, static_cast<uint32_t>(tx.vout.size()));
     for (const auto& o : tx.vout) {
+        WriteUint8(ser, o.assetId);
         WriteUint64(ser, o.value);
         WriteVarBytes(ser, o.scriptPubKey);
     }

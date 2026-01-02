@@ -32,11 +32,12 @@ OutPoint MakeOutPoint(uint8_t seed, uint32_t index)
     return op;
 }
 
-TxOut MakeTxOut(uint64_t value)
+TxOut MakeTxOut(uint64_t value, uint8_t asset = static_cast<uint8_t>(AssetId::DRACHMA))
 {
     TxOut out{};
     out.value = value;
     out.scriptPubKey.resize(32, 0x01);
+    out.assetId = asset;
     return out;
 }
 
@@ -47,7 +48,9 @@ Transaction MakeCoinbase(uint64_t value)
     coinbase.vin[0].prevout = MakeOutPoint(0x00, std::numeric_limits<uint32_t>::max());
     coinbase.vin[0].scriptSig = {0x01, 0x02};
     coinbase.vin[0].sequence = 0xffffffff;
-    coinbase.vout.push_back(MakeTxOut(value));
+    TxOut reward = MakeTxOut(value);
+    coinbase.vin[0].assetId = static_cast<uint8_t>(AssetId::DRACHMA);
+    coinbase.vout.push_back(reward);
     return coinbase;
 }
 
@@ -115,6 +118,46 @@ int main()
             return it->second;
         };
         assert(!ValidateTransactions(txs, params, 3, lookup));
+    }
+
+    // Reject mixed-asset outputs within a single transaction.
+    {
+        Transaction cb = MakeCoinbase(consensus::GetBlockSubsidy(4, params));
+        Transaction spend;
+        spend.vout.push_back(MakeTxOut(10, static_cast<uint8_t>(AssetId::DRACHMA)));
+        spend.vout.push_back(MakeTxOut(5, static_cast<uint8_t>(AssetId::OBOLOS)));
+        spend.vin.resize(1);
+        spend.vin[0].prevout = MakeOutPoint(0xCC, 0);
+        spend.vin[0].scriptSig = {0x01};
+        std::vector<Transaction> txs{cb, spend};
+        UTXOSet utxos;
+        utxos[spend.vin[0].prevout] = MakeTxOut(20, static_cast<uint8_t>(AssetId::DRACHMA));
+        auto lookup = [&utxos](const OutPoint& op) -> std::optional<TxOut> {
+            auto it = utxos.find(op);
+            if (it == utxos.end()) return std::nullopt;
+            return it->second;
+        };
+        assert(!ValidateTransactions(txs, params, 4, lookup));
+    }
+
+    // Reject asset-id mismatch between input tag and referenced UTXO/output.
+    {
+        Transaction cb = MakeCoinbase(consensus::GetBlockSubsidy(5, params));
+        Transaction spend;
+        spend.vout.push_back(MakeTxOut(8, static_cast<uint8_t>(AssetId::DRACHMA)));
+        spend.vin.resize(1);
+        spend.vin[0].prevout = MakeOutPoint(0xDD, 0);
+        spend.vin[0].scriptSig = {0x01};
+        spend.vin[0].assetId = static_cast<uint8_t>(AssetId::OBOLOS);
+        std::vector<Transaction> txs{cb, spend};
+        UTXOSet utxos;
+        utxos[spend.vin[0].prevout] = MakeTxOut(10, static_cast<uint8_t>(AssetId::DRACHMA));
+        auto lookup = [&utxos](const OutPoint& op) -> std::optional<TxOut> {
+            auto it = utxos.find(op);
+            if (it == utxos.end()) return std::nullopt;
+            return it->second;
+        };
+        assert(!ValidateTransactions(txs, params, 5, lookup));
     }
 
     return 0;

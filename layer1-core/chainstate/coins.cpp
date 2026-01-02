@@ -9,6 +9,11 @@
 #include <leveldb/write_batch.h>
 #endif
 
+namespace {
+constexpr size_t ASSET_FIELD_SIZE = sizeof(uint8_t);
+constexpr size_t MIN_VALUE_SIZE = ASSET_FIELD_SIZE + sizeof(uint64_t);
+}
+
 std::size_t OutPointHash::operator()(const OutPoint& o) const noexcept
 {
     size_t h = 0;
@@ -89,10 +94,11 @@ void Chainstate::AddUTXO(const OutPoint& out, const TxOut& txout)
 #ifdef DRACHMA_HAVE_LEVELDB
     if (useDb && !inTransaction) {
         leveldb::WriteBatch batch;
-        // value layout: [value(8)][scriptPubKey]
+        // value layout: [asset(1)][value(8)][scriptPubKey]
         std::string value;
-        value.resize(sizeof(txout.value));
-        std::memcpy(value.data(), &txout.value, sizeof(txout.value));
+        value.resize(ASSET_FIELD_SIZE + sizeof(txout.value));
+        value[0] = static_cast<char>(txout.assetId);
+        std::memcpy(value.data() + ASSET_FIELD_SIZE, &txout.value, sizeof(txout.value));
         value.append(reinterpret_cast<const char*>(txout.scriptPubKey.data()), txout.scriptPubKey.size());
 
         std::string key;
@@ -152,13 +158,14 @@ void Chainstate::Load()
             const auto& key = it->key();
             const auto& val = it->value();
             OutPoint op{};
-            if (key.size() != op.hash.size() + sizeof(uint32_t) || val.size() < sizeof(uint64_t))
+            if (key.size() != op.hash.size() + sizeof(uint32_t) || val.size() < MIN_VALUE_SIZE)
                 continue;
             std::memcpy(op.hash.data(), key.data(), op.hash.size());
             std::memcpy(&op.index, key.data() + op.hash.size(), sizeof(op.index));
             TxOut txo{};
-            std::memcpy(&txo.value, val.data(), sizeof(txo.value));
-            txo.scriptPubKey.assign(val.data() + sizeof(txo.value), val.data() + val.size());
+            txo.assetId = static_cast<uint8_t>(val.data()[0]);
+            std::memcpy(&txo.value, val.data() + ASSET_FIELD_SIZE, sizeof(txo.value));
+            txo.scriptPubKey.assign(val.data() + ASSET_FIELD_SIZE + sizeof(txo.value), val.data() + val.size());
             utxos.emplace(op, txo);
         }
         return;
@@ -173,6 +180,7 @@ void Chainstate::Load()
         in.read(reinterpret_cast<char*>(op.hash.data()), op.hash.size());
         in.read(reinterpret_cast<char*>(&op.index), sizeof(op.index));
         TxOut txo{};
+        in.read(reinterpret_cast<char*>(&txo.assetId), sizeof(txo.assetId));
         in.read(reinterpret_cast<char*>(&txo.value), sizeof(txo.value));
         uint32_t scriptSize = 0;
         in.read(reinterpret_cast<char*>(&scriptSize), sizeof(scriptSize));
@@ -197,6 +205,7 @@ void Chainstate::Persist() const
     for (const auto& entry : utxos) {
         out.write(reinterpret_cast<const char*>(entry.first.hash.data()), entry.first.hash.size());
         out.write(reinterpret_cast<const char*>(&entry.first.index), sizeof(entry.first.index));
+        out.write(reinterpret_cast<const char*>(&entry.second.assetId), sizeof(entry.second.assetId));
         out.write(reinterpret_cast<const char*>(&entry.second.value), sizeof(entry.second.value));
         uint32_t scriptSize = static_cast<uint32_t>(entry.second.scriptPubKey.size());
         out.write(reinterpret_cast<const char*>(&scriptSize), sizeof(scriptSize));
@@ -240,8 +249,9 @@ void Chainstate::Commit()
             key.append(reinterpret_cast<const char*>(&change.out.index), sizeof(change.out.index));
             if (change.hadNew) {
                 std::string value;
-                value.resize(sizeof(change.newValue.value));
-                std::memcpy(value.data(), &change.newValue.value, sizeof(change.newValue.value));
+                value.resize(ASSET_FIELD_SIZE + sizeof(change.newValue.value));
+                value[0] = static_cast<char>(change.newValue.assetId);
+                std::memcpy(value.data() + ASSET_FIELD_SIZE, &change.newValue.value, sizeof(change.newValue.value));
                 value.append(reinterpret_cast<const char*>(change.newValue.scriptPubKey.data()), change.newValue.scriptPubKey.size());
                 batch.Put(key, value);
             } else {

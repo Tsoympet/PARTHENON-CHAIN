@@ -86,6 +86,13 @@ uint32_t fingerprint(const PubKey& pub)
     return fp;
 }
 
+void enforce_single_asset(std::optional<uint8_t>& current, uint8_t candidate)
+{
+    if (current && *current != candidate)
+        throw std::runtime_error("cannot mix asset types in a single transaction");
+    current = candidate;
+}
+
 KeyId make_key_id(const PrivKey& priv)
 {
     KeyId id{};
@@ -184,21 +191,30 @@ Transaction WalletBackend::CreateSpend(const std::vector<TxOut>& outputs, const 
     uint64_t value = fee;
     for (const auto& o : outputs) value += o.value;
     auto coins = SelectCoins(value);
+    if (coins.empty())
+        throw std::runtime_error("no inputs selected");
 
     Transaction tx;
     tx.vout = outputs;
+    std::optional<uint8_t> spendAsset;
+    for (const auto& o : outputs) enforce_single_asset(spendAsset, o.assetId);
     uint64_t inTotal = 0;
     for (const auto& c : coins) {
+        enforce_single_asset(spendAsset, c.txout.assetId);
         TxIn in;
         in.prevout = c.outpoint;
         in.sequence = 0xffffffff;
+        in.assetId = c.txout.assetId;
         tx.vin.push_back(in);
         inTotal += c.txout.value;
     }
+    if (!spendAsset)
+        throw std::runtime_error("missing asset for spend");
     if (inTotal > value) {
         auto changeScript = to_xonly(derive_pubkey(key));
         if (changeScript.size() != XONLY_PUBKEY_SIZE) throw std::runtime_error("invalid pubkey size for change output");
         TxOut change{inTotal - value, changeScript};
+        change.assetId = *spendAsset;
         tx.vout.push_back(change);
     }
 
@@ -333,6 +349,8 @@ Transaction WalletBackend::CreateMultisigSpend(const std::vector<TxOut>& outputs
     if (keys.size() < threshold) throw std::runtime_error("not enough keys");
     Transaction tx;
     tx.vout = outputs;
+    std::optional<uint8_t> spendAsset;
+    for (const auto& o : outputs) enforce_single_asset(spendAsset, o.assetId);
     uint64_t inTotal = 0;
     std::optional<TxOut> changeTemplate;
     for (const auto& prev : coins) {
@@ -342,6 +360,8 @@ Transaction WalletBackend::CreateMultisigSpend(const std::vector<TxOut>& outputs
         tx.vin.push_back(in);
         auto maybe = m_lookup ? m_lookup(prev) : std::optional<TxOut>{};
         if (!maybe) throw std::runtime_error("missing utxo");
+        enforce_single_asset(spendAsset, maybe->assetId);
+        tx.vin.back().assetId = maybe->assetId;
         if (!changeTemplate) {
             changeTemplate = *maybe;
         } else if (changeTemplate->scriptPubKey != maybe->scriptPubKey) {
@@ -354,7 +374,9 @@ Transaction WalletBackend::CreateMultisigSpend(const std::vector<TxOut>& outputs
     if (inTotal > fee) {
         if (!changeTemplate) throw std::runtime_error("missing change template");
         // Multisig change must mirror the gathered script, not the single-sig x-only helper used in CreateSpend.
+        if (!spendAsset) throw std::runtime_error("missing asset for change output");
         TxOut change{inTotal - fee, changeTemplate->scriptPubKey};
+        change.assetId = *spendAsset;
         tx.vout.push_back(change);
     }
 

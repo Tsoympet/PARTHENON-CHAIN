@@ -13,11 +13,12 @@ OutPoint MakeOutPoint(uint8_t seed, uint32_t index)
     return op;
 }
 
-TxOut MakeOutput(uint64_t value, uint8_t tag)
+TxOut MakeOutput(uint64_t value, uint8_t tag, uint8_t asset = 1)
 {
     TxOut out{};
     out.value = value;
     out.scriptPubKey.assign(32, tag);
+    out.assetId = asset;
     return out;
 }
 
@@ -33,7 +34,7 @@ int main()
     {
         Chainstate cs(temp.string(), 8);
         auto op = MakeOutPoint(0x01, 0);
-        auto out = MakeOutput(50, 0xAA);
+        auto out = MakeOutput(50, 0xAA, 2);
         cs.AddUTXO(op, out);
         cs.Flush();
     }
@@ -42,6 +43,7 @@ int main()
         auto op = MakeOutPoint(0x01, 0);
         auto loaded = cs.GetUTXO(op);
         assert(loaded.value == 50);
+        assert(loaded.assetId == 2);
         bool threw = false;
         cs.SpendUTXO(op);
         try {

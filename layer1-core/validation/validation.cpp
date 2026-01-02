@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <chrono>
+#include <optional>
 
 namespace {
 
@@ -120,6 +121,15 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
     size_t runningWeight = 0;
     CachedLookup cachedLookup(lookup, 1024);
 
+    auto checkAsset = [](std::optional<uint8_t>& asset, uint8_t candidate) {
+        if (!IsValidAssetId(candidate))
+            return false;
+        if (asset && *asset != candidate)
+            return false;
+        asset = candidate;
+        return true;
+    };
+
     if (!posMode) {
         // Coinbase must be first and unique
         if (!IsCoinbase(txs.front()))
@@ -134,7 +144,10 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
             return false;
 
         uint64_t coinbaseOutTotal = 0;
+        std::optional<uint8_t> coinbaseAsset;
         for (const auto& out : txs.front().vout) {
+            if (!checkAsset(coinbaseAsset, out.assetId))
+                return false;
             uint64_t next = 0;
             if (!SafeAdd(coinbaseOutTotal, out.value, next))
                 return false;
@@ -144,11 +157,14 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
             if (out.scriptPubKey.size() != 32)
                 return false; // enforce schnorr-only pubkeys
         }
+        if (!coinbaseAsset || !checkAsset(coinbaseAsset, txs.front().vin.front().assetId))
+            return false;
 
         uint64_t totalFees = 0;
 
         for (size_t i = 0; i < txs.size(); ++i) {
             const auto& tx = txs[i];
+            std::optional<uint8_t> txAsset;
 
             const size_t txSize = Serialize(tx).size();
             if (txSize == 0 || txSize > MAX_TX_SIZE)
@@ -159,6 +175,8 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
 
             uint64_t totalOut = 0;
             for (const auto& out : tx.vout) {
+                if (!checkAsset(txAsset, out.assetId))
+                    return false;
                 uint64_t next = 0;
                 if (!SafeAdd(totalOut, out.value, next))
                     return false;
@@ -172,6 +190,8 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
             }
 
             if (i == 0) {
+                if (!checkAsset(txAsset, tx.vin.front().assetId))
+                    return false;
                 continue;
             }
 
@@ -194,11 +214,13 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
                 if (in.scriptSig.size() > 1650)
                     return false; // oversized scripts risk DoS
 
+                if (!checkAsset(txAsset, in.assetId))
+                    return false;
                 if (!seenPrevouts.insert(in.prevout).second)
                     return false; // duplicate spend within block
 
                 auto utxo = cachedLookup(in.prevout);
-                if (!utxo)
+                if (!utxo || in.assetId != utxo->assetId || !checkAsset(txAsset, utxo->assetId))
                     return false;
 
                 if (!VerifyScript(tx, inIdx, *utxo))
@@ -241,19 +263,26 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
         return false;
 
     const Transaction& stakeTx = txs.front();
+    std::optional<uint8_t> stakeAsset;
     if (stakeTx.vin.size() != 1 || stakeTx.vout.size() < 2)
         return false;
     if (stakeTx.vout.front().value != 0)
         return false;
+    for (const auto& out : stakeTx.vout) {
+        if (!checkAsset(stakeAsset, out.assetId))
+            return false;
+    }
 
     const TxIn& stakeIn = stakeTx.vin.front();
     if (IsNullOutPoint(stakeIn.prevout))
         return false;
     if (stakeIn.scriptSig.empty() || stakeIn.scriptSig.size() > 1650)
         return false;
+    if (!checkAsset(stakeAsset, stakeIn.assetId))
+        return false;
 
     auto stakedUtxo = cachedLookup(stakeIn.prevout);
-    if (!stakedUtxo)
+    if (!stakedUtxo || stakeIn.assetId != stakedUtxo->assetId || !checkAsset(stakeAsset, stakedUtxo->assetId))
         return false;
     if (stakedUtxo->scriptPubKey.size() != 32)
         return false;
@@ -309,6 +338,7 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
 
     for (size_t i = 1; i < txs.size(); ++i) {
         const auto& tx = txs[i];
+        std::optional<uint8_t> txAsset;
         if (IsCoinbase(tx))
             return false;
 
@@ -326,6 +356,8 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
         uint64_t txOutSum = 0;
 
         for (const auto& out : tx.vout) {
+            if (!checkAsset(txAsset, out.assetId))
+                return false;
             uint64_t nxt = 0;
             if (!addSafe(txOutSum, out.value, nxt))
                 return false;
@@ -344,10 +376,12 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
                 return false;
             if (in.scriptSig.empty() || in.scriptSig.size() > 1650)
                 return false;
+            if (!checkAsset(txAsset, in.assetId))
+                return false;
             if (!seenPrevouts.insert(in.prevout).second)
                 return false;
             auto utxo = cachedLookup(in.prevout);
-            if (!utxo)
+            if (!utxo || in.assetId != utxo->assetId || !checkAsset(txAsset, utxo->assetId))
                 return false;
             uint64_t nxt = 0;
             if (!addSafe(txInSum, utxo->value, nxt))
