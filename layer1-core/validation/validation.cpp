@@ -220,9 +220,7 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
                     return false; // duplicate spend within block
 
                 auto utxo = cachedLookup(in.prevout);
-                if (!utxo)
-                    return false;
-                if (!checkAsset(txAsset, utxo->assetId))
+                if (!utxo || in.assetId != utxo->assetId || !checkAsset(txAsset, utxo->assetId))
                     return false;
 
                 if (!VerifyScript(tx, inIdx, *utxo))
@@ -284,9 +282,7 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
         return false;
 
     auto stakedUtxo = cachedLookup(stakeIn.prevout);
-    if (!stakedUtxo)
-        return false;
-    if (!checkAsset(stakeAsset, stakedUtxo->assetId))
+    if (!stakedUtxo || stakeIn.assetId != stakedUtxo->assetId || !checkAsset(stakeAsset, stakedUtxo->assetId))
         return false;
     if (stakedUtxo->scriptPubKey.size() != 32)
         return false;
@@ -385,9 +381,7 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
             if (!seenPrevouts.insert(in.prevout).second)
                 return false;
             auto utxo = cachedLookup(in.prevout);
-            if (!utxo)
-                return false;
-            if (!checkAsset(txAsset, utxo->assetId))
+            if (!utxo || in.assetId != utxo->assetId || !checkAsset(txAsset, utxo->assetId))
                 return false;
             uint64_t nxt = 0;
             if (!addSafe(txInSum, utxo->value, nxt))

@@ -48,7 +48,9 @@ Transaction MakeCoinbase(uint64_t value)
     coinbase.vin[0].prevout = MakeOutPoint(0x00, std::numeric_limits<uint32_t>::max());
     coinbase.vin[0].scriptSig = {0x01, 0x02};
     coinbase.vin[0].sequence = 0xffffffff;
-    coinbase.vout.push_back(MakeTxOut(value));
+    TxOut reward = MakeTxOut(value);
+    coinbase.vin[0].assetId = static_cast<uint8_t>(AssetId::DRACHMA);
+    coinbase.vout.push_back(reward);
     return coinbase;
 }
 
