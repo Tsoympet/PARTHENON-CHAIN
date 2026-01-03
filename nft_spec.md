@@ -1,6 +1,7 @@
 # BlockChainDrachma NFTs
 
 Ancient Greek cultural records are modeled as standalone NFTs. They are **not** fungible tokens, do not mint or burn TLN/DRM/OBL, and never participate in supply or consensus calculations.
+They have zero connection to Talanton (TLN) balances or monetary accounting.
 
 ## Core State (existence)
 - Each NFT stores: `nft_id`, `owner_pubkey`, `creator_pubkey`, `metadata_hash`, `canon_reference_hash`, `mint_block_height`, `royalty_bps`.
@@ -8,7 +9,7 @@ Ancient Greek cultural records are modeled as standalone NFTs. They are **not** 
 - State is isolated under the NFT domain; block headers anchor `nft_state_root`.
 
 ## Minting
-- RPC: `mint_nft` (TLN for gas only). Fails if the canon reference or metadata hash is missing or if `royalty_bps` is outside `[0, 1000]`.
+- RPC: `mint_nft` (deterministic fixed gas, asset-agnostic). Fails if the canon reference or metadata hash is missing or if `royalty_bps` is outside `[0, 1000]`.
 - Minting records ownership and creator data without touching asset supply.
 
 ## Marketplace & Value Discovery

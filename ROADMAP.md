@@ -44,7 +44,7 @@ A phased plan for delivering the DRACHMA blockchain with transparency and predic
 - Transition to long-term maintenance cadence and public release notes.
 
 ## 2026 Q3-Q4 — Sidechain Smart Contracts & Desktop Integration
-- ✅ Ship mandatory merge-mined WASM sidechain with enforced asset/function law (TLN→NFT, DRM→contracts, OBL→dApps).
+- ✅ Ship mandatory merge-mined WASM sidechain with enforced domain law (Layer-2 NFTs are asset-agnostic; DRM→contracts; OBL→dApps).
 - ✅ Deliver desktop GUI features: smart contract interaction, NFT gallery, and embedded dApp browser (always on; auto-selects correct asset).
 - 🚧 Harden checkpoint validation and publish SDKs/examples for WASM dApp builders (bridge metrics and SPV proof coverage in progress).
 

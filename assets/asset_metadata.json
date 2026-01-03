@@ -4,7 +4,7 @@
       "asset_id": 0,
       "symbol": "TLN",
       "name": "Talanton",
-      "role": "NFTs only",
+      "role": "Base currency (separate from NFTs)",
       "icon": "assets/icons/asset-tln.svg"
     },
     {

@@ -4,7 +4,7 @@ The sidechain is **mandatory** and executes deterministic WASM modules only. EVM
 
 ## Model
 - Deterministic interpreter (no JIT), fixed gas schedule (`sidechain/wasm/gas`), and explicit host imports.
-- Asset/function law: DRM → smart contracts; TLN → NFTs; OBL → dApps. Mixed-asset execution is rejected by `ValidateAssetDomain`.
+- Asset/function law: DRM → smart contracts; OBL → dApps; NFTs run in an asset-agnostic Layer-2 domain. Mixed-asset execution is rejected by `ValidateAssetDomain` for contract/dApp domains.
 - Checkpoints are required; every block carries `state_root`, `execution_root`, and a main-chain checkpoint.
 - RPC entrypoints: `deploy_contract` and `call_contract` via `sidechain/rpc/wasm_rpc.*`.
 

@@ -1528,10 +1528,10 @@ private:
             QMessageBox::information(this, "Smart contract", QString("Prepared WASM %1 for module %2 (DRM gas, manifest bytes %3).").arg(mode, address).arg(abi.size()));
         });
         connect(sidechainView, &SidechainView::request_nft_transfer, this, [this](const QString& token_id, const QString& to){
-            QMessageBox::information(this, "NFT", QString("Transfer TLN-backed NFT %1 to %2").arg(token_id, to));
+            QMessageBox::information(this, "NFT", QString("Transfer Layer-2 NFT %1 to %2 (no TLN coupling)").arg(token_id, to));
         });
         connect(sidechainView, &SidechainView::request_nft_mint, this, [this]{
-            QMessageBox::information(this, "NFT", "Mint request prepared for TLN NFT domain.");
+            QMessageBox::information(this, "NFT", "Mint request prepared for Layer-2 NFT domain (anchored via nft_state_root).");
         });
         connect(sidechainView, &SidechainView::request_open_dapp, this, [this](const QUrl& url){
             statusBar()->showMessage(QString("Opening dApp %1 (OBL fees)").arg(url.toString()), 2000);
@@ -1562,7 +1562,7 @@ private:
         rpcPassEdit->setEchoMode(QLineEdit::Password);
 
         sidechainEnable = new QCheckBox("WASM sidechain (mandatory)", w);
-        sidechainEnable->setToolTip("Sidechain execution is always on; DRM contracts, TLN NFTs, and OBL dApps are enforced.");
+        sidechainEnable->setToolTip("Sidechain execution is always on; DRM contracts, Layer-2 NFTs (TLN-agnostic), and OBL dApps are enforced.");
         sidechainEnable->setChecked(true);
         sidechainEnable->setEnabled(false);
         sidechainRpc = new QLineEdit(w);

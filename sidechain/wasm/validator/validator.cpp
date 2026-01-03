@@ -9,7 +9,9 @@ bool MatchesAsset(ExecutionDomain domain, uint8_t asset_id) {
         case ExecutionDomain::SmartContract:
             return asset_id == kAssetDrm;
         case ExecutionDomain::NFT:
-            return asset_id == kAssetTln;
+            // NFTs are Layer-2 cultural records and do not bind to TLN or any asset.
+            (void)asset_id;
+            return true;
         case ExecutionDomain::Dapp:
             return asset_id == kAssetObl;
         default:

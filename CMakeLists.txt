@@ -341,6 +341,11 @@ if(DRACHMA_BUILD_TESTS)
     target_link_libraries(nft_market_test PRIVATE drachma_sidechain_wasm drachma_layer1 GTest::gtest_main)
     gtest_discover_tests(nft_market_test)
 
+    add_executable(nft_ui_helpers_test tests/sidechain/nft_ui_helpers_test.cpp)
+    target_include_directories(nft_ui_helpers_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(nft_ui_helpers_test PRIVATE GTest::gtest_main)
+    gtest_discover_tests(nft_ui_helpers_test)
+
     add_executable(peg_bridge_test tests/sidechain/peg_bridge_test.cpp)
     target_link_libraries(peg_bridge_test PRIVATE drachma_sidechain_evm GTest::gtest_main)
     gtest_discover_tests(peg_bridge_test)

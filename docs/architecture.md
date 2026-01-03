@@ -11,7 +11,7 @@ DRACHMA is organized into a strict three-layer stack to keep consensus-critical 
 ## Mandatory WASM Sidechain
 
 - Deterministic WASM execution is required; there is no EVM/ABI path.
-- Asset/function law is enforced end-to-end: TLN→NFTs, DRM→smart contracts, OBL→dApps. Mixed-asset execution or optional toggles are rejected.
+- Domain law is enforced end-to-end: Layer-2 NFTs are asset-agnostic and anchored via `nft_state_root`; DRM→smart contracts; OBL→dApps. Mixed-asset execution or optional toggles are rejected.
 - Checkpoints (state_root + execution_root + main-chain checkpoint) are mandatory for sidechain blocks and are validated alongside Layer 1.
 - RPC surfaces (`deploy_contract`, `call_contract`, `mint_nft`, `transfer_nft`, `call_dapp`) live in `sidechain/rpc/wasm_rpc.*`; the GUI auto-selects the correct asset for each action.
 

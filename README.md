@@ -106,19 +106,20 @@ Commands are subject to change as the implementation matures; prefer scripts in 
 
 ## Smart Contracts, NFTs & dApps (mandatory WASM sidechain)
 
-BlockChainDrachma ships a **mandatory WASM execution layer** that is anchored to Layer 1 checkpoints. The asset-to-function law is enforced by consensus and validation:
+BlockChainDrachma ships a **mandatory WASM execution layer** that is anchored to Layer 1 checkpoints. Domains are enforced by consensus and validation:
 
-| Asset (`asset_id`) | Function            | RPC entrypoints                                                        |
-|--------------------|---------------------|------------------------------------------------------------------------|
-| TLN (0)            | NFT state + history | `mint_nft`, `transfer_nft`, `list_nft`, `place_nft_bid`, `settle_nft_sale` |
-| DRM (1)            | Smart contracts     | `deploy_contract`, `call_contract`                                     |
-| OBL (2)            | dApps / interaction | `call_dapp`                                                            |
+| Domain            | Asset use                     | RPC entrypoints                                                        |
+|-------------------|-------------------------------|------------------------------------------------------------------------|
+| NFTs (Layer 2)    | Asset-agnostic; anchored via `nft_state_root` | `mint_nft`, `transfer_nft`, `list_nft`, `place_nft_bid`, `settle_nft_sale` |
+| Smart contracts   | DRM (`asset_id=1`)            | `deploy_contract`, `call_contract`                                     |
+| dApps / interaction | OBL (`asset_id=2`)          | `call_dapp`                                                            |
 
-- **Execution:** Deterministic WASM only; no EVM/ABI/solidity or wrapped assets. Gas is paid in the asset bound to the domain; NFT records are standalone cultural entries and never inflate TLN/DRM/OBL supply.
+- **Execution:** Deterministic WASM only; no EVM/ABI/solidity or wrapped assets. NFT records are standalone cultural entries, settled with fixed gas and never inflate TLN/DRM/OBL supply.
 - **Marketplace:** NFT value discovery happens on-chain in DRM or OBL only; royalties are enforced at settlement and paid automatically to creators.
 - **Anchors:** Sidechain checkpoints are required; they cannot be disabled in the wallet or node.
-- **Wallet UX:** The Sidechain tab auto-selects the correct asset based on the action (TLN for NFTs, DRM for contracts, OBL for dApps) and surfaces the WASM manifest instead of ABI JSON.
+- **Wallet UX:** The Sidechain tab surfaces Layer-2 NFTs as first-class records without showing TLN, DRM for contracts, and OBL for dApps; it displays the WASM manifest instead of ABI JSON.
 - **dApp gateway:** Defaults to `http://localhost:8080` for OBL-backed dApps; RPC defaults to `http://localhost:9334/wasm`.
+- **Invariant:** NFTs are standalone Layer-2 records and are not connected to TLN in any way.
 
 ### Live Testnet
 
@@ -188,6 +189,7 @@ The Layer 3 desktop wallet is testnet-ready. Representative views are available 
 - Location: `/assets/ui-icons/` (with light/dark variants) supplies the unified icon set consumed by the Qt wallet. Icons are loaded at runtime; nothing is hardcoded or embedded in binaries.
 - Coverage: wallet & funds (wallet/receive/send/balance/address-book/qr), transactions (tx-in/out/pending/confirmed/failed/mempool/history), assets (asset-tln/asset-drm/asset-obl), staking (staking/active/inactive/rewards/lock/unlock/validator), mining (mining/hash/block/difficulty), network (network/peers/sync/synced/warning/error/info/shield), and system (settings/security/key/backup/restore/disk/cpu/memory/log).
 - Core vs asset vs UI icons: **core icons** (e.g., splash/app logo) brand the application, **asset icons** represent specific tokens (DRM/OBL/TLN) where appropriate, while **UI icons** are neutral controls and status glyphs reused across menus, tabs, dialogs, and balance/staking/mining/network indicators.
+- NFT icons live under `/assets/nft-icons/` and are selected dynamically by `canon_category` with a fallback to `nft-default.svg`; the wallet loads them at runtime and never embeds TLN symbols.
 
 ---
 
@@ -232,7 +234,7 @@ Security-impacting changes and reports are welcomed; consensus/crypto modificati
 - **Supply Cap:** 42,000,000 DRM
 - **Consensus First:** All critical rules reside exclusively in Layer 1
 - **No Governance Logic:** No voting systems, no administrative keys
-- **Execution model:** Mandatory WASM sidechain with enforced asset/function law (TLN→NFTs, DRM→contracts, OBL→dApps)
+- **Execution model:** Mandatory WASM sidechain with enforced domain law (Layer-2 NFTs are asset-agnostic; DRM→contracts; OBL→dApps)
 
 Network neutrality is achieved through **absence of privilege**, not through special enforcement mechanisms.
 

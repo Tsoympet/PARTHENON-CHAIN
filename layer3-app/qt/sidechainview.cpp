@@ -30,14 +30,14 @@ QWidget* SidechainView::build_balances_widget()
     QGroupBox* box = new QGroupBox("Balances", this);
     QFormLayout* f = new QFormLayout(box);
     tln_balance_label = new QLabel("0 TLN", box);
-    tln_balance_label->setToolTip("TLN (asset 0) powers NFTs");
+    tln_balance_label->setToolTip("TLN (asset 0) is the base monetary unit; NFTs are isolated from it.");
     drm_balance_label = new QLabel("0 DRM", box);
-    drm_balance_label->setToolTip("DRM (asset 1) funds WASM smart contracts");
+    drm_balance_label->setToolTip("DRM (asset 1) funds WASM smart contracts and marketplace pricing.");
     obl_balance_label = new QLabel("0 OBL", box);
-    obl_balance_label->setToolTip("OBL (asset 2) fuels dApps");
-    f->addRow("TLN (NFTs)", tln_balance_label);
-    f->addRow("DRM (contracts)", drm_balance_label);
-    f->addRow("OBL (dApps)", obl_balance_label);
+    obl_balance_label->setToolTip("OBL (asset 2) fuels dApps and marketplace bids.");
+    f->addRow("TLN (base)", tln_balance_label);
+    f->addRow("DRM (contracts/market)", drm_balance_label);
+    f->addRow("OBL (dApps/market)", obl_balance_label);
     return box;
 }
 
@@ -103,9 +103,42 @@ void SidechainView::seed_mock_data()
     set_balances(3.21, 123.45, 42.00);
     set_sidechain_status("Synced", 78, 5);
     QList<NftItem> items;
-    items << NftItem{"1", "Genesis Badge", "https://example.com/genesis.png"}
-          << NftItem{"42", "Test NFT", "https://example.com/test.png"}
-          << NftItem{"314", "DRM Dragon", "ipfs://dragon"};
+    items << NftItem{"1",
+                     "Athena Tablet",
+                     "mythology",
+                     "curator",
+                     250,
+                     "assets/nft-icons/nft-mythology.svg",
+                     "museum",
+                     "curator → museum",
+                     "DRM",
+                     1250.50,
+                     "Bids: 1100 DRM (collector), 1200 DRM (gallery)",
+                     "Sold at 1250.50 DRM to museum"}
+          << NftItem{"42",
+                     "Marathon Hero",
+                     "hero",
+                     "historian",
+                     100,
+                     "assets/nft-icons/nft-hero.svg",
+                     "archive",
+                     "historian → archive",
+                     "OBL",
+                     210.00,
+                     "Bids: 180.00 OBL (runner)",
+                     "Sold at 210.00 OBL to archive"}
+          << NftItem{"314",
+                     "Delphi Omphalos",
+                     "monument",
+                     "foundation",
+                     50,
+                     "assets/nft-icons/nft-monument.svg",
+                     "foundation",
+                     "foundation",
+                     "",
+                     0.0,
+                     "",
+                     ""};
     if (nft_gallery) nft_gallery->set_items(items);
 
     if (contract_caller) {

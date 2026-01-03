@@ -52,7 +52,7 @@ TEST(NftMarketplace, RoyaltySettlementSplitsPayment) {
     mint.canon_reference_hash = "canon-hash";
     mint.mint_height = 10;
     mint.royalty_bps = 500;
-    mint.asset_id = kAssetTln;
+    mint.asset_id = 9;  // NFTs are not bound to TLN
     ASSERT_TRUE(rpc.MintNft(mint).success);
 
     ListNftRequest list;
@@ -142,7 +142,7 @@ TEST(NftMarketplace, RoyaltyImmutabilityAndReuse) {
     mint.canon_reference_hash = "canon1";
     mint.mint_height = 1;
     mint.royalty_bps = 100;
-    mint.asset_id = kAssetTln;
+    mint.asset_id = 7;  // asset id ignored for NFTs
     ASSERT_TRUE(rpc.MintNft(mint).success);
 
     MintNftRequest duplicate = mint;
@@ -188,6 +188,36 @@ TEST(NftMarketplace, RoyaltyImmutabilityAndReuse) {
     EXPECT_EQ(seller_amount, seller_balance);
 }
 
+TEST(NftMarketplace, IgnoresAssetIdsForNftExecution) {
+    ExecutionEngine engine;
+    StateStore state;
+    WasmRpcService rpc(engine, state);
+
+    MintNftRequest mint;
+    mint.token_id = "isolated-asset";
+    mint.creator = "scribe";
+    mint.owner = "scribe";
+    mint.metadata_hash = "hash";
+    mint.canon_reference_hash = "canon";
+    mint.mint_height = 7;
+    mint.royalty_bps = 10;
+    mint.asset_id = 42;  // arbitrary asset id, should not couple to TLN
+    ASSERT_TRUE(rpc.MintNft(mint).success);
+
+    TransferNftRequest transfer;
+    transfer.token_id = mint.token_id;
+    transfer.from = mint.owner;
+    transfer.to = "new-owner";
+    transfer.asset_id = 1;  // different arbitrary asset id
+    transfer.height = 8;
+    ASSERT_TRUE(rpc.TransferNft(transfer).success);
+
+    auto record = state.Get(ExecutionDomain::NFT, "nft:core", mint.token_id);
+    ASSERT_FALSE(record.empty());
+    std::string rec_str(record.begin(), record.end());
+    EXPECT_NE(rec_str.find(transfer.to), std::string::npos);
+}
+
 TEST(NftMarketplace, RejectsTlnPaymentAndPreservesSupply) {
     ExecutionEngine engine;
     StateStore state;
@@ -200,7 +230,7 @@ TEST(NftMarketplace, RejectsTlnPaymentAndPreservesSupply) {
     mint.metadata_hash = "hash";
     mint.canon_reference_hash = "canon";
     mint.mint_height = 5;
-    mint.asset_id = kAssetTln;
+    mint.asset_id = 5;  // TLN is not required for minting
     ASSERT_TRUE(rpc.MintNft(mint).success);
 
     ListNftRequest list;
