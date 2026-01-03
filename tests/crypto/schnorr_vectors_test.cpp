@@ -1,6 +1,67 @@
 #include <gtest/gtest.h>
 #include "../../layer1-core/crypto/schnorr.h"
 #include "../../layer1-core/crypto/tagged_hash.h"
+#include <openssl/bn.h>
+#include <openssl/ec.h>
+#include <openssl/obj_mac.h>
+
+#include <algorithm>
+#include <limits>
+#include <memory>
+#include <vector>
+
+namespace {
+
+using bn_unique_ptr = std::unique_ptr<BIGNUM, decltype(&BN_clear_free)>;
+
+std::array<uint8_t, 33> ToCompressedPub(const std::array<uint8_t, 32>& x)
+{
+    std::array<uint8_t, 33> out{};
+    out[0] = 0x02;
+    std::copy(x.begin(), x.end(), out.begin() + 1);
+    return out;
+}
+
+bn_unique_ptr MakeBn(const uint8_t* data, size_t len)
+{
+    if (len > static_cast<size_t>(std::numeric_limits<int>::max())) {
+        return bn_unique_ptr(nullptr, &BN_clear_free);
+    }
+    return bn_unique_ptr(BN_bin2bn(data, static_cast<int>(len), nullptr), &BN_clear_free);
+}
+
+std::array<uint8_t, 32> SerializeBN(const BIGNUM* bn)
+{
+    std::array<uint8_t, 32> out{};
+    if (!bn || BN_bn2binpad(bn, out.data(), out.size()) != static_cast<int>(out.size())) {
+        out.fill(0);
+    }
+    return out;
+}
+
+std::vector<uint8_t> ChallengePreimage(const std::array<uint8_t, 32>& r,
+                                       const std::array<uint8_t, 32>& pubx,
+                                       const std::array<uint8_t, 32>& msg)
+{
+    std::vector<uint8_t> preimage;
+    preimage.reserve(r.size() + pubx.size() + msg.size());
+    preimage.insert(preimage.end(), r.begin(), r.end());
+    preimage.insert(preimage.end(), pubx.begin(), pubx.end());
+    preimage.insert(preimage.end(), msg.begin(), msg.end());
+    return preimage;
+}
+
+// secp256k1 group order (SEC 2 v2, section 2.4.1)
+constexpr std::array<uint8_t, 32> kCurveOrder = {
+    0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFE,
+    0xBA,0xAE,0xDC,0xE6,0xAF,0x48,0xA0,0x3B,0xBF,0xD2,0x5E,0x8C,0xD0,0x36,0x41,0x41};
+
+// secp256k1 field prime (SEC 2 v2, section 2.4.1)
+constexpr std::array<uint8_t, 32> kFieldPrime = {
+    0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+    0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFE,0xFF,0xFF,0xFF,0xFE,0xFF,0xFF,0xFC,0x2F};
+
+}  // namespace
 
 TEST(Schnorr, ValidVectorPasses)
 {
@@ -66,4 +127,165 @@ TEST(Schnorr, TaggedHashMisuseChangesDigestDeterministically)
     const std::vector<uint8_t> msg(32, 0x00);
     EXPECT_TRUE(VerifySchnorr(pubkey, sig, msg));
     EXPECT_TRUE(VerifySchnorr(pubkey, sig, msg));
+}
+
+TEST(SchnorrInvariants, InvalidSignatureInputsAreRejected)
+{
+    const std::array<uint8_t,32> pubkey = {
+        0xDF,0xF1,0xD7,0x7F,0x2A,0x67,0x1C,0x5F,0x36,0x18,0x37,0x26,0xDB,0x23,0x41,0xBE,
+        0x58,0xFE,0xAE,0x1D,0xA2,0xDE,0xCE,0xD8,0x43,0x24,0x0F,0x7B,0x50,0x2B,0xA6,0x59};
+    const std::array<uint8_t,64> sig = {
+        0x68,0x96,0xBD,0x60,0xEE,0xAE,0x29,0x6D,0xB4,0x8A,0x22,0x9F,0xF7,0x1D,0xFE,0x07,
+        0x1B,0xDE,0x41,0x3E,0x6D,0x43,0xF9,0x17,0xDC,0x8D,0xCF,0x8C,0x78,0xDE,0x33,0x41,
+        0x89,0x06,0xD1,0x1A,0xC9,0x76,0xAB,0xCC,0xB2,0x0B,0x09,0x12,0x92,0xBF,0xF4,0xEA,
+        0x89,0x7E,0xFC,0xB6,0x39,0xEA,0x87,0x1C,0xFA,0x95,0xF6,0xDE,0x33,0x9E,0x4B,0x0A};
+    const std::array<uint8_t,32> msg = {
+        0x24,0x3F,0x6A,0x88,0x85,0xA3,0x08,0xD3,0x13,0x19,0x8A,0x2E,0x03,0x70,0x73,0x44,
+        0xA4,0x09,0x38,0x22,0x29,0x9F,0x31,0xD0,0x08,0x2E,0xFA,0x98,0xEC,0x4E,0x6C,0x89};
+    const auto compressed_pub = ToCompressedPub(pubkey);
+    EXPECT_TRUE(schnorr_verify(compressed_pub.data(), msg.data(), sig.data()));
+
+    auto wrong_msg = msg;
+    wrong_msg[0] ^= 0x80;
+    EXPECT_FALSE(schnorr_verify(compressed_pub.data(), wrong_msg.data(), sig.data()));
+
+    const std::array<uint8_t,32> wrong_pub = {
+        0xF9,0x30,0x8A,0x01,0x92,0x58,0xC3,0x10,0x49,0x34,0x4F,0x85,0xF8,0x9D,0x52,0x29,
+        0xB5,0x31,0xC8,0x45,0x83,0x6F,0x99,0xB0,0x86,0x01,0xF1,0x13,0xBC,0xE0,0x36,0xF9};
+    auto wrong_pub_compressed = ToCompressedPub(wrong_pub);
+    EXPECT_FALSE(schnorr_verify(wrong_pub_compressed.data(), msg.data(), sig.data()));
+
+    auto mutated_sig = sig;
+    mutated_sig[10] ^= 0xFF;
+    EXPECT_FALSE(schnorr_verify(compressed_pub.data(), msg.data(), mutated_sig.data()));
+}
+
+TEST(SchnorrInvariants, RejectsMalformedPublicKeys)
+{
+    std::array<uint8_t,32> msg{};
+    std::array<uint8_t,64> sig{};
+    sig.fill(0x01);
+
+    std::array<uint8_t,33> infinity{};
+    EXPECT_FALSE(schnorr_verify(infinity.data(), msg.data(), sig.data()));
+
+    std::array<uint8_t,33> noncanonical{};
+    noncanonical.fill(0x04); // Uncompressed SEC1 prefix where schnorr_verify expects even y-coordinate compressed keys
+    EXPECT_FALSE(schnorr_verify(noncanonical.data(), msg.data(), sig.data()));
+
+    std::array<uint8_t,33> out_of_field{};
+    out_of_field.fill(0xFF);
+    out_of_field[0] = 0x02;
+    EXPECT_FALSE(schnorr_verify(out_of_field.data(), msg.data(), sig.data()));
+}
+
+TEST(SchnorrInvariants, ScalarBoundariesAreEnforced)
+{
+    const std::array<uint8_t,32> pubkey = {
+        0xDF,0xF1,0xD7,0x7F,0x2A,0x67,0x1C,0x5F,0x36,0x18,0x37,0x26,0xDB,0x23,0x41,0xBE,
+        0x58,0xFE,0xAE,0x1D,0xA2,0xDE,0xCE,0xD8,0x43,0x24,0x0F,0x7B,0x50,0x2B,0xA6,0x59};
+    const std::array<uint8_t,64> good_sig = {
+        0x68,0x96,0xBD,0x60,0xEE,0xAE,0x29,0x6D,0xB4,0x8A,0x22,0x9F,0xF7,0x1D,0xFE,0x07,
+        0x1B,0xDE,0x41,0x3E,0x6D,0x43,0xF9,0x17,0xDC,0x8D,0xCF,0x8C,0x78,0xDE,0x33,0x41,
+        0x89,0x06,0xD1,0x1A,0xC9,0x76,0xAB,0xCC,0xB2,0x0B,0x09,0x12,0x92,0xBF,0xF4,0xEA,
+        0x89,0x7E,0xFC,0xB6,0x39,0xEA,0x87,0x1C,0xFA,0x95,0xF6,0xDE,0x33,0x9E,0x4B,0x0A};
+    const auto compressed_pub = ToCompressedPub(pubkey);
+    const std::array<uint8_t,32> msg = {
+        0x24,0x3F,0x6A,0x88,0x85,0xA3,0x08,0xD3,0x13,0x19,0x8A,0x2E,0x03,0x70,0x73,0x44,
+        0xA4,0x09,0x38,0x22,0x29,0x9F,0x31,0xD0,0x08,0x2E,0xFA,0x98,0xEC,0x4E,0x6C,0x89};
+    EXPECT_TRUE(schnorr_verify(compressed_pub.data(), msg.data(), good_sig.data()));
+
+    auto sig_bad_s = good_sig;
+    std::copy(kCurveOrder.begin(), kCurveOrder.end(), sig_bad_s.begin() + 32);
+    EXPECT_FALSE(schnorr_verify(compressed_pub.data(), msg.data(), sig_bad_s.data()));
+
+    auto sig_bad_r = good_sig;
+    std::copy(kFieldPrime.begin(), kFieldPrime.end(), sig_bad_r.begin());
+    EXPECT_FALSE(schnorr_verify(compressed_pub.data(), msg.data(), sig_bad_r.data()));
+
+    std::array<uint8_t,64> out{};
+    EXPECT_FALSE(schnorr_sign(kCurveOrder.data(), msg.data(), out.data()));
+    std::array<uint8_t,32> zero{};
+    EXPECT_FALSE(schnorr_sign(zero.data(), msg.data(), out.data()));
+}
+
+TEST(SchnorrInvariants, TaggedHashMismatchInvalidatesSignature)
+{
+    const std::array<uint8_t,32> seckey = {
+        0xB7,0xE1,0x51,0x62,0x8A,0xED,0x2A,0x6A,0xBF,0x71,0x58,0x80,0x9C,0xF4,0xF3,0xC7,
+        0x62,0xE7,0x16,0x0F,0x38,0xB4,0xDA,0x56,0xA7,0x84,0xD9,0x04,0x51,0x90,0xCF,0xEF};
+    const std::array<uint8_t,32> pubkey = {
+        0xDF,0xF1,0xD7,0x7F,0x2A,0x67,0x1C,0x5F,0x36,0x18,0x37,0x26,0xDB,0x23,0x41,0xBE,
+        0x58,0xFE,0xAE,0x1D,0xA2,0xDE,0xCE,0xD8,0x43,0x24,0x0F,0x7B,0x50,0x2B,0xA6,0x59};
+    const std::array<uint8_t,32> msg = {
+        0x24,0x3F,0x6A,0x88,0x85,0xA3,0x08,0xD3,0x13,0x19,0x8A,0x2E,0x03,0x70,0x73,0x44,
+        0xA4,0x09,0x38,0x22,0x29,0x9F,0x31,0xD0,0x08,0x2E,0xFA,0x98,0xEC,0x4E,0x6C,0x89};
+    const std::array<uint8_t,32> aux = {
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01};
+
+    std::array<uint8_t,64> sig{};
+    ASSERT_TRUE(schnorr_sign_with_aux(seckey.data(), msg.data(), aux.data(), sig.data()));
+    const auto compressed_pub = ToCompressedPub(pubkey);
+    ASSERT_TRUE(schnorr_verify(compressed_pub.data(), msg.data(), sig.data()));
+
+    std::unique_ptr<EC_GROUP, decltype(&EC_GROUP_free)> group(EC_GROUP_new_by_curve_name(NID_secp256k1),
+                                                              &EC_GROUP_free);
+    ASSERT_TRUE(group);
+    std::unique_ptr<BN_CTX, decltype(&BN_CTX_free)> ctx(BN_CTX_new(), &BN_CTX_free);
+    ASSERT_TRUE(ctx);
+
+    bn_unique_ptr order(BN_new(), &BN_clear_free);
+    ASSERT_TRUE(order);
+    ASSERT_EQ(EC_GROUP_get_order(group.get(), order.get(), ctx.get()), 1);
+
+    auto require_success = [](int rc) { ASSERT_EQ(rc, 1); };
+
+    std::array<uint8_t,32> r_bytes{};
+    std::copy(sig.begin(), sig.begin() + 32, r_bytes.begin());
+
+    const auto preimage = ChallengePreimage(r_bytes, pubkey, msg);
+    const auto challenge_hash = tagged_hash("BIP0340/challenge", preimage.data(), preimage.size());
+    auto e = MakeBn(challenge_hash.data(), challenge_hash.size());
+    ASSERT_TRUE(e);
+    require_success(BN_mod(e.get(), e.get(), order.get(), ctx.get()));
+
+    auto s_bn = MakeBn(sig.data() + 32, 32);
+    auto sk_bn = MakeBn(seckey.data(), seckey.size());
+    ASSERT_TRUE(s_bn && sk_bn);
+
+    bn_unique_ptr tmp(BN_new(), &BN_clear_free);
+    bn_unique_ptr k(BN_new(), &BN_clear_free);
+    ASSERT_TRUE(tmp && k);
+    require_success(BN_mod_mul(tmp.get(), e.get(), sk_bn.get(), order.get(), ctx.get()));
+    require_success(BN_mod_sub(k.get(), s_bn.get(), tmp.get(), order.get(), ctx.get()));
+
+    const auto wrong_tag_hash = tagged_hash("BIP0340/nonce", preimage.data(), preimage.size());
+    auto wrong_e = MakeBn(wrong_tag_hash.data(), wrong_tag_hash.size());
+    ASSERT_TRUE(wrong_e);
+    require_success(BN_mod(wrong_e.get(), wrong_e.get(), order.get(), ctx.get()));
+    require_success(BN_mod_mul(tmp.get(), wrong_e.get(), sk_bn.get(), order.get(), ctx.get()));
+    require_success(BN_mod_add(s_bn.get(), k.get(), tmp.get(), order.get(), ctx.get()));
+
+    auto forged = sig;
+    auto forged_s = SerializeBN(s_bn.get());
+    std::copy(forged_s.begin(), forged_s.end(), forged.begin() + 32);
+    EXPECT_FALSE(schnorr_verify(compressed_pub.data(), msg.data(), forged.data()));
+
+    const auto empty_tag_hash = tagged_hash("", preimage.data(), preimage.size());
+    auto empty_e = MakeBn(empty_tag_hash.data(), empty_tag_hash.size());
+    ASSERT_TRUE(empty_e);
+    require_success(BN_mod(empty_e.get(), empty_e.get(), order.get(), ctx.get()));
+    require_success(BN_mod_mul(tmp.get(), empty_e.get(), sk_bn.get(), order.get(), ctx.get()));
+    require_success(BN_mod_add(s_bn.get(), k.get(), tmp.get(), order.get(), ctx.get()));
+
+    auto forged_empty = sig;
+    auto forged_empty_s = SerializeBN(s_bn.get());
+    std::copy(forged_empty_s.begin(), forged_empty_s.end(), forged_empty.begin() + 32);
+    EXPECT_FALSE(schnorr_verify(compressed_pub.data(), msg.data(), forged_empty.data()));
+
+    const bool first_ok = schnorr_verify(compressed_pub.data(), msg.data(), sig.data());
+    const bool second_ok = schnorr_verify(compressed_pub.data(), msg.data(), sig.data());
+    EXPECT_TRUE(first_ok);
+    EXPECT_EQ(first_ok, second_ok);
 }
