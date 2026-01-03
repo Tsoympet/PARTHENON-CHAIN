@@ -375,6 +375,11 @@ void RPCServer::AttachSidechainHandlers(sidechain::rpc::WasmRpcService& wasm)
         req.token_id = kv["token"];
         req.owner = kv["owner"];
         req.metadata_hash = kv["meta"];
+        req.creator = kv.count("creator") ? kv["creator"] : req.owner;
+        req.canon_reference_hash =
+            kv.count("canon") ? kv["canon"] : req.metadata_hash;
+        req.royalty_bps = kv.count("royalty") ? static_cast<uint16_t>(std::stoul(kv["royalty"])) : 0;
+        req.mint_height = kv.count("height") ? std::stoull(kv["height"]) : 0;
         req.asset_id = kv.count("asset") ? static_cast<uint8_t>(std::stoul(kv["asset"])) : kAssetTln;
         req.gas_limit = kv.count("gas") ? std::stoull(kv["gas"]) : 0;
         return FormatExecResult(wasm.MintNft(req));
@@ -388,7 +393,44 @@ void RPCServer::AttachSidechainHandlers(sidechain::rpc::WasmRpcService& wasm)
         req.to = kv["to"];
         req.asset_id = kv.count("asset") ? static_cast<uint8_t>(std::stoul(kv["asset"])) : kAssetTln;
         req.gas_limit = kv.count("gas") ? std::stoull(kv["gas"]) : 0;
+        req.height = kv.count("height") ? std::stoull(kv["height"]) : 0;
         return FormatExecResult(wasm.TransferNft(req));
+    });
+
+    Register("list_nft", [&wasm](const std::string& params) {
+        auto kv = ParseKeyValues(params);
+        sidechain::rpc::ListNftRequest req;
+        req.token_id = kv["token"];
+        req.seller = kv["seller"];
+        req.payment_asset =
+            kv.count("asset") ? static_cast<uint8_t>(std::stoul(kv["asset"])) : kAssetDrm;
+        req.price = kv.count("price") ? std::stoull(kv["price"]) : 0;
+        req.height = kv.count("height") ? std::stoull(kv["height"]) : 0;
+        return FormatExecResult(wasm.ListNft(req));
+    });
+
+    Register("place_nft_bid", [&wasm](const std::string& params) {
+        auto kv = ParseKeyValues(params);
+        sidechain::rpc::PlaceBidRequest req;
+        req.token_id = kv["token"];
+        req.bidder = kv["bidder"];
+        req.payment_asset =
+            kv.count("asset") ? static_cast<uint8_t>(std::stoul(kv["asset"])) : kAssetDrm;
+        req.price = kv.count("price") ? std::stoull(kv["price"]) : 0;
+        req.height = kv.count("height") ? std::stoull(kv["height"]) : 0;
+        return FormatExecResult(wasm.PlaceBid(req));
+    });
+
+    Register("settle_nft_sale", [&wasm](const std::string& params) {
+        auto kv = ParseKeyValues(params);
+        sidechain::rpc::SettleSaleRequest req;
+        req.token_id = kv["token"];
+        req.buyer = kv["buyer"];
+        req.payment_asset =
+            kv.count("asset") ? static_cast<uint8_t>(std::stoul(kv["asset"])) : kAssetDrm;
+        req.price = kv.count("price") ? std::stoull(kv["price"]) : 0;
+        req.height = kv.count("height") ? std::stoull(kv["height"]) : 0;
+        return FormatExecResult(wasm.SettleSale(req));
     });
 
     Register("call_dapp", [&wasm](const std::string& params) {

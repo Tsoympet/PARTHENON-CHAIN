@@ -34,7 +34,10 @@ bool ValidateCheckpoint(const SidechainBlockHeader& header,
         return false;
     }
     if (header.state_root == std::array<uint8_t, 32>{} ||
-        header.execution_root == std::array<uint8_t, 32>{}) {
+        header.execution_root == std::array<uint8_t, 32>{} ||
+        header.nft_state_root == std::array<uint8_t, 32>{} ||
+        header.market_state_root == std::array<uint8_t, 32>{} ||
+        header.event_root == std::array<uint8_t, 32>{}) {
         error = "missing execution anchors";
         return false;
     }

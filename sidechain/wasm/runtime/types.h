@@ -10,6 +10,7 @@ namespace sidechain::wasm {
 constexpr uint8_t kAssetTln = 0;
 constexpr uint8_t kAssetDrm = 1;
 constexpr uint8_t kAssetObl = 2;
+constexpr uint16_t kMaxRoyaltyBps = 1000;
 
 enum class ExecutionDomain {
     SmartContract,

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -24,8 +25,12 @@ struct ContractCall {
 
 struct MintNftRequest {
     std::string token_id;
+    std::string creator;
     std::string owner;
     std::string metadata_hash;
+    std::string canon_reference_hash;
+    uint64_t mint_height{0};
+    uint16_t royalty_bps{0};
     uint8_t asset_id;
     uint64_t gas_limit{0};
 };
@@ -36,6 +41,31 @@ struct TransferNftRequest {
     std::string to;
     uint8_t asset_id;
     uint64_t gas_limit{0};
+    uint64_t height{0};
+};
+
+struct ListNftRequest {
+    std::string token_id;
+    std::string seller;
+    uint8_t payment_asset;
+    uint64_t price{0};
+    uint64_t height{0};
+};
+
+struct PlaceBidRequest {
+    std::string token_id;
+    std::string bidder;
+    uint8_t payment_asset;
+    uint64_t price{0};
+    uint64_t height{0};
+};
+
+struct SettleSaleRequest {
+    std::string token_id;
+    std::string buyer;
+    uint8_t payment_asset;
+    uint64_t price{0};
+    uint64_t height{0};
 };
 
 struct DappCall {
@@ -53,6 +83,9 @@ public:
     sidechain::wasm::ExecutionResult CallContract(const ContractCall& request);
     sidechain::wasm::ExecutionResult MintNft(const MintNftRequest& request);
     sidechain::wasm::ExecutionResult TransferNft(const TransferNftRequest& request);
+    sidechain::wasm::ExecutionResult ListNft(const ListNftRequest& request);
+    sidechain::wasm::ExecutionResult PlaceBid(const PlaceBidRequest& request);
+    sidechain::wasm::ExecutionResult SettleSale(const SettleSaleRequest& request);
     sidechain::wasm::ExecutionResult CallDapp(const DappCall& request);
 
 private:

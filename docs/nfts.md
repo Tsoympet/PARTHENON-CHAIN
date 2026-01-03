@@ -1,10 +1,11 @@
-# NFTs (TLN, asset_id=0)
+# NFTs (TLN gas; DRM/OBL settlement)
 
-NFT minting, ownership, and transfers are bound to TLN only. The WASM validator rejects NFT calls funded by DRM or OBL.
+NFT minting, ownership, and transfers pay TLN gas in the NFT domain but do not mint or burn TLN/DRM/OBL. Marketplace settlement for value discovery uses DRM or OBL only; TLN is rejected as a payment currency.
 
 ## Model
-- RPC entrypoints: `mint_nft` and `transfer_nft` (see `sidechain/rpc/wasm_rpc.*`).
-- State isolation: ownership and metadata hashes are stored under the NFT domain; other domains cannot access them.
+- RPC entrypoints: `mint_nft`, `transfer_nft`, `list_nft`, `place_nft_bid`, `settle_nft_sale` (see `sidechain/rpc/wasm_rpc.*`).
+- State isolation: ownership, metadata hashes, canon references, mint height, and immutable `royalty_bps` are stored under the NFT domain; other domains cannot access them.
+- Royalties: every sale splits `price` into `royalty_amount = price * royalty_bps / 10,000` (to creator) and `seller_amount` (to seller) in the same asset (DRM/OBL).
 - Gas: fixed-cost metering for mint/transfer, paid in TLN.
 
 ## Using the Desktop GUI

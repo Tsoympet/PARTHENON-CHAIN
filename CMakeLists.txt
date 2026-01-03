@@ -108,6 +108,7 @@ target_include_directories(drachma_sidechain_wasm
         ${CMAKE_CURRENT_SOURCE_DIR}/sidechain
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
+target_link_libraries(drachma_sidechain_wasm PUBLIC OpenSSL::Crypto)
 
 # Layer 2: services and orchestration
 add_library(drachma_layer2
@@ -335,6 +336,10 @@ if(DRACHMA_BUILD_TESTS)
     add_executable(nft_precompile_test tests/sidechain/nft_precompile_test.cpp)
     target_link_libraries(nft_precompile_test PRIVATE drachma_sidechain_evm GTest::gtest_main)
     gtest_discover_tests(nft_precompile_test)
+
+    add_executable(nft_market_test tests/sidechain/nft_market_test.cpp)
+    target_link_libraries(nft_market_test PRIVATE drachma_sidechain_wasm drachma_layer1 GTest::gtest_main)
+    gtest_discover_tests(nft_market_test)
 
     add_executable(peg_bridge_test tests/sidechain/peg_bridge_test.cpp)
     target_link_libraries(peg_bridge_test PRIVATE drachma_sidechain_evm GTest::gtest_main)

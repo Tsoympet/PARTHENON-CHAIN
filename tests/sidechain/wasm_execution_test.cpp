@@ -40,8 +40,12 @@ TEST(WasmAssetLaw, NftRequiresTln) {
 
     MintNftRequest bad;
     bad.token_id = "token-1";
+    bad.creator = "alice";
     bad.owner = "alice";
     bad.metadata_hash = "hash";
+    bad.canon_reference_hash = "canon";
+    bad.mint_height = 1;
+    bad.royalty_bps = 0;
     bad.asset_id = kAssetDrm;
     auto rejected = rpc.MintNft(bad);
     EXPECT_FALSE(rejected.success);

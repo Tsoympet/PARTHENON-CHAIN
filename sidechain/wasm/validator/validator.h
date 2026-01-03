@@ -17,6 +17,9 @@ struct SidechainBlockHeader {
     uint64_t height{0};
     std::array<uint8_t, 32> state_root{};
     std::array<uint8_t, 32> execution_root{};
+    std::array<uint8_t, 32> nft_state_root{};
+    std::array<uint8_t, 32> market_state_root{};
+    std::array<uint8_t, 32> event_root{};
     std::array<uint8_t, 32> main_chain_checkpoint{};
 };
 

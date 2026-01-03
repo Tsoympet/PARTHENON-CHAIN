@@ -108,13 +108,14 @@ Commands are subject to change as the implementation matures; prefer scripts in 
 
 BlockChainDrachma ships a **mandatory WASM execution layer** that is anchored to Layer 1 checkpoints. The asset-to-function law is enforced by consensus and validation:
 
-| Asset (`asset_id`) | Function            | RPC entrypoints                          |
-|--------------------|---------------------|------------------------------------------|
-| TLN (0)            | NFTs                | `mint_nft`, `transfer_nft`               |
-| DRM (1)            | Smart contracts     | `deploy_contract`, `call_contract`       |
-| OBL (2)            | dApps / interaction | `call_dapp`                              |
+| Asset (`asset_id`) | Function            | RPC entrypoints                                                        |
+|--------------------|---------------------|------------------------------------------------------------------------|
+| TLN (0)            | NFT state + history | `mint_nft`, `transfer_nft`, `list_nft`, `place_nft_bid`, `settle_nft_sale` |
+| DRM (1)            | Smart contracts     | `deploy_contract`, `call_contract`                                     |
+| OBL (2)            | dApps / interaction | `call_dapp`                                                            |
 
-- **Execution:** Deterministic WASM only; no EVM/ABI/solidity or wrapped assets. Gas is paid in the asset bound to the domain.
+- **Execution:** Deterministic WASM only; no EVM/ABI/solidity or wrapped assets. Gas is paid in the asset bound to the domain; NFT records are standalone cultural entries and never inflate TLN/DRM/OBL supply.
+- **Marketplace:** NFT value discovery happens on-chain in DRM or OBL only; royalties are enforced at settlement and paid automatically to creators.
 - **Anchors:** Sidechain checkpoints are required; they cannot be disabled in the wallet or node.
 - **Wallet UX:** The Sidechain tab auto-selects the correct asset based on the action (TLN for NFTs, DRM for contracts, OBL for dApps) and surfaces the WASM manifest instead of ABI JSON.
 - **dApp gateway:** Defaults to `http://localhost:8080` for OBL-backed dApps; RPC defaults to `http://localhost:9334/wasm`.
