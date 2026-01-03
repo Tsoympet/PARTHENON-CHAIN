@@ -1,0 +1,44 @@
+coverage:
+  precision: 2
+  round: down
+  range: "40...90"
+
+  status:
+    project:
+      default:
+        target: 50%
+        threshold: 5%
+    patch:
+      default:
+        target: 60%
+        threshold: 5%
+
+flags:
+  layer1:
+    paths:
+      - layer1-core/
+  layer2:
+    paths:
+      - layer2-services/
+  sidechain:
+    paths:
+      - sidechain/
+  miners:
+    paths:
+      - miners/
+  app:
+    paths:
+      - layer3-app/
+  common:
+    paths:
+      - common/
+
+ignore:
+  - build/**
+  - depends/**
+  - external/**
+  - third_party/**
+  - contrib/**
+  - tests/**
+  - explorer/**
+  - docs/**

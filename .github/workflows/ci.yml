@@ -1,4 +1,4 @@
-name: CMake
+name: CI
 
 on:
   push:
@@ -7,6 +7,13 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      statuses: write
+    env:
+      BUILD_DIR: build
+      COVERAGE_FILTER: "^(layer1-core|layer2-services|sidechain|miners|common|layer3-app)(/|$)"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -15,20 +22,34 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libssl-dev libboost-all-dev libleveldb-dev gcovr
 
       - name: Configure
-        run: cmake -S . -B build -G Ninja -DDRACHMA_BUILD_TESTS=ON -DDRACHMA_BUILD_GUI=OFF -DDRACHMA_COVERAGE=ON
+        run: cmake -S . -B "${BUILD_DIR}" -G Ninja -DCMAKE_BUILD_TYPE=Debug -DDRACHMA_BUILD_TESTS=ON -DDRACHMA_BUILD_GUI=OFF -DDRACHMA_COVERAGE=ON
 
       - name: Build
-        run: cmake --build build --parallel
+        run: cmake --build "${BUILD_DIR}" --parallel
 
       - name: Test
-        run: ctest --test-dir build --output-on-failure
+        run: ctest --test-dir "${BUILD_DIR}" --output-on-failure
 
       - name: Coverage
         run: |
-          gcovr --root . --xml -o coverage.xml --print-summary --exclude 'build/_deps' --exclude 'tests'
+          gcovr \
+            --root . \
+            --xml -o coverage.xml \
+            --print-summary \
+            --exclude 'build/_deps' \
+            --exclude 'tests' \
+            --filter "${COVERAGE_FILTER}" \
+            --gcov-ignore-parse-errors=negative_hits.warn
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         with:
           name: coverage
           path: coverage.xml
+
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.xml
+          use_oidc: true
+          fail_ci_if_error: true
