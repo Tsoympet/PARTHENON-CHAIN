@@ -1,6 +1,9 @@
 #include <gtest/gtest.h>
 #include <filesystem>
 #include <openssl/sha.h>
+#include <boost/asio.hpp>
+#include <thread>
+#include <chrono>
 #include "../../layer2-services/crosschain/bridge/bridge_manager.h"
 #include "../../layer2-services/crosschain/relayer/relayer.h"
 #include "../../layer2-services/net/p2p.h"
@@ -80,4 +83,34 @@ TEST(RelayerFlow, HandlesEmptyEndpoint)
     rel.Start();
     rel.Stop();
     EXPECT_EQ(rel.Metrics().detected.load(), 0u);
+}
+
+TEST(RelayerFlow, InvalidProofResponseIsIgnored)
+{
+    auto tmp = std::filesystem::temp_directory_path() / "relayer_invalid";
+    BridgeManager mgr(tmp.string());
+    boost::asio::io_context io;
+    net::P2PNode p2p(io, 0);
+
+    // Minimal HTTP server returning 404 to trigger proof rejection.
+    boost::asio::io_context serverIo;
+    boost::asio::ip::tcp::acceptor acc(serverIo, {boost::asio::ip::tcp::v4(), 0});
+    const auto port = acc.local_endpoint().port();
+    std::thread server([&]() {
+        boost::asio::ip::tcp::socket sock(serverIo);
+        acc.accept(sock);
+        const std::string resp = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n";
+        boost::asio::write(sock, boost::asio::buffer(resp));
+    });
+
+    crosschain::Relayer rel(mgr, p2p, io);
+    ChainConfig cfg{};
+    cfg.rpcEndpoint = "http://127.0.0.1:" + std::to_string(port) + "/proof";
+    rel.AddWatchedChain("invalid", cfg);
+    rel.Start();
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
+    rel.Stop();
+
+    EXPECT_EQ(rel.Metrics().detected.load(), 0u);
+    server.join();
 }

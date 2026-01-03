@@ -140,6 +140,31 @@ TEST(Wallet, RejectsMixedAssetOutputs)
     EXPECT_THROW(backend.CreateSpend(outputs, id, 500), std::runtime_error);
 }
 
+TEST(Wallet, InsufficientFundsAndAssetIsolation)
+{
+    KeyStore store;
+    WalletBackend backend(store);
+    auto priv = MakeKey(12);
+    auto id = backend.ImportKey(priv);
+
+    OutPoint op{};
+    TxOut utxo{1'000, std::vector<uint8_t>(32, 0x01)};
+    utxo.assetId = static_cast<uint8_t>(AssetId::DRACHMA);
+    backend.AddUTXO(op, utxo);
+
+    // Spending more than available, including fee, throws.
+    TxOut outA{900, std::vector<uint8_t>(32, 0x02)};
+    outA.assetId = utxo.assetId;
+    std::vector<TxOut> outputs{outA};
+    EXPECT_THROW(backend.CreateSpend(outputs, id, 200), std::runtime_error);
+
+    // Requesting TLN spend with only DRM balance is rejected during coin selection.
+    TxOut tlnOut{100, std::vector<uint8_t>(32, 0x03)};
+    tlnOut.assetId = static_cast<uint8_t>(AssetId::TALANTON);
+    std::vector<TxOut> tlnOutputs{tlnOut};
+    EXPECT_THROW(backend.CreateSpend(tlnOutputs, id, 10), std::runtime_error);
+}
+
 TEST(Keystore, EncryptsAndRejectsBadPassphrase)
 {
     wallet::KeyStore store;

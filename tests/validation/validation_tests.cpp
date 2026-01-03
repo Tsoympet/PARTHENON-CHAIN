@@ -56,6 +56,7 @@ Transaction MakeCoinbase(uint64_t value)
 }
 
 using UTXOSet = std::unordered_map<OutPoint, TxOut, OutPointHasher, OutPointEq>;
+constexpr uint8_t kInvalidAssetId = 0xFF;
 
 } // namespace
 
@@ -253,6 +254,29 @@ int main()
             digestThrew = true;
         }
         assert(digestThrew);
+    }
+
+    // Empty transaction set is invalid.
+    {
+        std::vector<Transaction> txs;
+        assert(!ValidateTransactions(txs, params, 9));
+    }
+
+    // Duplicate coinbases are rejected.
+    {
+        Transaction cb = MakeCoinbase(consensus::GetBlockSubsidy(10, params, static_cast<uint8_t>(AssetId::TALANTON)));
+        Transaction extra = cb;
+        std::vector<Transaction> txs{cb, extra};
+        assert(!ValidateTransactions(txs, params, 10));
+    }
+
+    // Outputs with invalid asset identifiers are rejected before script evaluation.
+    {
+        Transaction cb = MakeCoinbase(consensus::GetBlockSubsidy(11, params, static_cast<uint8_t>(AssetId::TALANTON)));
+        cb.vout[0].assetId = kInvalidAssetId; // invalid asset id
+        cb.vin[0].assetId = cb.vout[0].assetId;
+        std::vector<Transaction> txs{cb};
+        assert(!ValidateTransactions(txs, params, 11));
     }
 
     return 0;

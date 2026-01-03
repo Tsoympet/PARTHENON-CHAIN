@@ -20,6 +20,7 @@ using sidechain::rpc::MintNftRequest;
 using sidechain::rpc::SettleSaleRequest;
 using sidechain::rpc::TransferNftRequest;
 using sidechain::rpc::WasmRpcService;
+using sidechain::rpc::ContractCall;
 using sidechain::state::StateStore;
 using sidechain::wasm::ExecutionDomain;
 using sidechain::wasm::ExecutionEngine;
@@ -34,6 +35,7 @@ namespace {
 // Well-known hash mixing constant derived from the golden ratio fraction.
 constexpr std::size_t kHashMagic = 0x9e3779b97f4a7c15ULL;
 constexpr std::size_t kTestCacheEntries = 8;
+constexpr uint8_t kInvalidOpcode = 0xFF;
 
 std::size_t DigestUtxos(const Chainstate& chain,
                         const std::vector<OutPoint>& outs) {
@@ -129,6 +131,20 @@ TEST(WasmAssetLaw, NftAssetAgnostic) {
     EXPECT_EQ(parts[5], std::to_string(tln.royalty_bps));
 }
 
+TEST(WasmRpcServiceTest, RejectsInvalidContractCall) {
+    ExecutionEngine engine;
+    StateStore state;
+    WasmRpcService rpc(engine, state);
+
+    ContractCall call{};
+    call.contract_id = "bad";
+    call.asset_id = 9; // invalid asset for wasm domain
+    call.gas_limit = 10;
+    auto res = rpc.CallContract(call);
+    EXPECT_FALSE(res.success);
+    EXPECT_FALSE(res.error.empty());
+}
+
 TEST(WasmDeterminism, RepeatableGasAndOutput) {
     ExecutionEngine engine;
     StateStore state;
@@ -175,6 +191,31 @@ TEST(WasmSafety, StackLimitEnforced) {
     auto res = engine.Execute(req, state);
     EXPECT_FALSE(res.success);
     EXPECT_EQ("stack limit exceeded", res.error);
+}
+
+TEST(WasmSafety, GasExhaustionAndUnknownOpcode) {
+    ExecutionEngine engine;
+    StateStore state;
+
+    ExecutionRequest gasStarved;
+    gasStarved.domain = ExecutionDomain::SmartContract;
+    gasStarved.asset_id = kAssetDrm;
+    gasStarved.module_id = "gas-starved";
+    gasStarved.code = {{OpCode::ConstI32, 1}, {OpCode::ReturnTop, 0}};
+    gasStarved.gas_limit = 0; // force out-of-gas immediately
+    auto gasResult = engine.Execute(gasStarved, state);
+    EXPECT_FALSE(gasResult.success);
+    EXPECT_EQ("out of gas", gasResult.error);
+
+    ExecutionRequest badOpcode;
+    badOpcode.domain = ExecutionDomain::Dapp;
+    badOpcode.asset_id = kAssetObl;
+    badOpcode.module_id = "bad-op";
+    badOpcode.code = {{static_cast<OpCode>(kInvalidOpcode), 0}};
+    badOpcode.gas_limit = 50;
+    auto badResult = engine.Execute(badOpcode, state);
+    EXPECT_FALSE(badResult.success);
+    EXPECT_EQ("unknown opcode", badResult.error);
 }
 
 TEST(WasmState, MintCreatesOnlyCoreEntry) {

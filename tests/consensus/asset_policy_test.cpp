@@ -48,6 +48,30 @@ int main()
     auto state = consensus::VersionBitsState(vbParams, dep, history);
     assert(state == consensus::ThresholdState::ACTIVE || state == consensus::ThresholdState::LOCKED_IN);
 
+    // Windows that never signal before timeout should fail.
+    dep.nTimeout = dep.nStartTime + 1;
+    history = {
+        {0, dep.nStartTime + 2, 0},
+        {1, dep.nStartTime + 2, 0},
+    };
+    state = consensus::VersionBitsState(vbParams, dep, history);
+    assert(state == consensus::ThresholdState::FAILED);
+
+    // ComputeBlockVersion only sets live deployments.
+    std::vector<consensus::VBDeployment> deployments = {
+        {0, 10, 20},
+        {1, -1, 50}, // disabled
+        {2, 5, 15},
+    };
+    auto early = consensus::ComputeBlockVersion(vbParams, deployments, 0);
+    assert((early & consensus::VersionBitsMask(deployments[0])) == 0);
+    auto active = consensus::ComputeBlockVersion(vbParams, deployments, 12);
+    assert((active & consensus::VersionBitsMask(deployments[0])) != 0);
+    assert((active & consensus::VersionBitsMask(deployments[2])) != 0);
+    assert((active & consensus::VersionBitsMask(deployments[1])) == 0);
+    auto expired = consensus::ComputeBlockVersion(vbParams, deployments, 25);
+    assert((expired & consensus::VersionBitsMask(deployments[0])) == 0);
+
     // Genesis creation rejects mismatched nonce that fails PoW.
     auto badParams = consensus::Main();
     badParams.nGenesisNonce = 1;
@@ -58,6 +82,13 @@ int main()
         threw = true;
     }
     assert(threw);
+
+    // When nonce is unset, genesis mining path should populate a valid nonce.
+    auto minedParams = consensus::Testnet();
+    minedParams.nGenesisNonce = 0;
+    minedParams.nGenesisBits = 0x207fffff; // easy target to keep loop small
+    auto minedGenesis = CreateGenesisBlock(minedParams);
+    assert(minedGenesis.header.nonce != 0);
 
     return 0;
 }

@@ -54,3 +54,30 @@ TEST(PoW, CheckPowDisallowsEqualTarget)
     // When hash equals target it should fail the strict < comparison.
     EXPECT_FALSE(check_pow(hash, target));
 }
+
+TEST(PoW, Sha256DeterministicAndRejectsNullData)
+{
+    auto to_hex = [](const Hash256& h) {
+        std::string out;
+        static const char* hex = "0123456789abcdef";
+        out.reserve(h.size() * 2);
+        for (auto b : h) {
+            out.push_back(hex[b >> 4]);
+            out.push_back(hex[b & 0xf]);
+        }
+        return out;
+    };
+
+    const uint8_t msg[] = {'a','b','c'};
+    auto first = SHA256d(msg, sizeof(msg));
+    auto second = SHA256d(msg, sizeof(msg));
+    EXPECT_EQ(first, second);
+    EXPECT_EQ(to_hex(first), std::string("4f8b42c22dd3729b519ba6f68d2da7cc5b2d606d05daed5ad5128cc03e6c6358"));
+
+    // Non-null length with null data should hit the defensive null guard and return zeros.
+    auto nullHash = SHA256(nullptr, 4);
+    EXPECT_EQ(nullHash, Hash256{});
+
+    // sha256d should early-return when given a null output pointer.
+    EXPECT_NO_THROW(sha256d(nullptr, msg, sizeof(msg)));
+}

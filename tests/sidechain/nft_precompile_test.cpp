@@ -109,3 +109,26 @@ TEST(NftPrecompileTest, TokenUriAndApprovals) {
     ASSERT_TRUE(transfer_res.owner.has_value());
     EXPECT_EQ(transfer_res.owner.value(), recipient);
 }
+
+TEST(NftPrecompileTest, BurnAuthorizationAndMetadataImmutability) {
+    const std::string db_path = temp_db_path("nft_burn_auth");
+    nft_precompile precompile(db_path);
+
+    const uint256 token_id = 77;
+    const address owner = make_address(0x0d);
+    const address attacker = make_address(0x0e);
+
+    ASSERT_TRUE(precompile.mint(token_id, owner, "ipfs://meta/77").success);
+
+    // Unauthorized burn should fail and preserve ownership/metadata.
+    nft_result unauthorized = precompile.burn(attacker, token_id);
+    EXPECT_FALSE(unauthorized.success);
+    nft_result stillOwned = precompile.owner_of(token_id);
+    EXPECT_TRUE(stillOwned.success);
+    ASSERT_TRUE(stillOwned.owner.has_value());
+    EXPECT_EQ(stillOwned.owner.value(), owner);
+    auto meta = precompile.token_uri(token_id);
+    EXPECT_TRUE(meta.success);
+    ASSERT_TRUE(meta.metadata_uri.has_value());
+    EXPECT_EQ(meta.metadata_uri.value(), "ipfs://meta/77");
+}

@@ -119,6 +119,10 @@ int main()
         // Matching, non-zero anchor should succeed.
         opts.expectedNftStateRoot = opts.nftStateRoot;
         assert(ValidateBlock(block, params, height, {}, opts));
+
+        // Non-zero anchor with unspecified expected root should also succeed.
+        opts.expectedNftStateRoot.fill(0);
+        assert(ValidateBlock(block, params, height, {}, opts));
     }
 
     // PoS blocks must use even timestamps and valid staking outputs.
@@ -158,6 +162,18 @@ int main()
         stake.vout[0].value = 1; // invalid: first output must be zero
         posBlock.transactions[0] = stake;
         assert(!ValidateBlock(posBlock, params, params.nPoSActivationHeight, lookup));
+    }
+
+    // Blocks without transactions are invalid regardless of header contents.
+    {
+        Block empty{};
+        empty.header.bits = params.nGenesisBits;
+        empty.header.time = 2100;
+        empty.header.version = 1;
+        BlockValidationOptions opts;
+        opts.medianTimePast = 2000;
+        opts.now = 2100;
+        assert(!ValidateBlock(empty, params, 5, {}, opts));
     }
 
     return 0;

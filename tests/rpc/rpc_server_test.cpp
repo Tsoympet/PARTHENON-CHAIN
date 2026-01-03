@@ -3,6 +3,7 @@
 #include <boost/beast/core.hpp>
 #include <chrono>
 #include <thread>
+#include <filesystem>
 #include "../../layer2-services/rpc/rpcserver.h"
 #include "../../layer2-services/policy/policy.h"
 #include "../../layer2-services/mempool/mempool.h"
@@ -85,6 +86,25 @@ TEST(TxIndex, UsesCacheWhenDbAbsent)
     index.AddBlock(h, 5);
     EXPECT_TRUE(index.LookupBlock(h, heightOut));
     EXPECT_EQ(heightOut, 5u);
+
+    // Persisted index should survive reopen and ignore empty DB entries.
+    std::filesystem::path tmp = std::filesystem::temp_directory_path() / "txindex_disk";
+    std::filesystem::remove_all(tmp);
+    uint256 tx{};
+    tx.fill(0x02);
+    {
+        txindex::TxIndex disk;
+        disk.Open(tmp.string());
+        uint32_t missing{0};
+        EXPECT_FALSE(disk.Lookup(tx, missing));
+        disk.Add(tx, 42);
+        EXPECT_TRUE(disk.Lookup(tx, heightOut));
+        EXPECT_EQ(heightOut, 42u);
+    }
+    txindex::TxIndex reloaded;
+    reloaded.Open(tmp.string());
+    EXPECT_TRUE(reloaded.Lookup(tx, heightOut));
+    EXPECT_EQ(heightOut, 42u);
 }
 
 TEST(RPC, EndpointsRespond)
@@ -141,6 +161,9 @@ TEST(RPC, EndpointsRespond)
     std::string invalidBalance =
         RpcCall(io, 19600, R"({"method":"getbalance","params":"\"invalid-asset\""})");
     EXPECT_NE(invalidBalance.find("null"), std::string::npos);
+
+    std::string malformedJson = RpcCall(io, 19600, "not-json");
+    EXPECT_NE(malformedJson.find("error"), std::string::npos);
 
     // Sidechain RPCs (WASM-only, asset/domain bound)
     std::string codeHex = ConstThenReturnHex(1);

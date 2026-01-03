@@ -41,5 +41,14 @@ int main()
     std::vector<std::array<uint8_t,64>> sigs(1);
     sigs[0].fill(0x00);
     assert(!schnorr_batch_verify(pubs, msgs, sigs));
+
+    // Invalid compressed public key should be rejected by low-level verifier.
+    std::array<uint8_t,33> badPub{};
+    std::array<uint8_t,64> zeroSig{};
+    assert(!schnorr_verify(badPub.data(), msg_hash.data(), zeroSig.data()));
+
+    // Signatures with zeroed scalars are invalid even with well-formed pubkeys.
+    std::array<uint8_t,64> zeroed{};
+    assert(!VerifySchnorr(pub, zeroed, msg));
     return 0;
 }
