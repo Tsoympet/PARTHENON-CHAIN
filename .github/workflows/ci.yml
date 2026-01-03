@@ -12,10 +12,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libssl-dev libboost-all-dev libleveldb-dev
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libssl-dev libboost-all-dev libleveldb-dev gcovr
 
       - name: Configure
-        run: cmake -S . -B build -G Ninja -DDRACHMA_BUILD_TESTS=ON -DDRACHMA_BUILD_GUI=OFF
+        run: cmake -S . -B build -G Ninja -DDRACHMA_BUILD_TESTS=ON -DDRACHMA_BUILD_GUI=OFF -DDRACHMA_COVERAGE=ON
 
       - name: Build
         run: cmake --build build --parallel
@@ -23,3 +23,12 @@ jobs:
       - name: Test
         run: ctest --test-dir build --output-on-failure
 
+      - name: Coverage
+        run: |
+          gcovr --root . --xml -o coverage.xml --print-summary --exclude 'build/_deps' --exclude 'tests'
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.xml

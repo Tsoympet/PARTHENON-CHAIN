@@ -351,7 +351,7 @@ if(DRACHMA_BUILD_TESTS)
     gtest_discover_tests(peg_bridge_test)
 
     add_executable(sidechain_wasm_execution_test tests/sidechain/wasm_execution_test.cpp)
-    target_link_libraries(sidechain_wasm_execution_test PRIVATE drachma_sidechain_wasm GTest::gtest_main)
+    target_link_libraries(sidechain_wasm_execution_test PRIVATE drachma_sidechain_wasm drachma_layer1 GTest::gtest_main)
     gtest_discover_tests(sidechain_wasm_execution_test)
 
     function(drachma_add_fuzz_target target source)
