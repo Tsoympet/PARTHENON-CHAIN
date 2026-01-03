@@ -66,3 +66,6 @@ ignore:
   - tests/**
   - explorer/**
   - docs/**
+  - miners/** # standalone mining binaries are manually verified, excluded per coverage policy
+  - layer1-core/drachmad.cpp # interactive daemon entrypoint exercised manually
+  - layer1-core/drachma_cli.cpp # CLI tool exercised manually in deployments

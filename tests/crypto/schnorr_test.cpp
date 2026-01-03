@@ -20,5 +20,24 @@ int main()
     } else {
         std::cout << "Schnorr verification failed for sample vector (expected for placeholder plumbing)\n";
     }
+
+    // Invalid inputs should be rejected.
+    std::array<uint8_t,64> outSig{};
+    bool nullSign = schnorr_sign(nullptr, msg.data(), outSig.data());
+    assert(!nullSign);
+    bool nullVerify = schnorr_verify(nullptr, msg.data(), sig.data());
+    assert(!nullVerify);
+
+    // Mutating signature should fail verification.
+    sig[0] ^= 0x01;
+    assert(!VerifySchnorr(pub, sig, msg));
+
+    // Batch verify rejects size mismatch.
+    std::vector<std::array<uint8_t,33>> pubs(1);
+    pubs[0].fill(0x02);
+    std::vector<std::array<uint8_t,32>> msgs(0);
+    std::vector<std::array<uint8_t,64>> sigs(1);
+    sigs[0].fill(0x00);
+    assert(!schnorr_batch_verify(pubs, msgs, sigs));
     return 0;
 }

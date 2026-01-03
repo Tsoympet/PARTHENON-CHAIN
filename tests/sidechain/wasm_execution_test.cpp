@@ -330,3 +330,23 @@ TEST(WasmCheckpoint, RejectsInvalidAnchors) {
     EXPECT_TRUE(sidechain::wasm::ValidateCheckpoint(header, expected, error));
     EXPECT_TRUE(error.empty());
 }
+
+TEST(WasmStateStore, DeterministicRoots)
+{
+    StateStore state;
+    auto emptyDomain = state.DomainRoot(ExecutionDomain::NFT);
+    EXPECT_EQ(emptyDomain, decltype(emptyDomain){});
+
+    state.Put(ExecutionDomain::NFT, "module", "b", {0x01});
+    state.Put(ExecutionDomain::NFT, "module", "a", {0x02});
+    auto first = state.ModuleRoot(ExecutionDomain::NFT, "module");
+
+    // Reinsert in different order to ensure deterministic hashing.
+    state.Put(ExecutionDomain::NFT, "module", "a", {0x02});
+    state.Put(ExecutionDomain::NFT, "module", "b", {0x01});
+    auto second = state.ModuleRoot(ExecutionDomain::NFT, "module");
+    EXPECT_EQ(first, second);
+
+    auto domainRoot = state.DomainRoot(ExecutionDomain::NFT);
+    EXPECT_NE(domainRoot, decltype(domainRoot){});
+}

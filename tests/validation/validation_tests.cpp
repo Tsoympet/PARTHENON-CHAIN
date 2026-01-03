@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstdint>
 #include <unordered_map>
+#include <stdexcept>
 #include <limits>
 
 namespace {
@@ -192,6 +193,66 @@ int main()
             return it->second;
         };
         assert(!ValidateTransactions(txs, params, 2, lookup, true, params.nGenesisBits, 100));
+    }
+
+    // Reject coinbase with undersized scriptSig.
+    {
+        Transaction cb = MakeCoinbase(consensus::GetBlockSubsidy(6, params, static_cast<uint8_t>(AssetId::TALANTON)));
+        cb.vin[0].scriptSig = {0x01};
+        std::vector<Transaction> txs{cb};
+        assert(!ValidateTransactions(txs, params, 6));
+    }
+
+    // Reject outputs below dust threshold.
+    {
+        Transaction cb = MakeCoinbase(consensus::GetBlockSubsidy(7, params, static_cast<uint8_t>(AssetId::TALANTON)));
+        cb.vout[0].value = 1; // dust
+        std::vector<Transaction> txs{cb};
+        assert(!ValidateTransactions(txs, params, 7));
+    }
+
+    // Reject oversized scriptSig on regular spend before execution.
+    {
+        Transaction cb = MakeCoinbase(consensus::GetBlockSubsidy(8, params, static_cast<uint8_t>(AssetId::TALANTON)));
+        Transaction spend;
+        spend.vout.push_back(MakeTxOut(10));
+        spend.vin.resize(1);
+        spend.vin[0].prevout = MakeOutPoint(0xAB, 1);
+        spend.vin[0].assetId = static_cast<uint8_t>(AssetId::DRACHMA);
+        spend.vin[0].scriptSig.assign(2000, 0x01); // exceeds 1650 limit
+        std::vector<Transaction> txs{cb, spend};
+        UTXOSet utxos;
+        utxos[spend.vin[0].prevout] = MakeTxOut(20);
+        auto lookup = [&utxos](const OutPoint& op) -> std::optional<TxOut> {
+            auto it = utxos.find(op);
+            if (it == utxos.end()) return std::nullopt;
+            return it->second;
+        };
+        assert(!ValidateTransactions(txs, params, 8, lookup));
+    }
+
+    // Serialization helpers reject malformed payloads.
+    {
+        Transaction tx;
+        tx.vin.resize(1);
+        tx.vout.resize(1);
+        auto ser = Serialize(tx);
+        ser.pop_back(); // truncate
+        bool threw = false;
+        try {
+            DeserializeTransaction(ser);
+        } catch (const std::exception&) {
+            threw = true;
+        }
+        assert(threw);
+
+        bool digestThrew = false;
+        try {
+            ComputeInputDigest(tx, 5);
+        } catch (const std::exception&) {
+            digestThrew = true;
+        }
+        assert(digestThrew);
     }
 
     return 0;

@@ -121,5 +121,44 @@ int main()
         assert(ValidateBlock(block, params, height, {}, opts));
     }
 
+    // PoS blocks must use even timestamps and valid staking outputs.
+    {
+        OutPoint prev{};
+        prev.hash.fill(0xAA);
+        prev.index = 0;
+        TxOut utxo{};
+        utxo.value = 1000;
+        utxo.assetId = static_cast<uint8_t>(AssetId::DRACHMA);
+        utxo.scriptPubKey.assign(32, 0x02);
+        auto lookup = [prev, utxo](const OutPoint& op) -> std::optional<TxOut> {
+            if (op.hash == prev.hash && op.index == prev.index) return utxo;
+            return std::nullopt;
+        };
+
+        Block posBlock{};
+        posBlock.header.bits = params.nGenesisBits;
+        posBlock.header.time = 2001; // odd -> rejected
+        posBlock.header.version = 1;
+
+        Transaction stake;
+        stake.vin.resize(1);
+        stake.vin[0].prevout = prev;
+        stake.vin[0].scriptSig = {0x01};
+        stake.vin[0].assetId = utxo.assetId;
+        stake.vout.resize(2);
+        stake.vout[0].assetId = utxo.assetId;
+        stake.vout[0].scriptPubKey.assign(32, 0x02);
+        stake.vout[1] = stake.vout[0];
+        stake.vout[1].value = utxo.value;
+
+        posBlock.transactions = {stake};
+        assert(!ValidateBlock(posBlock, params, params.nPoSActivationHeight, lookup));
+
+        posBlock.header.time = 2002; // even, proceeds to transaction checks
+        stake.vout[0].value = 1; // invalid: first output must be zero
+        posBlock.transactions[0] = stake;
+        assert(!ValidateBlock(posBlock, params, params.nPoSActivationHeight, lookup));
+    }
+
     return 0;
 }

@@ -74,6 +74,19 @@ static std::string ConstThenReturnHex(int32_t imm)
     return Hex(code);
 }
 
+TEST(TxIndex, UsesCacheWhenDbAbsent)
+{
+    txindex::TxIndex index;
+    uint256 h{};
+    h.fill(0x01);
+    uint32_t heightOut = 0;
+    EXPECT_FALSE(index.Lookup(h, heightOut));
+
+    index.AddBlock(h, 5);
+    EXPECT_TRUE(index.LookupBlock(h, heightOut));
+    EXPECT_EQ(heightOut, 5u);
+}
+
 TEST(RPC, EndpointsRespond)
 {
     boost::asio::io_context io;
@@ -156,6 +169,9 @@ TEST(RPC, EndpointsRespond)
 
     std::string wrongDappAsset = RpcCall(io, 19600, std::string("{\"method\":\"call_dapp\",\"params\":\"app=dapp.mod;asset=1;gas=25;code=") + dappCode + "\"}");
     EXPECT_NE(wrongDappAsset.find("asset/domain violation"), std::string::npos);
+
+    std::string malformed = RpcCall(io, 19600, "{\"method\":\"sendtx\",\"params\":\"zz\"}");
+    EXPECT_NE(malformed.find("error"), std::string::npos);
 
     io.stop();
     t.join();

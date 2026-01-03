@@ -28,3 +28,26 @@ TEST(Difficulty, RejectsOverflowTargets)
     // Pow limit from params.nGenesisBits should reject higher target
     EXPECT_FALSE(powalgo::CheckProofOfWork(hash, params.nGenesisBits - 1, params));
 }
+
+TEST(Difficulty, AppliesMinDifficultyForStaleBlocks)
+{
+    auto params = consensus::Testnet();
+    powalgo::BlockIndex prev{};
+    powalgo::BlockIndex older{};
+    older.height = 0;
+    older.time = 100;
+    older.bits = params.nGenesisBits;
+    prev.prev = &older;
+    prev.height = 1;
+    prev.time = older.time + params.nPowTargetSpacing * 3; // stale gap triggers min difficulty
+    prev.bits = params.nGenesisBits - 0x010000;
+    auto next = powalgo::calculate_next_work_required(params, &prev);
+    EXPECT_EQ(next, params.nGenesisBits);
+}
+
+TEST(Difficulty, ThrowsWhenTargetTimespanZero)
+{
+    auto params = consensus::Main();
+    params.nPowTargetTimespan = 0;
+    EXPECT_THROW(powalgo::CalculateNextWorkRequired(params.nGenesisBits, 1, params), std::runtime_error);
+}

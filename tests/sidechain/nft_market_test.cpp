@@ -19,6 +19,7 @@ using sidechain::wasm::ExecutionEngine;
 using sidechain::wasm::kAssetDrm;
 using sidechain::wasm::kAssetObl;
 using sidechain::wasm::kAssetTln;
+using sidechain::wasm::kMaxRoyaltyBps;
 
 namespace {
 const char kCoreModule[] = "nft:core";
@@ -294,4 +295,28 @@ TEST(NftMarketplace, RejectsInvalidMetadataPaths) {
      EXPECT_FALSE(res.success);
      EXPECT_EQ("invalid canon reference", res.error);
      EXPECT_FALSE(state.Exists(ExecutionDomain::NFT, kCoreModule, mint.token_id));
+ }
+
+TEST(NftMarketplace, EnforcesRoyaltyBoundsAndGasFloor) {
+     ExecutionEngine engine;
+     StateStore state;
+     WasmRpcService rpc(engine, state);
+
+     MintNftRequest mint;
+     mint.token_id = "royalty-bounds";
+     mint.creator = "artist";
+     mint.owner = "artist";
+     mint.metadata_hash = "meta";
+     mint.canon_reference_hash = "canon";
+     mint.mint_height = 2;
+     mint.royalty_bps = static_cast<uint16_t>(kMaxRoyaltyBps + 1);
+     auto tooHigh = rpc.MintNft(mint);
+     EXPECT_FALSE(tooHigh.success);
+     EXPECT_EQ("invalid royalty_bps", tooHigh.error);
+
+     mint.royalty_bps = 0;
+     mint.gas_limit = 1; // below fixed cost
+     auto underGas = rpc.MintNft(mint);
+     EXPECT_FALSE(underGas.success);
+     EXPECT_EQ("out of gas", underGas.error);
  }

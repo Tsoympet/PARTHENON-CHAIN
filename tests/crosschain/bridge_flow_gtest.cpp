@@ -1,8 +1,11 @@
 #include <gtest/gtest.h>
 #include <filesystem>
 #include <openssl/sha.h>
-
+#include <chrono>
+#include <thread>
 #include "../../layer2-services/crosschain/bridge/bridge_manager.h"
+#include "../../layer2-services/crosschain/relayer/relayer.h"
+#include "../../layer2-services/net/p2p.h"
 
 using namespace crosschain;
 
@@ -65,3 +68,19 @@ TEST(BridgeFlow, DetectsInboundLock)
     EXPECT_FALSE(pending.empty());
 }
 
+TEST(RelayerFlow, HandlesEmptyEndpoint)
+{
+    auto tmp = std::filesystem::temp_directory_path() / "relayer_tmp";
+    BridgeManager mgr(tmp.string());
+    boost::asio::io_context io;
+    net::P2PNode p2p(io, 0);
+
+    ChainConfig cfg{};
+    cfg.rpcEndpoint = "";
+    crosschain::Relayer rel(mgr, p2p, io);
+    rel.AddWatchedChain("empty", cfg);
+    rel.Start();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    rel.Stop();
+    EXPECT_EQ(rel.Metrics().detected.load(), 0u);
+}
