@@ -192,6 +192,41 @@ TEST(Wallet, MultisigSpendFailsWithoutInputs)
     EXPECT_EQ(backend.GetBalance(), 0u);
 }
 
+TEST(Wallet, MultisigRejectsMixedScriptsAndPreservesBalanceOnError)
+{
+    KeyStore store;
+    WalletBackend backend(store);
+    auto keyA = MakeKey(21);
+    auto keyB = MakeKey(22);
+    backend.ImportKey(keyA);
+    backend.ImportKey(keyB);
+
+    OutPoint op1{};
+    OutPoint op2{};
+    op2.index = 1;
+
+    TxOut utxoA{1'000, std::vector<uint8_t>(32, 0xAA)};
+    utxoA.assetId = static_cast<uint8_t>(AssetId::DRACHMA);
+    TxOut utxoB{1'000, std::vector<uint8_t>(32, 0xBB)};
+    utxoB.assetId = utxoA.assetId;
+    backend.AddUTXO(op1, utxoA);
+    backend.AddUTXO(op2, utxoB);
+
+    backend.SetUTXOLookup([&](const OutPoint& op) -> std::optional<TxOut> {
+        if (op.hash == op1.hash && op.index == op1.index) return utxoA;
+        if (op.hash == op2.hash && op.index == op2.index) return utxoB;
+        return std::nullopt;
+    });
+
+    std::vector<TxOut> outputs{TxOut{1'500, std::vector<uint8_t>(32, 0xCC)}};
+    outputs[0].assetId = utxoA.assetId;
+    std::vector<OutPoint> coins{op1, op2};
+    std::vector<PrivKey> keys{keyA, keyB};
+
+    EXPECT_THROW(backend.CreateMultisigSpend(outputs, coins, keys, 2, 100), std::runtime_error);
+    EXPECT_EQ(backend.GetBalance(), utxoA.value + utxoB.value);
+}
+
 TEST(Keystore, EncryptsAndRejectsBadPassphrase)
 {
     wallet::KeyStore store;

@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cstdint>
 #include <limits>
+#include <unordered_map>
 
 namespace {
 
@@ -23,6 +24,28 @@ OutPoint NullPrevout()
     return op;
 }
 
+// Deterministic hash mixing constants (FNV-style multiplier and golden-ratio offset) kept local to mirror the OutPointHasher used in tests/validation/validation_tests.cpp so cache behavior stays identical.
+constexpr size_t kHashMultiplier = 131;
+constexpr uint64_t kHashOffset = 0x9e3779b97f4a7c15ULL;
+
+struct OutPointHasher {
+    std::size_t operator()(const OutPoint& o) const noexcept
+    {
+        size_t h = 0;
+        for (auto b : o.hash) h = (h * kHashMultiplier) ^ b; // multiplicative mix of hash bytes
+        // Fibonacci hashing offset with shift/xor avalanche (borrowed from boost hash_combine) keeps distribution stable
+        h ^= static_cast<size_t>(o.index + kHashOffset + (h << 6) + (h >> 2));
+        return h;
+    }
+};
+
+struct OutPointEq {
+    bool operator()(const OutPoint& a, const OutPoint& b) const noexcept
+    {
+        return a.index == b.index && a.hash == b.hash;
+    }
+};
+
 Transaction MakeCoinbase(uint64_t value)
 {
     Transaction tx;
@@ -36,6 +59,15 @@ Transaction MakeCoinbase(uint64_t value)
     tx.vin[0].assetId = static_cast<uint8_t>(AssetId::TALANTON);
     tx.vout[0].assetId = static_cast<uint8_t>(AssetId::TALANTON);
     return tx;
+}
+
+TxOut MakeTxOut(uint64_t value, uint8_t asset = static_cast<uint8_t>(AssetId::TALANTON))
+{
+    TxOut out{};
+    out.value = value;
+    out.assetId = asset;
+    out.scriptPubKey.assign(32, 0x01);
+    return out;
 }
 
 } // namespace
@@ -174,6 +206,94 @@ int main()
         opts.medianTimePast = 2000;
         opts.now = 2100;
         assert(!ValidateBlock(empty, params, 5, {}, opts));
+    }
+
+    // Invalid header (zero median time past) should short-circuit before touching state/lookups.
+    {
+        Block block{};
+        block.header.bits = params.nGenesisBits;
+        block.header.time = 2150;
+        block.header.version = 1;
+        block.transactions.push_back(MakeCoinbase(consensus::GetBlockSubsidy(4, params, static_cast<uint8_t>(AssetId::TALANTON))));
+        block.header.merkleRoot = ComputeMerkleRoot(block.transactions);
+        size_t lookups = 0;
+        auto counting = [&lookups](const OutPoint&) -> std::optional<TxOut> {
+            ++lookups;
+            return std::nullopt;
+        };
+        BlockValidationOptions opts;
+        opts.medianTimePast = 0; // forces rejection before transaction checks
+        opts.now = block.header.time;
+        assert(!ValidateBlock(block, params, 4, counting, opts));
+        assert(lookups == 0);
+    }
+
+    // Duplicate prevouts inside a block must be rejected during full block validation.
+    {
+        Block block{};
+        block.header.bits = params.nGenesisBits;
+        block.header.time = 2160;
+        block.header.version = 1;
+
+        Transaction cb = MakeCoinbase(consensus::GetBlockSubsidy(5, params, static_cast<uint8_t>(AssetId::TALANTON)));
+        Transaction spend;
+        spend.vout.push_back(MakeTxOut(25));
+        spend.vin.resize(1);
+        spend.vin[0].prevout = NullPrevout();
+        spend.vin[0].prevout.hash.fill(0x99);
+        spend.vin[0].prevout.index = 1;
+        spend.vin[0].scriptSig = {0x01, 0x02};
+        spend.vin[0].assetId = static_cast<uint8_t>(AssetId::DRACHMA);
+        Transaction duplicate = spend;
+
+        block.transactions = {cb, spend, duplicate};
+        block.header.merkleRoot = ComputeMerkleRoot(block.transactions);
+
+        std::unordered_map<OutPoint, TxOut, OutPointHasher, OutPointEq> utxos;
+        utxos[spend.vin[0].prevout] = MakeTxOut(30, spend.vin[0].assetId);
+        auto lookup = [&utxos](const OutPoint& op) -> std::optional<TxOut> {
+            auto it = utxos.find(op);
+            if (it == utxos.end()) return std::nullopt;
+            return it->second;
+        };
+
+        BlockValidationOptions opts;
+        opts.medianTimePast = block.header.time - 1;
+        opts.now = block.header.time;
+        assert(!ValidateBlock(block, params, 5, lookup, opts));
+    }
+
+    // Asset-id mismatches between inputs and referenced UTXOs are rejected.
+    {
+        Block block{};
+        block.header.bits = params.nGenesisBits;
+        block.header.time = 2170;
+        block.header.version = 1;
+
+        Transaction cb = MakeCoinbase(consensus::GetBlockSubsidy(6, params, static_cast<uint8_t>(AssetId::TALANTON)));
+        Transaction spend;
+        spend.vout.push_back(MakeTxOut(10, static_cast<uint8_t>(AssetId::DRACHMA)));
+        spend.vin.resize(1);
+        spend.vin[0].prevout = NullPrevout();
+        spend.vin[0].prevout.hash.fill(0x42);
+        spend.vin[0].prevout.index = 2;
+        spend.vin[0].assetId = static_cast<uint8_t>(AssetId::OBOLOS); // mismatched tag
+        spend.vin[0].scriptSig = {0x01};
+        block.transactions = {cb, spend};
+        block.header.merkleRoot = ComputeMerkleRoot(block.transactions);
+
+        std::unordered_map<OutPoint, TxOut, OutPointHasher, OutPointEq> utxos;
+        utxos[spend.vin[0].prevout] = MakeTxOut(15, static_cast<uint8_t>(AssetId::DRACHMA));
+        auto lookup = [&utxos](const OutPoint& op) -> std::optional<TxOut> {
+            auto it = utxos.find(op);
+            if (it == utxos.end()) return std::nullopt;
+            return it->second;
+        };
+
+        BlockValidationOptions opts;
+        opts.medianTimePast = block.header.time - 1;
+        opts.now = block.header.time;
+        assert(!ValidateBlock(block, params, 6, lookup, opts));
     }
 
     return 0;

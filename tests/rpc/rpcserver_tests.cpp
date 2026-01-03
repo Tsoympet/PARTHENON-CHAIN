@@ -417,3 +417,25 @@ TEST(RPCFailurePaths, ArgumentErrorsReturnExplicitCodes)
 
     EXPECT_TRUE(env.pool.Snapshot().empty());
 }
+
+TEST(RPCFailurePaths, WalletDisabledAndMalformedParameters)
+{
+    RpcTestHarness env(19660);
+    // Start(attach_core=false, attach_sidechain=true, prefund_wallet=false): wallet/mempool disabled, sidechain only
+    env.Start(false, true, false);
+
+    auto walletCall = RpcCallResponse(env.io, env.rpc_port, "{\"method\":\"getbalance\",\"params\":null}");
+    EXPECT_EQ(walletCall.result(), http::status::bad_request);
+    EXPECT_EQ(walletCall.body(), "{\"error\":\"unknown method\"}");
+
+    std::string codeHex = ConstThenReturnHex(3);
+    auto tlnDeploy = RpcCallResponse(env.io, env.rpc_port,
+        std::string("{\"method\":\"deploy_contract\",\"params\":\"module=guard;asset=0;gas=10;code=") + codeHex + "\"}");
+    EXPECT_EQ(tlnDeploy.result(), http::status::ok);
+    EXPECT_NE(tlnDeploy.body().find("asset/domain violation"), std::string::npos);
+
+    auto malformedParams = RpcCallResponse(env.io, env.rpc_port,
+        "{\"method\":\"deploy_contract\",\"params\":\"module=guard;asset=1;gas=invalid;code=00\"}");
+    EXPECT_EQ(malformedParams.result(), http::status::internal_server_error);
+    EXPECT_NE(malformedParams.body().find("error"), std::string::npos);
+}
