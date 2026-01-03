@@ -69,3 +69,5 @@ ignore:
   - miners/** # Option A: standalone mining binaries excluded from coverage
   - layer1-core/drachmad.cpp # interactive daemon entrypoint exercised manually
   - layer1-core/drachma_cli.cpp # CLI tool exercised manually in deployments
+  - googletest/**
+  - googlemock/**
