@@ -2,6 +2,7 @@
 #include "../block/block.h"
 #include "../consensus/params.h"
 #include "anti_dos.h"
+#include <array>
 #include <functional>
 #include <optional>
 #include <cstdint>
@@ -26,6 +27,12 @@ struct BlockValidationOptions {
 
     // Weight to charge against the limiter per block (defaults to 1 request).
     uint64_t limiterWeight = 1;
+
+    // Optional Layer-2 anchor validation. When enabled, blocks must supply a
+    // non-zero nft_state_root and optionally match an expected anchor.
+    bool requireNftStateRoot = false;
+    std::array<uint8_t, 32> nftStateRoot{};
+    std::array<uint8_t, 32> expectedNftStateRoot{};
 };
 
 bool ValidateBlockHeader(const BlockHeader& header, const consensus::Params& params, const BlockValidationOptions& opts = {}, bool skipPowCheck = false);

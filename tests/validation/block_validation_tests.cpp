@@ -91,5 +91,35 @@ int main()
         assert(!ValidateBlock(block, params, 2, {}, opts));
     }
 
+    // Enforce nft_state_root anchoring when requested by the caller.
+    {
+        Block block{};
+        block.header.bits = params.nGenesisBits;
+        block.header.time = 1800;
+        block.header.version = 1;
+        const int height = 3;
+        block.transactions.push_back(MakeCoinbase(
+            consensus::GetBlockSubsidy(height, params,
+                                       static_cast<uint8_t>(AssetId::TALANTON))));
+        block.header.merkleRoot = ComputeMerkleRoot(block.transactions);
+
+        BlockValidationOptions opts;
+        opts.medianTimePast = block.header.time - 1;
+        opts.now = block.header.time;
+        opts.requireNftStateRoot = true;
+
+        // Missing anchor should be rejected.
+        assert(!ValidateBlock(block, params, height, {}, opts));
+
+        // Mismatched anchor should be rejected.
+        opts.nftStateRoot.fill(0x01);
+        opts.expectedNftStateRoot.fill(0x02);
+        assert(!ValidateBlock(block, params, height, {}, opts));
+
+        // Matching, non-zero anchor should succeed.
+        opts.expectedNftStateRoot = opts.nftStateRoot;
+        assert(ValidateBlock(block, params, height, {}, opts));
+    }
+
     return 0;
 }

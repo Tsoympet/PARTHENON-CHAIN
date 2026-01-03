@@ -8,6 +8,30 @@ coverage:
       default:
         target: 50%
         threshold: 5%
+      layer1:
+        flags: [layer1]
+        target: 60%
+        threshold: 5%
+      layer2:
+        flags: [layer2]
+        target: 70%
+        threshold: 5%
+      sidechain:
+        flags: [sidechain]
+        target: 75%
+        threshold: 5%
+      miners:
+        flags: [miners]
+        target: 30%
+        threshold: 10%
+      app:
+        flags: [app]
+        target: 80%
+        threshold: 5%
+      common:
+        flags: [common]
+        target: 60%
+        threshold: 5%
     patch:
       default:
         target: 60%

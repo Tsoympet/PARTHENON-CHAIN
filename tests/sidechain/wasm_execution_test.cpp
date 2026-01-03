@@ -10,6 +10,7 @@
 
 #include "sidechain/rpc/wasm_rpc.h"
 #include "sidechain/wasm/runtime/engine.h"
+#include "sidechain/wasm/validator/validator.h"
 #include "layer1-core/chainstate/coins.h"
 #include "layer1-core/consensus/params.h"
 
@@ -303,4 +304,29 @@ TEST(WasmIsolation, Layer1UntouchedByNftLifecycle) {
         consensus::GetMaxMoney(consensus::Main(),
                                static_cast<uint8_t>(AssetId::TALANTON));
     EXPECT_EQ(tln_max_before, tln_max_after);
+}
+
+TEST(WasmCheckpoint, RejectsInvalidAnchors) {
+    sidechain::wasm::SidechainBlockHeader header{};
+    header.main_chain_checkpoint.fill(0xAA);
+    header.state_root.fill(0x01);
+    header.execution_root.fill(0x02);
+    header.market_state_root.fill(0x03);
+    header.event_root.fill(0x04);
+
+    std::string error;
+    std::array<uint8_t, 32> expected = header.main_chain_checkpoint;
+    EXPECT_FALSE(sidechain::wasm::ValidateCheckpoint(header, expected, error));
+    EXPECT_EQ("missing execution anchors", error);
+
+    header.nft_state_root.fill(0x05);
+    error.clear();
+    expected.fill(0x0F);
+    EXPECT_FALSE(sidechain::wasm::ValidateCheckpoint(header, expected, error));
+    EXPECT_EQ("checkpoint mismatch", error);
+
+    error.clear();
+    expected = header.main_chain_checkpoint;
+    EXPECT_TRUE(sidechain::wasm::ValidateCheckpoint(header, expected, error));
+    EXPECT_TRUE(error.empty());
 }

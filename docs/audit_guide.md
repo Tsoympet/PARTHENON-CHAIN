@@ -33,6 +33,7 @@ This checklist is designed to help reviewers prepare for a comprehensive assessm
 ## Fuzzing and Dynamic Analysis
 - **Harnesses:** List fuzz targets (block parsing, tx validation, P2P message deserialization, Schnorr batch verification). Provide build flags for libFuzzer with ASan/UBSan.
 - **Coverage goals:** Attach the latest coverage reports (>90% target) and note unexercised code regions with remediation plans.
+- **Test reuse:** Extend existing layer1 validation, layer2 RPC, and sidechain NFT fixtures instead of creating new harnesses; prefer the regtest harness, StateStore-backed WASM RPC tests, and RPC server integration tests to keep invariants consistent.
 - **Crash triage:** Describe how crashes are reproduced, minimized, and tracked (e.g., `llvm-symbolizer`, `clusterfuzzlite`). Record any outstanding issues before release.
 
 ## Reporting Package

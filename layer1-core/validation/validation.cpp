@@ -3,6 +3,7 @@
 #include "../merkle/merkle.h"
 #include "../script/interpreter.h"
 #include <openssl/crypto.h>
+#include <array>
 #include <algorithm>
 #include <limits>
 #include <unordered_map>
@@ -13,6 +14,7 @@
 namespace {
 
 constexpr uint8_t kPowAssetId = static_cast<uint8_t>(AssetId::TALANTON);
+const std::array<uint8_t, 32> kEmptyRoot{};
 
 bool IsNullOutPoint(const OutPoint& prevout)
 {
@@ -454,6 +456,14 @@ bool ValidateBlock(const Block& block, const consensus::Params& params, int heig
 
     if (!ValidateBlockHeader(block.header, params, opts, isPoS))
         return false;
+    if (opts.requireNftStateRoot) {
+        // Keep validation side-effect free; callers gate acceptance on the boolean result.
+        if (opts.nftStateRoot == kEmptyRoot)
+            return false;
+        if (opts.expectedNftStateRoot != kEmptyRoot &&
+            opts.nftStateRoot != opts.expectedNftStateRoot)
+            return false;
+    }
     if (!ValidateTransactions(block.transactions, params, height, lookup, isPoS, block.header.bits, block.header.time))
         return false;
     const auto merkle = ComputeMerkleRoot(block.transactions);

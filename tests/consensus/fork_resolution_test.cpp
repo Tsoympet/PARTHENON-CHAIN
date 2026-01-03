@@ -78,6 +78,30 @@ int main()
     auto badHash = BlockHash(bad);
     assert(!checkpointed.ConsiderHeader(bad, badHash, genesisHash, 1, params));
 
+    // Deep reorgs require a substantial work margin when far behind the tip.
+    consensus::ForkResolver guarded(/*finalizationDepth=*/2, /*reorgWorkMarginBps=*/50000);
+    assert(guarded.ConsiderHeader(genesisHeader, genesisHash, nullHash, 0, params));
+    uint256 bestHash = genesisHash;
+    for (uint32_t height = 1; height <= 4; ++height) {
+        auto hdr = MakeHeader(bestHash, genesisHeader.time + height, params.nGenesisBits);
+        bestHash = BlockHash(hdr);
+        guarded.ConsiderHeader(hdr, bestHash, hdr.prevBlockHash, height, params);
+    }
+    auto tipBefore = guarded.Tip()->hash;
+
+    const uint32_t kReorgDifficultyOffsetBits =
+        0x030000; // bump compact bits to simulate higher-work headers without risking underflow
+    uint32_t toughBits =
+        params.nGenesisBits - kReorgDifficultyOffsetBits; // higher difficulty but shallow chain
+    auto shallowAlt1 = MakeHeader(genesisHash, genesisHeader.time + 50, toughBits);
+    auto shallowAltH1 = BlockHash(shallowAlt1);
+    guarded.ConsiderHeader(shallowAlt1, shallowAltH1, genesisHash, 1, params);
+    auto shallowAlt2 = MakeHeader(shallowAltH1, shallowAlt1.time + 1, toughBits);
+    auto shallowAltH2 = BlockHash(shallowAlt2);
+    bool deepReorg = guarded.ConsiderHeader(shallowAlt2, shallowAltH2, shallowAltH1, 2, params);
+    assert(!deepReorg);
+    assert(guarded.Tip());
+    assert(std::equal(guarded.Tip()->hash.begin(), guarded.Tip()->hash.end(), tipBefore.begin()));
+
     return 0;
 }
-

@@ -37,6 +37,16 @@ uint64_t DecodeAmount(const std::vector<uint8_t>& bytes) {
 std::string BalanceKey(const std::string& party, uint8_t asset) {
     return party + "|" + std::to_string(asset);
 }
+
+std::vector<std::string> SplitFields(const std::string& s) {
+    std::vector<std::string> parts;
+    std::stringstream ss(s);
+    std::string item;
+    while (std::getline(ss, item, '|')) {
+        parts.push_back(item);
+    }
+    return parts;
+}
 }  // namespace
 
 TEST(NftMarketplace, RoyaltySettlementSplitsPayment) {
@@ -149,6 +159,14 @@ TEST(NftMarketplace, RoyaltyImmutabilityAndReuse) {
     duplicate.royalty_bps = 900;
     auto dup = rpc.MintNft(duplicate);
     EXPECT_FALSE(dup.success);
+    auto stored = state.Get(ExecutionDomain::NFT, kCoreModule, mint.token_id);
+    ASSERT_FALSE(stored.empty());
+    std::string stored_rec(stored.begin(), stored.end());
+    auto stored_parts = SplitFields(stored_rec);
+    // owner|creator|metadata|canon|mint_height|royalty_bps
+    constexpr size_t kNftRecordFields = 6;
+    ASSERT_EQ(kNftRecordFields, stored_parts.size());
+    EXPECT_EQ("100", stored_parts.back());
 
     TransferNftRequest transfer;
     transfer.token_id = mint.token_id;
@@ -240,6 +258,7 @@ TEST(NftMarketplace, RejectsTlnPaymentAndPreservesSupply) {
     list.price = 50;
     auto listed = rpc.ListNft(list);
     EXPECT_FALSE(listed.success);
+    EXPECT_EQ("payment must be DRM or OBL", listed.error);
 
     PlaceBidRequest bid;
     bid.token_id = mint.token_id;
@@ -248,8 +267,31 @@ TEST(NftMarketplace, RejectsTlnPaymentAndPreservesSupply) {
     bid.price = 60;
     auto bid_res = rpc.PlaceBid(bid);
     EXPECT_FALSE(bid_res.success);
+    EXPECT_EQ("payment must be DRM or OBL", bid_res.error);
+
+    EXPECT_TRUE(state.Get(ExecutionDomain::NFT, "nft:market:listing", mint.token_id).empty());
+    EXPECT_TRUE(state.Get(ExecutionDomain::NFT, "nft:market:bids", mint.token_id + "|bidder").empty());
 
     auto max_money_before = consensus::GetMaxMoney(consensus::Main(), kAssetDrm);
     auto max_money_after = consensus::GetMaxMoney(consensus::Main(), kAssetDrm);
     EXPECT_EQ(max_money_before, max_money_after);
-}
+ }
+
+TEST(NftMarketplace, RejectsInvalidMetadataPaths) {
+     ExecutionEngine engine;
+     StateStore state;
+     WasmRpcService rpc(engine, state);
+
+     MintNftRequest mint;
+     mint.token_id = "broken-meta";
+     mint.creator = "scribe";
+     mint.owner = "scribe";
+     mint.metadata_hash = "";
+     mint.canon_reference_hash = "";
+     mint.mint_height = 3;
+     mint.royalty_bps = 10;
+     auto res = rpc.MintNft(mint);
+     EXPECT_FALSE(res.success);
+     EXPECT_EQ("invalid canon reference", res.error);
+     EXPECT_FALSE(state.Exists(ExecutionDomain::NFT, kCoreModule, mint.token_id));
+ }

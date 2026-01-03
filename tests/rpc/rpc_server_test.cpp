@@ -14,7 +14,8 @@
 
 namespace http = boost::beast::http;
 
-static std::string RpcCall(boost::asio::io_context& io, uint16_t port, const std::string& body)
+static std::string RpcCall(boost::asio::io_context& io, uint16_t port, const std::string& body,
+                           bool include_auth = true)
 {
     boost::asio::io_context clientIo;
     for (int attempt = 0; attempt < 3; ++attempt) {
@@ -26,7 +27,9 @@ static std::string RpcCall(boost::asio::io_context& io, uint16_t port, const std
 
             http::request<http::string_body> req{http::verb::post, "/", 11};
             req.set(http::field::host, "127.0.0.1");
-            req.set(http::field::authorization, "Basic dXNlcjpwYXNz");
+            if (include_auth) {
+                req.set(http::field::authorization, "Basic dXNlcjpwYXNz");
+            }
             req.body() = body;
             req.prepare_payload();
 
@@ -119,6 +122,13 @@ TEST(RPC, EndpointsRespond)
     EXPECT_NE(staking.find("\"OBL\""), std::string::npos);
     EXPECT_NE(staking.find("\"posAllowed\":true"), std::string::npos);
 
+    std::string unauthorized = RpcCall(io, 19600, "{\"method\":\"getbalance\",\"params\":null}", false);
+    EXPECT_NE(unauthorized.find("auth required"), std::string::npos);
+
+    std::string invalidBalance =
+        RpcCall(io, 19600, R"({"method":"getbalance","params":"\"invalid-asset\""})");
+    EXPECT_NE(invalidBalance.find("null"), std::string::npos);
+
     // Sidechain RPCs (WASM-only, asset/domain bound)
     std::string codeHex = ConstThenReturnHex(1);
     std::string deploy = RpcCall(io, 19600, std::string("{\"method\":\"deploy_contract\",\"params\":\"module=test.mod;asset=1;gas=100;code=") + codeHex + "\"}");
@@ -127,16 +137,25 @@ TEST(RPC, EndpointsRespond)
     std::string call = RpcCall(io, 19600, std::string("{\"method\":\"call_contract\",\"params\":\"module=test.mod;asset=1;gas=100;code=") + codeHex + "\"}");
     EXPECT_NE(call.find("\"success\":true"), std::string::npos);
 
+    std::string wrongContractAsset = RpcCall(io, 19600, std::string("{\"method\":\"call_contract\",\"params\":\"module=test.mod;asset=2;gas=50;code=") + codeHex + "\"}");
+    EXPECT_NE(wrongContractAsset.find("asset/domain violation"), std::string::npos);
+
     std::string mint = RpcCall(io, 19600, "{\"method\":\"mint_nft\",\"params\":\"token=token-1;owner=alice;meta=hash;asset=0;gas=50\"}");
     EXPECT_NE(mint.find("\"success\":true"), std::string::npos);
 
     std::string transfer = RpcCall(io, 19600, "{\"method\":\"transfer_nft\",\"params\":\"token=token-1;from=alice;to=bob;asset=0;gas=50\"}");
     EXPECT_NE(transfer.find("\"success\":true"), std::string::npos);
 
+    std::string badMint = RpcCall(io, 19600, "{\"method\":\"mint_nft\",\"params\":\"token=token-2;owner=alice;meta=;asset=0;gas=50\"}");
+    EXPECT_NE(badMint.find("invalid canon reference"), std::string::npos);
+
     std::string dappCode = ConstThenReturnHex(7);
     std::string dapp = RpcCall(io, 19600, std::string("{\"method\":\"call_dapp\",\"params\":\"app=dapp.mod;asset=2;gas=100;code=") + dappCode + "\"}");
     EXPECT_NE(dapp.find("\"success\":true"), std::string::npos);
     EXPECT_NE(dapp.find("07000000"), std::string::npos); // output hex
+
+    std::string wrongDappAsset = RpcCall(io, 19600, std::string("{\"method\":\"call_dapp\",\"params\":\"app=dapp.mod;asset=1;gas=25;code=") + dappCode + "\"}");
+    EXPECT_NE(wrongDappAsset.find("asset/domain violation"), std::string::npos);
 
     io.stop();
     t.join();

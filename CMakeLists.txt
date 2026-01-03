@@ -354,6 +354,11 @@ if(DRACHMA_BUILD_TESTS)
     target_link_libraries(sidechain_wasm_execution_test PRIVATE drachma_sidechain_wasm drachma_layer1 GTest::gtest_main)
     gtest_discover_tests(sidechain_wasm_execution_test)
 
+    add_executable(stratum_client_test tests/miners/stratum_client_test.cpp miners/stratum.cpp)
+    target_include_directories(stratum_client_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(stratum_client_test PRIVATE drachma_layer1 Boost::system GTest::gtest_main)
+    gtest_discover_tests(stratum_client_test)
+
     function(drachma_add_fuzz_target target source)
         add_executable(${target} ${source})
         if(ARGC GREATER 2)
