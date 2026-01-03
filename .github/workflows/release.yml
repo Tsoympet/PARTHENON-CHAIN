@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
     inputs:
       version_tag:
@@ -23,113 +23,85 @@ permissions:
 
 env:
   BUILD_TYPE: Release
-  QT_VERSION: 6.6.2
 
 jobs:
   build:
-    name: Build and package (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-
+    name: Build and package (ubuntu-latest)
+    runs-on: ubuntu-latest
     env:
       VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version_tag || github.ref_name }}
-      CCACHE_DIR: ${{ github.workspace }}/.ccache
-      HAS_GPG_KEY: ${{ secrets.GPG_KEY != '' }}
-
     steps:
-      # ... (Your checkout, dependency install, configure/build steps remain unchanged – they are good)
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      # Keep all your existing steps up to "Upload artifacts" – they are solid with minor path tweaks if needed
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libssl-dev libboost-all-dev libleveldb-dev
 
-      - name: Prepare build output directory
-        run: mkdir -p dist/${{ matrix.os }}
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DDRACHMA_BUILD_GUI=OFF -DDRACHMA_BUILD_TESTS=OFF
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Package artifacts
+        run: |
+          mkdir -p dist/ubuntu
+          cp build/layer1-core/drachmad dist/ubuntu/ || true
+          cp build/layer1-core/drachma-cli dist/ubuntu/ || true
+          cp build/drachma_cpu_miner dist/ubuntu/ || true
+          if [ -z "$(find dist/ubuntu -maxdepth 1 -type f -print -quit)" ]; then
+            echo "No binaries were packaged from the build output." >&2
+            exit 1
+          fi
+          tar -czf dist/drachma-${VERSION}-linux.tar.gz -C dist/ubuntu .
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: release-${{ matrix.os }}
-          path: dist/${{ matrix.os }}/**
- 
+          name: release-ubuntu
+          path: dist/drachma-${{ env.VERSION }}-linux.tar.gz
+
   publish:
-    if: github.event_name == 'push' || inputs.publish_release == 'true'  # Single clean conditional
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish_release == 'true')
     name: Publish release
     needs: build
     runs-on: ubuntu-latest
     env:
       VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version_tag || github.ref_name }}
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Prepare artifact directory
-        run: mkdir -p artifacts
-
-      - name: Download all build artifacts
+      - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-          pattern: release-*
-          merge-multiple: false
+          merge-multiple: true
           if-no-artifacts-found: error
 
-      - name: Validate downloaded artifacts
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          if [[ ! -d artifacts ]]; then
-        run: |
-          set -euo pipefail
-
-          if [ ! -d artifacts ]; then
-            echo "Artifact directory is missing after download."
-            exit 1
-          fi
-
-          mapfile -t artifact_dirs < <(find artifacts -maxdepth 1 -mindepth 1 -type d -print)
-          if [[ ${#artifact_dirs[@]} -eq 0 ]]; then
-            echo "No artifact directories found under artifacts/."
-            exit 1
-          fi
-
-          echo "Downloaded artifact directories:"
-          printf ' - %s\n' "${artifact_dirs[@]}"
-
-          if [[ -z "$(find artifacts -type f -print -quit)" ]]; then
-          echo "Downloaded artifact directories:"
-          find artifacts -maxdepth 1 -mindepth 1 -type d -print | sed 's/^/ - /'
-
-          if [ -z "$(find artifacts -type f -print -quit)" ]; then
-          if ! find artifacts -type f -print -quit | grep -q .; then
-          if [ -z "$(find artifacts -type f 2>/dev/null)" ]; then
-            echo "No artifacts downloaded from build job. Ensure 'Upload artifacts' succeeds."
-            exit 1
-          fi
-
-      - name: Display structure and flatten
+      - name: Prepare release assets
         run: |
           ls -R artifacts
           mkdir -p dist
-          find artifacts -type f -exec cp {} dist/ \;  # Safe copy + flatten
-          ls -la dist/
+          find artifacts -type f -name '*.tar.gz' -exec cp {} dist/ \;
+          if [ -z "$(find dist -type f -print -quit)" ]; then
+            echo "No packaged artifacts found." >&2
+            exit 1
+          fi
 
       - name: Compose release notes
         run: |
-          if grep -q "^## \\[${{ env.VERSION }}\\]" CHANGELOG.md; then
-            sed -n "/^## \\[${{ env.VERSION }}\\]/,/^## /p" CHANGELOG.md | sed '$d' > release_notes.md
+          if grep -q "^## \\[${VERSION}\\]" CHANGELOG.md; then
+            sed -n "/^## \\[${VERSION}\\]/,/^## /p" CHANGELOG.md | sed '$d' > release_notes.md
           else
-            echo "Drachma ${{ env.VERSION }}" > release_notes.md
-            echo "Testnet release - see CHANGELOG.md" >> release_notes.md
+            echo "Drachma ${VERSION}" > release_notes.md
+            echo "Release notes not found in CHANGELOG.md" >> release_notes.md
           fi
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name || inputs.version_tag }}
+          tag_name: ${{ github.event_name == 'push' && github.ref_name || inputs.version_tag }}
           name: Drachma ${{ env.VERSION }}
           body_path: release_notes.md
           files: dist/*
@@ -137,4 +109,3 @@ jobs:
           prerelease: ${{ contains(env.VERSION, 'rc') || contains(env.VERSION, 'test') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  
