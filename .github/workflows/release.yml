@@ -100,32 +100,32 @@ jobs:
 
       - name: Compose release notes
         run: |
-          python - <<'PY'
-import pathlib
-import re
-import os
+          python - <<PY
+          import pathlib
+          import re
+          import os
 
-version = os.environ["VERSION"]
-pattern = re.compile(rf"^##\s+\[?{re.escape(version)}\]?")
-lines = pathlib.Path("CHANGELOG.md").read_text().splitlines()
+          version = os.environ["VERSION"]
+          pattern = re.compile(rf"^##\s+\[?{re.escape(version)}\]?")
+          lines = pathlib.Path("CHANGELOG.md").read_text().splitlines()
 
-capture = False
-out = []
-for line in lines:
-    if pattern.match(line):
-        capture = True
-        continue
-    if capture and line.startswith("## "):
-        break
-    if capture:
-        out.append(line)
+          capture = False
+          out = []
+          for line in lines:
+              if pattern.match(line):
+                  capture = True
+                  continue
+              if capture and line.startswith("## "):
+                  break
+              if capture:
+                  out.append(line)
 
-notes_path = pathlib.Path("release_notes.md")
-if out:
-    notes_path.write_text("\n".join(out).strip() + "\n")
-else:
-    notes_path.write_text(f"Drachma {version}\nRelease notes not found in CHANGELOG.md\n")
-PY
+          notes_path = pathlib.Path("release_notes.md")
+          if out:
+              notes_path.write_text("\n".join(out).strip() + "\n")
+          else:
+              notes_path.write_text(f"Drachma {version}\nRelease notes not found in CHANGELOG.md\n")
+          PY
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
