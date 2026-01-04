@@ -78,25 +78,59 @@ StratumClient::StratumClient(const std::string& url, const std::string& user, co
 {
     if (!allowRemote && host_ != "127.0.0.1" && host_ != "localhost")
         throw std::runtime_error("remote stratum connections require --allow-remote");
+    lastJobTime_ = std::chrono::steady_clock::now();
 }
 
 void StratumClient::Connect()
 {
-    tcp::resolver resolver(ctx_);
-    auto endpoints = resolver.resolve(host_, port_);
-    boost::asio::connect(socket_, endpoints);
-    Subscribe();
-    Authorize();
+    try {
+        tcp::resolver resolver(ctx_);
+        auto endpoints = resolver.resolve(host_, port_);
+        boost::asio::connect(socket_, endpoints);
+        Subscribe();
+        Authorize();
+        reconnectAttempts_ = 0;
+        std::cout << "Connected to " << host_ << ":" << port_ << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "Connection failed: " << e.what() << std::endl;
+        throw;
+    }
+}
+
+void StratumClient::Reconnect()
+{
+    if (reconnectAttempts_ >= kMaxReconnectAttempts) {
+        throw std::runtime_error("Max reconnection attempts reached");
+    }
+    
+    // Exponential backoff: 1s, 2s, 4s, 8s, etc., capped at 60s
+    int delay = std::min(1 << reconnectAttempts_, 60);
+    std::cout << "Reconnecting in " << delay << " seconds (attempt " 
+              << (reconnectAttempts_ + 1) << "/" << kMaxReconnectAttempts << ")..." << std::endl;
+    std::this_thread::sleep_for(std::chrono::seconds(delay));
+    
+    reconnectAttempts_++;
+    
+    if (socket_.is_open()) {
+        boost::system::error_code ec;
+        socket_.close(ec);
+    }
+    socket_ = boost::asio::ip::tcp::socket(ctx_);
+    
+    Connect();
 }
 
 bool StratumClient::ReadMessage(boost::property_tree::ptree& out)
 {
-    boost::asio::streambuf buf;
-    boost::asio::read_until(socket_, buf, '\n');
-    std::istream is(&buf);
     try {
+        boost::asio::streambuf buf;
+        boost::asio::read_until(socket_, buf, '\n');
+        std::istream is(&buf);
         boost::property_tree::read_json(is, out);
         return true;
+    } catch (const boost::system::system_error& e) {
+        std::cerr << "Network error reading stratum message: " << e.what() << "\n";
+        return false;
     } catch (const std::exception& e) {
         std::cerr << "Failed to parse stratum JSON: " << e.what() << "\n";
         return false;
@@ -110,12 +144,36 @@ std::optional<MinerJob> StratumClient::AwaitJob()
         return std::nullopt;
     auto method = msg.get<std::string>("method", "");
     if (method == "mining.notify") {
-        return HandleNotify(msg);
+        auto job = HandleNotify(msg);
+        if (job) {
+            std::lock_guard<std::mutex> g(jobQueueMutex_);
+            // If clean_jobs flag is set, clear old jobs
+            if (job->cleanJobs) {
+                jobQueue_.clear();
+            }
+            jobQueue_.push_back(*job);
+            // Keep only last 5 jobs to prevent memory growth
+            while (jobQueue_.size() > 5) {
+                jobQueue_.pop_front();
+            }
+            lastJobTime_ = std::chrono::steady_clock::now();
+        }
+        return job;
     } else if (method == "mining.set_difficulty") {
         HandleDifficulty(msg);
         return std::nullopt;
+    } else if (method == "mining.set_extranonce") {
+        HandleSetExtranonce(msg);
+        return std::nullopt;
     }
     return std::nullopt;
+}
+
+bool StratumClient::IsStaleJob(const MinerJob& job) const
+{
+    auto now = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - job.receivedAt).count();
+    return elapsed > kJobStaleSeconds;
 }
 
 void StratumClient::SubmitResult(const MinerJob& job, uint32_t nonce)
@@ -154,8 +212,27 @@ void StratumClient::HandleDifficulty(const boost::property_tree::ptree& msg)
     try {
         auto params = msg.get_child("params");
         currentDifficulty_ = params.front().second.get_value<double>();
+        std::cout << "Difficulty updated to " << currentDifficulty_ << std::endl;
     } catch (...) {
         currentDifficulty_ = 1.0;
+    }
+}
+
+void StratumClient::HandleSetExtranonce(const boost::property_tree::ptree& msg)
+{
+    try {
+        auto params = msg.get_child("params");
+        auto it = params.begin();
+        if (it != params.end()) {
+            extranonce1_ = it->second.get_value<std::string>();
+            ++it;
+            if (it != params.end()) {
+                extranonce2Size_ = it->second.get_value<uint32_t>();
+            }
+        }
+        std::cout << "Extranonce updated: " << extranonce1_ << " (size: " << extranonce2Size_ << ")" << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "Failed to parse set_extranonce: " << e.what() << "\n";
     }
 }
 
@@ -171,8 +248,12 @@ std::optional<MinerJob> StratumClient::HandleNotify(const boost::property_tree::
         const std::string& jobId = fields[0];
         const std::string& headerHex = fields[1];
         const std::string& targetHex = fields[2];
+        bool cleanJobs = fields.size() > 3 ? (fields[3] == "true" || fields[3] == "1") : false;
+        
         MinerJob job = ParseHeaderJob(headerHex, targetHex, jobId);
         job.difficulty = currentDifficulty_;
+        job.receivedAt = std::chrono::steady_clock::now();
+        job.cleanJobs = cleanJobs;
         return job;
     } catch (const std::exception& e) {
         std::cerr << "stratum notify parse error: " << e.what() << "\n";

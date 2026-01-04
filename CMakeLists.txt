@@ -159,17 +159,20 @@ if(CUDAToolkit_FOUND)
     enable_language(CUDA)
     add_executable(drachma_cuda_miner
         miners/gpu-cuda/kernel.cu
-        miners/gpu-cuda/host.cpp)
-    target_link_libraries(drachma_cuda_miner PRIVATE CUDA::cudart)
+        miners/gpu-cuda/host.cpp
+        miners/stratum.cpp)
+    target_include_directories(drachma_cuda_miner PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/layer1-core)
+    target_link_libraries(drachma_cuda_miner PRIVATE CUDA::cudart drachma_layer1 Boost::system)
     set_target_properties(drachma_cuda_miner PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 endif()
 
 if(DRACHMA_ENABLE_OPENCL AND OpenCL_FOUND)
     add_executable(drachma_opencl_miner
         miners/gpu-opencl/kernel.cl
-        miners/gpu-opencl/host.cpp)
-    target_include_directories(drachma_opencl_miner PRIVATE ${OpenCL_INCLUDE_DIRS})
-    target_link_libraries(drachma_opencl_miner PRIVATE ${OpenCL_LIBRARIES})
+        miners/gpu-opencl/host.cpp
+        miners/stratum.cpp)
+    target_include_directories(drachma_opencl_miner PRIVATE ${OpenCL_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/layer1-core)
+    target_link_libraries(drachma_opencl_miner PRIVATE ${OpenCL_LIBRARIES} drachma_layer1 Boost::system)
     target_compile_definitions(drachma_opencl_miner PRIVATE CL_TARGET_OPENCL_VERSION=120)
 endif()
 
