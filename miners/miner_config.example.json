@@ -32,6 +32,6 @@
   "_comment_protocol": "Use Stratum V2 if supported by pool",
   "stratum_v2": false,
   
-  "_comment_auth": "Optional RPC auth token (overrides 'pass' if set)",
+  "_comment_auth": "Optional Stratum authentication token (overrides 'pass' if set)",
   "rpc_auth_token": ""
 }

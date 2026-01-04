@@ -104,7 +104,7 @@ void StratumClient::Reconnect()
     }
     
     // Exponential backoff: 1s, 2s, 4s, 8s, etc., capped at 60s
-    int delay = std::min(1 << reconnectAttempts_, 60);
+    int delay = std::min(1 << std::min(reconnectAttempts_, 6), 60);
     std::cout << "Reconnecting in " << delay << " seconds (attempt " 
               << (reconnectAttempts_ + 1) << "/" << kMaxReconnectAttempts << ")..." << std::endl;
     std::this_thread::sleep_for(std::chrono::seconds(delay));

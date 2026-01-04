@@ -475,12 +475,12 @@ int main(int argc, char** argv)
                     lastPing = now;
                 }
             }
+        } else {
+            std::cerr << "Usage: " << argv[0] << " --benchmark [--devices 0,1] [--intensity N]\n"
+                      << "   or: " << argv[0] << " --stratum-url URL --stratum-user USER --stratum-pass PASS\n"
+                      << "   or: " << argv[0] << " --config CONFIG.json\n";
+            return 1;
         }
-        
-        std::cerr << "Usage: " << argv[0] << " --benchmark [--devices 0,1] [--intensity N]\n"
-                  << "   or: " << argv[0] << " --stratum-url URL --stratum-user USER --stratum-pass PASS\n"
-                  << "   or: " << argv[0] << " --config CONFIG.json\n";
-        return 1;
         
     } catch (const std::exception& e) {
         std::cerr << "CUDA miner error: " << e.what() << std::endl;

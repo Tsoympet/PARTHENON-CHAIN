@@ -169,6 +169,8 @@ public:
 
         for (auto pid : platforms) {
             cl_uint deviceCount = 0;
+            // Query GPU and accelerator devices (CPU devices excluded for performance)
+            // To include CPU devices, add CL_DEVICE_TYPE_CPU to the device type mask
             if (clGetDeviceIDs(pid, CL_DEVICE_TYPE_GPU | CL_DEVICE_TYPE_ACCELERATOR, 0, nullptr, &deviceCount) != CL_SUCCESS)
                 continue;
             if (deviceCount == 0) continue;
@@ -584,12 +586,12 @@ int main(int argc, char** argv)
                     lastPing = now;
                 }
             }
+        } else {
+            std::cerr << "Usage: " << argv[0] << " --benchmark [--devices 0,1] [--intensity N]\n"
+                      << "   or: " << argv[0] << " --stratum-url URL --stratum-user USER --stratum-pass PASS\n"
+                      << "   or: " << argv[0] << " --config CONFIG.json\n";
+            return 1;
         }
-        
-        std::cerr << "Usage: " << argv[0] << " --benchmark [--devices 0,1] [--intensity N]\n"
-                  << "   or: " << argv[0] << " --stratum-url URL --stratum-user USER --stratum-pass PASS\n"
-                  << "   or: " << argv[0] << " --config CONFIG.json\n";
-        return 1;
         
     } catch (const std::exception& e) {
         std::cerr << "OpenCL miner error: " << e.what() << std::endl;
