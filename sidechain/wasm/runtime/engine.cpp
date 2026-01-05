@@ -164,9 +164,8 @@ ExecutionResult ExecutionEngine::Execute(const ExecutionRequest& request,
                     }
                     // For general case: |a| * |b| must not overflow
                     if (b != 0) {
-                        // Use unsigned arithmetic to safely compute absolute values
-                        const uint64_t absA = (a < 0) ? static_cast<uint64_t>(-(a + 1)) + 1 : static_cast<uint64_t>(a);
-                        const uint64_t absB = (b < 0) ? static_cast<uint64_t>(-(b + 1)) + 1 : static_cast<uint64_t>(b);
+                        const uint64_t absA = safe_abs(a);
+                        const uint64_t absB = safe_abs(b);
                         if (absA > static_cast<uint64_t>(std::numeric_limits<int64_t>::max()) / absB) {
                             result.error = "arithmetic overflow";
                             halted = true;

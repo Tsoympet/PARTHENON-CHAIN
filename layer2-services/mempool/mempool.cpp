@@ -157,7 +157,7 @@ uint64_t Mempool::EstimateFeeRate(size_t percentile) const
     
     // Get iterators to lower and upper elements using std::next
     auto lowerIt = std::next(m_byFeeRate.begin(), lowerIdx);
-    auto upperIt = std::next(lowerIt, 1);
+    auto upperIt = std::next(lowerIt);
     
     // Linear interpolation between two closest values
     const double fraction = pos - lowerIdx;

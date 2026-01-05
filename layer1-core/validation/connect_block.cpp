@@ -27,7 +27,7 @@ struct OutPointEq {
 // ConnectBlock applies a validated block to the UTXO set and checks that
 // all inputs are available and signed correctly.
 bool ConnectBlock(const Block& block, 
-                  chainstate::CoinsDB& coinsdb,
+                  chainstate::Chainstate& chainstate,
                   const consensus::Params& params,
                   int height,
                   const UTXOLookup& fallbackLookup)
@@ -70,8 +70,8 @@ bool ConnectBlock(const Block& block,
                 }
                 spentInBlock.insert(input.prevout);
                 
-                // Verify UTXO exists (either in db or fallback)
-                std::optional<TxOut> utxo = coinsdb.GetUTXO(input.prevout);
+                // Verify UTXO exists (either in chainstate or fallback)
+                std::optional<TxOut> utxo = chainstate.TryGetUTXO(input.prevout);
                 if (!utxo && fallbackLookup) {
                     utxo = fallbackLookup(input.prevout);
                 }
@@ -85,13 +85,13 @@ bool ConnectBlock(const Block& block,
         auto txHash = tx.GetHash();
         for (size_t outIdx = 0; outIdx < tx.vout.size(); ++outIdx) {
             OutPoint op{txHash, static_cast<uint32_t>(outIdx)};
-            coinsdb.AddUTXO(op, tx.vout[outIdx]);
+            chainstate.AddUTXO(op, tx.vout[outIdx]);
         }
         
         // Remove spent inputs from UTXO set
         if (!isCoinbase) {
             for (const auto& input : tx.vin) {
-                coinsdb.SpendUTXO(input.prevout);
+                chainstate.SpendUTXO(input.prevout);
             }
         }
     }
