@@ -20,7 +20,6 @@ uint256 ComputeMerkleRoot(const std::vector<Transaction>& txs)
     uint8_t concat[64];
     while (layer.size() > 1) {
         const size_t layerSize = layer.size();
-        const bool needsPadding = (layerSize % 2 != 0);
         const size_t nextSize = (layerSize + 1) / 2;
         
         std::vector<uint256> next;

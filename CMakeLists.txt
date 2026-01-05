@@ -13,6 +13,9 @@ option(DRACHMA_ENABLE_OPENCL "Enable OpenCL miner" OFF)
 # Compiler optimization flags for Release builds
 if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT DRACHMA_COVERAGE)
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        # -O3: Maximum optimization level
+        # -march=native: Optimize for build machine (use -march=x86-64 for portable builds)
+        # -ffast-math: Allow aggressive floating point optimizations
         add_compile_options(-O3 -march=native -ffast-math)
         # Consider enabling LTO for production builds (commented out by default)
         # set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
