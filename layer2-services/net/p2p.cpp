@@ -28,15 +28,16 @@ bool BloomFilter::Match(const uint256& h) const
 {
     if (full || bits.empty()) return true;
     const size_t bitCount = bits.size() * 8;
-    auto hashToInt = [&h](uint32_t seed) {
-        uint32_t out = seed;
-        for (auto b : h) {
-            out = out * 0x01000193 ^ b;
-        }
-        return out;
-    };
+    
+    // Compute base hash once instead of in lambda for each iteration
+    uint32_t baseHash = tweak;
+    for (auto b : h) {
+        baseHash = baseHash * 0x01000193 ^ b;
+    }
+    
     for (uint32_t i = 0; i < nHashFuncs; ++i) {
-        uint32_t hv = hashToInt(i * 0xfba4c795 + tweak);
+        // Combine base hash with iteration-specific seed
+        uint32_t hv = baseHash ^ (i * 0xfba4c795);
         size_t bit = hv % bitCount;
         size_t byteIdx = bit / 8;
         uint8_t mask = 1u << (bit % 8);
@@ -507,15 +508,14 @@ void P2PNetwork::HandleBuiltin(const std::shared_ptr<PeerState>& peer, const Mes
         if (msg.payload.size() >= 32) {
             uint256 h{};
             std::copy(msg.payload.begin(), msg.payload.begin() + 32, h.begin());
-            // set bits
+            // set bits - optimized to compute base hash once
             const size_t bitCount = peer->filter.bits.size() * 8;
-            auto hashToInt = [&h](uint32_t seed) {
-                uint32_t out = seed;
-                for (auto b : h) out = out * 0x01000193 ^ b;
-                return out;
-            };
+            uint32_t baseHash = peer->filter.tweak;
+            for (auto b : h) {
+                baseHash = baseHash * 0x01000193 ^ b;
+            }
             for (uint32_t i = 0; i < peer->filter.nHashFuncs; ++i) {
-                uint32_t hv = hashToInt(i * 0xfba4c795 + peer->filter.tweak);
+                uint32_t hv = baseHash ^ (i * 0xfba4c795);
                 size_t bit = hv % bitCount;
                 peer->filter.bits[bit / 8] |= (1u << (bit % 8));
             }

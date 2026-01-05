@@ -18,8 +18,15 @@ const std::array<uint8_t, 32> kEmptyRoot{};
 
 bool IsNullOutPoint(const OutPoint& prevout)
 {
-    return std::all_of(prevout.hash.begin(), prevout.hash.end(), [](uint8_t b) { return b == 0; }) &&
-           prevout.index == std::numeric_limits<uint32_t>::max();
+    // Check index first (cheaper than iterating hash)
+    if (prevout.index != std::numeric_limits<uint32_t>::max()) {
+        return false;
+    }
+    // Manual loop with early exit is faster than std::all_of
+    for (auto b : prevout.hash) {
+        if (b != 0) return false;
+    }
+    return true;
 }
 
 struct OutPointHasher {
