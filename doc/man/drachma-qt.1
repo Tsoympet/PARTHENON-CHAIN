@@ -1,0 +1,77 @@
+.TH DRACHMA-QT 1 "January 2026" "drachma 0.1.0" "DRACHMA Core"
+.SH NAME
+drachma-qt \- DRACHMA graphical user interface
+.SH SYNOPSIS
+.B drachma-qt
+[\fIOPTIONS\fR]
+.SH DESCRIPTION
+.B drachma-qt
+provides a Qt-based graphical user interface for the DRACHMA cryptocurrency. 
+It integrates a wallet, block explorer, and network connectivity in a single application.
+.PP
+The DRACHMA wallet provides multi-asset support (TLN, DRM, OBL), NFT gallery, 
+smart contract interaction, and dApp browsing capabilities.
+.SH OPTIONS
+.TP
+.BR \-conf=\fIFILE\fR
+Specify configuration file (default: drachma.conf)
+.TP
+.BR \-datadir=\fIDIR\fR
+Specify data directory
+.TP
+.BR \-network=\fINETWORK\fR
+Connect to network (mainnet, testnet, regtest)
+.TP
+.BR \-connect=\fIIP:PORT\fR
+Connect to a DRACHMA node at IP:PORT
+.TP
+.BR \-min
+Start minimized
+.TP
+.BR \-resetguisettings
+Reset all settings changed in the GUI
+.TP
+.BR \-version
+Print version and exit
+.TP
+.BR \-help
+Print help message and exit
+.SH FEATURES
+.TP
+.B Wallet Management
+Send and receive DRM, TLN, and OBL tokens
+.TP
+.B NFT Gallery
+View, mint, and trade NFTs on the Layer 2 sidechain
+.TP
+.B Smart Contracts
+Deploy and interact with WASM smart contracts
+.TP
+.B dApp Browser
+Access decentralized applications built on DRACHMA
+.TP
+.B Transaction History
+View detailed transaction history with filtering options
+.TP
+.B Address Book
+Manage contacts and frequently used addresses
+.SH FILES
+.TP
+.I ~/.drachma/drachma.conf
+Configuration file
+.TP
+.I ~/.drachma/wallet.dat
+Wallet data file
+.TP
+.I ~/.drachma/peers.dat
+Peer address database
+.SH SEE ALSO
+.BR drachmad (1),
+.BR drachma-cli (1)
+.PP
+Full documentation at: <https://github.com/Tsoympet/BlockChainDrachma>
+.SH COPYRIGHT
+Copyright \(co 2026 DRACHMA Blockchain contributors.
+.PP
+This is free software; see the source for copying conditions.
+There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.

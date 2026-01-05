@@ -1,0 +1,97 @@
+.TH DRACHMAD 1 "January 2026" "drachma 0.1.0" "DRACHMA Core"
+.SH NAME
+drachmad \- DRACHMA network daemon
+.SH SYNOPSIS
+.B drachmad
+[\fIOPTIONS\fR]
+.SH DESCRIPTION
+.B drachmad
+is the DRACHMA network daemon. It implements the DRACHMA protocol for peer-to-peer 
+connections, validates and relays transactions and blocks, and maintains the blockchain.
+.PP
+DRACHMA is a Proof-of-Work monetary blockchain designed for long-term stability, 
+auditability, and minimal trust assumptions.
+.SH OPTIONS
+.TP
+.BR \-conf=\fIFILE\fR
+Specify configuration file (default: drachma.conf)
+.TP
+.BR \-datadir=\fIDIR\fR
+Specify data directory
+.TP
+.BR \-network=\fINETWORK\fR
+Connect to network (mainnet, testnet, regtest)
+.TP
+.BR \-listen
+Accept connections from outside (default: 1 if no \-proxy or \-connect)
+.TP
+.BR \-port=\fIPORT\fR
+Listen for connections on PORT (default: 9333 or testnet: 19333)
+.TP
+.BR \-rpcuser=\fIUSER\fR
+Username for JSON-RPC connections
+.TP
+.BR \-rpcpassword=\fIPASSWORD\fR
+Password for JSON-RPC connections
+.TP
+.BR \-rpcport=\fIPORT\fR
+Listen for JSON-RPC connections on PORT (default: 8332 or testnet: 18332)
+.TP
+.BR \-addnode=\fIIP\fR
+Add a node to connect to and attempt to keep the connection open
+.TP
+.BR \-daemon
+Run in the background as a daemon
+.TP
+.BR \-prune=\fIN\fR
+Reduce storage requirements by pruning (deleting) old blocks. 
+This mode disables wallet support and is incompatible with \-txindex.
+.TP
+.BR \-txindex
+Maintain a full transaction index, used by the getrawtransaction RPC call
+.TP
+.BR \-version
+Print version and exit
+.TP
+.BR \-help
+Print help message and exit
+.SH CONFIGURATION FILE
+The configuration file is not automatically created; you can create it using your 
+favorite text editor. By default, drachmad will look for a file named drachma.conf 
+in the data directory.
+.PP
+Example configuration:
+.PP
+.nf
+.RS
+server=1
+daemon=1
+rpcuser=myuser
+rpcpassword=mypassword
+rpcallowip=127.0.0.1
+listen=1
+.RE
+.fi
+.SH FILES
+.TP
+.I ~/.drachma/drachma.conf
+Configuration file for drachmad
+.TP
+.I ~/.drachma/blocks/
+Blockchain data files
+.TP
+.I ~/.drachma/chainstate/
+UTXO set database
+.TP
+.I ~/.drachma/debug.log
+Log file
+.SH SEE ALSO
+.BR drachma-cli (1),
+.BR drachma-qt (1)
+.PP
+Full documentation at: <https://github.com/Tsoympet/BlockChainDrachma>
+.SH COPYRIGHT
+Copyright \(co 2026 DRACHMA Blockchain contributors.
+.PP
+This is free software; see the source for copying conditions.
+There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.

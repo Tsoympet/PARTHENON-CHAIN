@@ -388,11 +388,85 @@ if(DRACHMA_BUILD_TESTS)
 endif()
 
 # Install rules
-install(TARGETS drachma_layer1 drachma_layer2 drachma_cpu_miner drachmad drachma_cli
+# Install core binaries
+install(TARGETS drachmad drachma_cli
     RUNTIME DESTINATION bin
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
+    COMPONENT runtime
 )
 
-install(DIRECTORY layer1-core/ DESTINATION include/drachma/layer1 FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY layer2-services/ DESTINATION include/drachma/layer2 FILES_MATCHING PATTERN "*.h")
+# Install CPU miner
+install(TARGETS drachma_cpu_miner
+    RUNTIME DESTINATION bin
+    COMPONENT miners
+)
+
+# Install GPU miners if built
+if(CUDAToolkit_FOUND)
+    install(TARGETS drachma_cuda_miner
+        RUNTIME DESTINATION bin
+        COMPONENT miners
+    )
+endif()
+
+if(DRACHMA_ENABLE_OPENCL AND OpenCL_FOUND)
+    install(TARGETS drachma_opencl_miner
+        RUNTIME DESTINATION bin
+        COMPONENT miners
+    )
+endif()
+
+# Install Qt wallet if built
+if(DRACHMA_BUILD_GUI AND TARGET drachma_qt)
+    install(TARGETS drachma_qt
+        RUNTIME DESTINATION bin
+        COMPONENT gui
+    )
+    
+    # Install desktop file on Linux
+    if(UNIX AND NOT APPLE)
+        install(FILES contrib/desktop/drachma-qt.desktop
+            DESTINATION share/applications
+            COMPONENT gui
+        )
+    endif()
+endif()
+
+# Install libraries
+install(TARGETS drachma_layer1 drachma_layer2
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+    COMPONENT development
+)
+
+# Install development headers
+install(DIRECTORY layer1-core/ 
+    DESTINATION include/drachma/layer1 
+    COMPONENT development
+    FILES_MATCHING PATTERN "*.h"
+)
+
+install(DIRECTORY layer2-services/ 
+    DESTINATION include/drachma/layer2 
+    COMPONENT development
+    FILES_MATCHING PATTERN "*.h"
+)
+
+# Install man pages
+install(FILES 
+    doc/man/drachmad.1
+    doc/man/drachma-cli.1
+    doc/man/drachma-qt.1
+    DESTINATION share/man/man1
+    COMPONENT documentation
+    OPTIONAL
+)
+
+# Install documentation
+install(FILES 
+    README.md
+    LICENSE
+    CHANGELOG.md
+    CONTRIBUTING.md
+    DESTINATION share/doc/drachma
+    COMPONENT documentation
+)

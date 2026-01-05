@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=DRACHMA Core
+Comment=Connect to the DRACHMA network
+GenericName=Cryptocurrency Wallet
+Icon=drachma
+Exec=drachma-qt %u
+Terminal=false
+Categories=Finance;Network;P2P;Qt;
+MimeType=x-scheme-handler/drachma;
+Keywords=cryptocurrency;wallet;blockchain;drachma;
+StartupWMClass=Drachma-qt
