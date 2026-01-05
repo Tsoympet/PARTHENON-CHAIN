@@ -619,24 +619,43 @@ std::string RPCServer::TrimQuotes(std::string in)
 std::pair<std::string, std::string> RPCServer::ParseJsonRpc(const std::string& body)
 {
     // Simple parser without regex for better performance: {"method":"name","params":"value"}
+    // Note: This is a lightweight parser for well-formed RPC requests. For robustness,
+    // a full JSON library should be used in production.
     std::string method, params;
     
-    // Find method
-    size_t methodPos = body.find("\"method\"");
-    if (methodPos != std::string::npos) {
-        size_t colonPos = body.find(':', methodPos);
-        if (colonPos != std::string::npos) {
-            size_t startQuote = body.find('"', colonPos);
-            if (startQuote != std::string::npos) {
-                size_t endQuote = body.find('"', startQuote + 1);
-                if (endQuote != std::string::npos) {
-                    method = body.substr(startQuote + 1, endQuote - startQuote - 1);
+    auto findStringValue = [&body](const std::string& key, size_t startPos = 0) -> std::string {
+        size_t keyPos = body.find(key, startPos);
+        if (keyPos == std::string::npos) return "";
+        size_t colonPos = body.find(':', keyPos);
+        if (colonPos == std::string::npos) return "";
+        size_t startQuote = body.find('"', colonPos);
+        if (startQuote == std::string::npos) return "";
+        
+        // Simple escape handling: count consecutive backslashes before quote
+        size_t endQuote = startQuote + 1;
+        while (endQuote < body.size()) {
+            if (body[endQuote] == '"') {
+                // Count backslashes before this quote
+                size_t backslashCount = 0;
+                size_t check = endQuote - 1;
+                while (check > startQuote && body[check] == '\\') {
+                    backslashCount++;
+                    if (check == 0) break;
+                    check--;
+                }
+                // If even number of backslashes, quote is not escaped
+                if (backslashCount % 2 == 0) {
+                    return body.substr(startQuote + 1, endQuote - startQuote - 1);
                 }
             }
+            endQuote++;
         }
-    }
+        return "";
+    };
     
-    // Find params
+    method = findStringValue("\"method\"");
+    
+    // Find params - can be string, number, object, or array
     size_t paramsPos = body.find("\"params\"");
     if (paramsPos != std::string::npos) {
         size_t colonPos = body.find(':', paramsPos);
@@ -644,13 +663,24 @@ std::pair<std::string, std::string> RPCServer::ParseJsonRpc(const std::string& b
             size_t start = colonPos + 1;
             while (start < body.size() && std::isspace(body[start])) ++start;
             if (start < body.size()) {
-                size_t end = start;
-                // Find end of params value (looking for comma or closing brace)
+                // Simple extraction: find comma or closing brace at depth 0
                 int depth = 0;
                 bool inString = false;
+                size_t end = start;
                 for (size_t i = start; i < body.size(); ++i) {
-                    if (body[i] == '"' && (i == 0 || body[i-1] != '\\')) {
-                        inString = !inString;
+                    if (body[i] == '"') {
+                        // Check if quote is escaped
+                        size_t backslashCount = 0;
+                        if (i > 0) {
+                            size_t check = i - 1;
+                            while (check > 0 && body[check] == '\\') {
+                                backslashCount++;
+                                check--;
+                            }
+                        }
+                        if (backslashCount % 2 == 0) {
+                            inString = !inString;
+                        }
                     } else if (!inString) {
                         if (body[i] == '{' || body[i] == '[') depth++;
                         else if (body[i] == '}' || body[i] == ']') {

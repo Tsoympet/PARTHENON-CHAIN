@@ -16,10 +16,11 @@ namespace net {
 
 using boost::asio::ip::tcp;
 
-static void PadCommand(const std::string& cmd, char* out12)
+// Safely pads command to 12 bytes with null termination
+static void PadCommand(const std::string& cmd, std::array<char, 12>& out)
 {
-    std::memset(out12, 0, 12);
-    std::memcpy(out12, cmd.data(), std::min(cmd.size(), size_t(12)));
+    std::memset(out.data(), 0, out.size());
+    std::memcpy(out.data(), cmd.data(), std::min(cmd.size(), out.size()));
 }
 
 static constexpr size_t k_max_payload = 4 * 1024 * 1024; // 4 MiB safety cap
@@ -315,7 +316,9 @@ void P2PNetwork::WriteLoop(const std::shared_ptr<PeerState>& peer)
     uint32_t len = static_cast<uint32_t>(msg.payload.size());
     std::array<uint8_t, 24> header{};
     std::memcpy(header.data(), &k_message_magic, sizeof(uint32_t));
-    PadCommand(msg.command, reinterpret_cast<char*>(header.data() + 4));
+    std::array<char, 12> cmdBuf;
+    PadCommand(msg.command, cmdBuf);
+    std::memcpy(header.data() + 4, cmdBuf.data(), cmdBuf.size());
     std::memcpy(header.data() + 16, &len, sizeof(len));
     uint8_t checksumFull[32]{};
     sha256d(checksumFull, msg.payload.empty() ? nullptr : msg.payload.data(), msg.payload.size());
