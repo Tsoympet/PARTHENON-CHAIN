@@ -100,7 +100,7 @@ jobs:
 
       - name: Compose release notes
         run: |
-          python - <<PY
+          python - <<'PY'
           import pathlib
           import re
           import os
