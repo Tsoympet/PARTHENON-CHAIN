@@ -657,8 +657,8 @@ When creating materials not in the official repository:
 This document is versioned and updated as the project evolves.
 
 **Current Version**: 1.0  
-**Last Updated**: 2024-01-06  
-**Next Review**: 2024-07-06 (6 months)
+**Last Updated**: 2026-01-06  
+**Next Review**: 2026-07-06 (6 months)
 
 ### 13.2 Proposing Changes
 
@@ -738,6 +738,6 @@ As DRACHMA grows globally, regional adaptations may be necessary:
 ---
 
 **Document Version**: 1.0  
-**Effective Date**: 2024-01-06  
+**Effective Date**: 2026-01-06  
 **Maintained By**: DRACHMA Core Team  
 **License**: CC BY 4.0 (documentation), MIT (assets)

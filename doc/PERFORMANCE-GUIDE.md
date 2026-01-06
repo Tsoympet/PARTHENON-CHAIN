@@ -657,6 +657,6 @@ See `doc/CONTRIBUTING.md` for guidelines.
 
 ---
 
-**Last Updated**: 2024-01-06  
+**Last Updated**: 2026-01-06  
 **Version**: 1.0  
 **Maintainer**: DRACHMA Core Team
