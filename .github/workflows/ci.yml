@@ -1,6 +1,7 @@
+---
 name: CI
 
-on:
+'on':
   push:
   pull_request:
 
@@ -13,16 +14,22 @@ jobs:
       statuses: write
     env:
       BUILD_DIR: build
-      COVERAGE_FILTER: "^(layer1-core|layer2-services|sidechain|miners|common|layer3-app)(/|$)"
+      COVERAGE_FILTER: >-
+        ^(layer1-core|layer2-services|sidechain|miners|common|layer3-app)(/|$)
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libssl-dev libboost-all-dev libleveldb-dev gcovr
+        run: >-
+          sudo apt-get update && sudo apt-get install -y
+          cmake ninja-build libssl-dev libboost-all-dev libleveldb-dev gcovr
 
       - name: Configure
-        run: cmake -S . -B "${BUILD_DIR}" -G Ninja -DCMAKE_BUILD_TYPE=Debug -DDRACHMA_BUILD_TESTS=ON -DDRACHMA_BUILD_GUI=OFF -DDRACHMA_COVERAGE=ON
+        run: >-
+          cmake -S . -B "${BUILD_DIR}" -G Ninja -DCMAKE_BUILD_TYPE=Debug
+          -DDRACHMA_BUILD_TESTS=ON -DDRACHMA_BUILD_GUI=OFF
+          -DDRACHMA_COVERAGE=ON
 
       - name: Build
         run: cmake --build "${BUILD_DIR}" --parallel

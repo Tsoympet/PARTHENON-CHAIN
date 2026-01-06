@@ -1,3 +1,4 @@
+---
 version: '3.9'
 
 x-node-common: &node-common
@@ -21,7 +22,17 @@ services:
       - "19335:19335"  # P2P
       - "18332:18332"  # RPC
       - "9311:9311"    # metrics
-    command: ["--network", "testnet", "--rpcuser", "user", "--rpcpassword", "pass", "--listen", "--port=19335", "--rpcport=18332", "--metricsport=9311"]
+    command:
+      - "--network"
+      - "testnet"
+      - "--rpcuser"
+      - "user"
+      - "--rpcpassword"
+      - "pass"
+      - "--listen"
+      - "--port=19335"
+      - "--rpcport=18332"
+      - "--metricsport=9311"
 
   drachma-seed-b:
     <<: *node-common
@@ -33,7 +44,18 @@ services:
     ports:
       - "19336:19335"
       - "18333:18332"
-    command: ["--network", "testnet", "--rpcuser", "user", "--rpcpassword", "pass", "--listen", "--port=19335", "--rpcport=18332", "--metricsport=9311", "--addnode=drachma-seed-a"]
+    command:
+      - "--network"
+      - "testnet"
+      - "--rpcuser"
+      - "user"
+      - "--rpcpassword"
+      - "pass"
+      - "--listen"
+      - "--port=19335"
+      - "--rpcport=18332"
+      - "--metricsport=9311"
+      - "--addnode=drachma-seed-a"
 
   drachma-node-1:
     <<: *node-common
@@ -46,7 +68,19 @@ services:
     ports:
       - "19337:19335"
       - "18334:18332"
-    command: ["--network", "testnet", "--rpcuser", "user", "--rpcpassword", "pass", "--listen", "--port=19335", "--rpcport=18332", "--metricsport=9311", "--addnode=drachma-seed-a", "--addnode=drachma-seed-b"]
+    command:
+      - "--network"
+      - "testnet"
+      - "--rpcuser"
+      - "user"
+      - "--rpcpassword"
+      - "pass"
+      - "--listen"
+      - "--port=19335"
+      - "--rpcport=18332"
+      - "--metricsport=9311"
+      - "--addnode=drachma-seed-a"
+      - "--addnode=drachma-seed-b"
 
   drachma-node-2:
     <<: *node-common
@@ -56,7 +90,19 @@ services:
       - drachma-seed-b
     volumes:
       - drachma-node-2:/opt/drachma/.drachma
-    command: ["--network", "testnet", "--rpcuser", "user", "--rpcpassword", "pass", "--listen", "--port=19335", "--rpcport=18332", "--metricsport=9311", "--addnode=drachma-seed-a", "--addnode=drachma-seed-b"]
+    command:
+      - "--network"
+      - "testnet"
+      - "--rpcuser"
+      - "user"
+      - "--rpcpassword"
+      - "pass"
+      - "--listen"
+      - "--port=19335"
+      - "--rpcport=18332"
+      - "--metricsport=9311"
+      - "--addnode=drachma-seed-a"
+      - "--addnode=drachma-seed-b"
 
   drachma-node-3:
     <<: *node-common
@@ -66,7 +112,19 @@ services:
       - drachma-seed-b
     volumes:
       - drachma-node-3:/opt/drachma/.drachma
-    command: ["--network", "testnet", "--rpcuser", "user", "--rpcpassword", "pass", "--listen", "--port=19335", "--rpcport=18332", "--metricsport=9311", "--addnode=drachma-seed-a", "--addnode=drachma-seed-b"]
+    command:
+      - "--network"
+      - "testnet"
+      - "--rpcuser"
+      - "user"
+      - "--rpcpassword"
+      - "pass"
+      - "--listen"
+      - "--port=19335"
+      - "--rpcport=18332"
+      - "--metricsport=9311"
+      - "--addnode=drachma-seed-a"
+      - "--addnode=drachma-seed-b"
 
   drachma-dashboard:
     image: nginx:alpine
@@ -92,7 +150,20 @@ services:
       RPC_URL: http://drachma-node-1:18332
       RPC_USER: user
       RPC_PASSWORD: pass
-    command: ["python3", "testnet/faucet.py", "--rpc", "http://drachma-node-1:18332", "--rpcuser", "user", "--rpcpassword", "pass", "--amount", "1", "--state-file", "/var/lib/faucet/state.json", "tb1qplaceholder"]
+    command:
+      - "python3"
+      - "testnet/faucet.py"
+      - "--rpc"
+      - "http://drachma-node-1:18332"
+      - "--rpcuser"
+      - "user"
+      - "--rpcpassword"
+      - "pass"
+      - "--amount"
+      - "1"
+      - "--state-file"
+      - "/var/lib/faucet/state.json"
+      - "tb1qplaceholder"
     volumes:
       - faucet-state:/var/lib/faucet
 
@@ -150,7 +221,17 @@ services:
       - drachma-node-1
       - drachma-node-2
       - drachma-node-3
-    command: ["python3", "scripts/node_monitor.py", "--nodes", "http://drachma-node-1:18332,http://drachma-node-2:18332,http://drachma-node-3:18332", "--user", "user", "--password", "pass", "--interval", "15"]
+    command:
+      - "python3"
+      - "scripts/node_monitor.py"
+      - "--nodes"
+      - "http://drachma-node-1:18332,http://drachma-node-2:18332,http://drachma-node-3:18332"
+      - "--user"
+      - "user"
+      - "--password"
+      - "pass"
+      - "--interval"
+      - "15"
 
 volumes:
   drachma-seed-a:

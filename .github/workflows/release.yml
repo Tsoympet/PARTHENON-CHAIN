@@ -1,6 +1,7 @@
+---
 name: Release
 
-on:
+'on':
   push:
     tags:
       - "v*"
@@ -30,16 +31,24 @@ jobs:
     runs-on: ubuntu-latest
     env:
       BUILD_DIR: build
-      VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version_tag || github.ref_name }}
+      VERSION: >-
+        ${{ github.event_name == 'workflow_dispatch' &&
+        inputs.version_tag || github.ref_name }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libssl-dev libboost-all-dev libleveldb-dev
+        run: >-
+          sudo apt-get update && sudo apt-get install -y
+          cmake ninja-build libssl-dev libboost-all-dev libleveldb-dev
 
       - name: Configure
-        run: cmake -S . -B "${BUILD_DIR}" -G Ninja -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" -DDRACHMA_BUILD_GUI=OFF -DDRACHMA_BUILD_TESTS=ON -DDRACHMA_COVERAGE=OFF
+        run: >-
+          cmake -S . -B "${BUILD_DIR}" -G Ninja
+          -DCMAKE_BUILD_TYPE="${BUILD_TYPE}"
+          -DDRACHMA_BUILD_GUI=OFF -DDRACHMA_BUILD_TESTS=ON
+          -DDRACHMA_COVERAGE=OFF
 
       - name: Build
         run: cmake --build "${BUILD_DIR}" --parallel
@@ -52,11 +61,12 @@ jobs:
           mkdir -p dist/ubuntu
           TARGETS=(drachmad drachma-cli drachma_cpu_miner)
           for name in "${TARGETS[@]}"; do
-            bin_path=$(find "${BUILD_DIR}" -maxdepth 3 -type f -name "${name}" -print -quit)
+            bin_path=$(find "${BUILD_DIR}" -maxdepth 3 -type f \
+              -name "${name}" -print -quit)
             if [ -n "${bin_path}" ]; then
               cp "${bin_path}" dist/ubuntu/
             else
-              echo "Warning: ${name} was not produced by the build; skipping." >&2
+              echo "Warning: ${name} was not produced; skipping." >&2
             fi
           done
           if [ -z "$(find dist/ubuntu -maxdepth 1 -type f -print -quit)" ]; then
@@ -72,12 +82,17 @@ jobs:
           path: dist/drachma-${{ env.VERSION }}-linux.tar.gz
 
   publish:
-    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish_release == 'true')
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' &&
+      inputs.publish_release == 'true')
     name: Publish release
     needs: build
     runs-on: ubuntu-latest
     env:
-      VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version_tag || github.ref_name }}
+      VERSION: >-
+        ${{ github.event_name == 'workflow_dispatch' &&
+        inputs.version_tag || github.ref_name }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -125,7 +140,10 @@ jobs:
           if out:
               notes_path.write_text("\n".join(out).strip() + "\n")
           else:
-              notes_path.write_text(f"Drachma {version}\nRelease notes not found in CHANGELOG.md\n")
+              notes_path.write_text(
+                  f"Drachma {version}\n"
+                  "Release notes not found in CHANGELOG.md\n"
+              )
           PY
 
       - name: Create GitHub Release
@@ -136,6 +154,7 @@ jobs:
           body_path: release_notes.md
           files: dist/*
           draft: false
-          prerelease: ${{ contains(env.VERSION, 'rc') || contains(env.VERSION, 'test') }}
+          prerelease: >-
+            ${{ contains(env.VERSION, 'rc') || contains(env.VERSION, 'test') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
