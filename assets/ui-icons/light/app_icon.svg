@@ -1,6 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-label="app_icon"><g fill="none" stroke="#111827" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-<circle cx="12" cy="12" r="9"/>
-<path d="M8 12a4 4 0 0 1 8 0 4 4 0 0 1-8 0Z"/>
-<path d="M12 5v2"/>
-<path d="M12 17v2"/>
-</g></svg>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" role="img" aria-label="PARTHENON CHAIN">
+  <defs>
+    <linearGradient id="marbleLight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F5F5F0"/>
+      <stop offset="100%" stop-color="#D4D4C8"/>
+    </linearGradient>
+  </defs>
+  <circle cx="12" cy="12" r="11" fill="#1C1C1E" stroke="#CD7F32" stroke-width="0.8"/>
+  <!-- Parthenon columns -->
+  <rect x="5" y="8" width="1.2" height="7" fill="url(#marbleLight)"/>
+  <rect x="8" y="8" width="1.2" height="7" fill="url(#marbleLight)"/>
+  <rect x="11" y="8" width="1.2" height="7" fill="url(#marbleLight)"/>
+  <rect x="14" y="8" width="1.2" height="7" fill="url(#marbleLight)"/>
+  <rect x="17" y="8" width="1.2" height="7" fill="url(#marbleLight)"/>
+  <!-- Pediment (triangular top) -->
+  <path d="M 4 8 L 12 5 L 20 8 Z" fill="#CD7F32"/>
+  <!-- Base platform -->
+  <rect x="3.5" y="15" width="17" height="0.8" fill="url(#marbleLight)"/>
+</svg>
