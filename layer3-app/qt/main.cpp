@@ -1810,9 +1810,26 @@ private slots:
 
     void drawQr(const QString& data)
     {
+        // Current implementation: Deterministic visual placeholder based on hash
+        // RECOMMENDATION: For production use, integrate a proper QR code library such as:
+        //   - qrencode (libqrencode): C library with Qt bindings
+        //   - QR Code Generator (nayuki): Modern C++ header-only library
+        //   - Qt solutions archive: QRCode widget
+        // 
+        // The current hash-based visualization provides a consistent visual representation
+        // for testing/development but does NOT generate scannable QR codes.
+        // Real QR codes require:
+        //   1. Error correction codes (Reed-Solomon)
+        //   2. Proper format information and version encoding
+        //   3. Finder patterns (position detection patterns)
+        //   4. Timing patterns and alignment patterns
+        //   5. Data encoding with bit-level masking
+        
         const int modules = 25;
         QByteArray digest = QCryptographicHash::hash(data.toUtf8(), QCryptographicHash::Sha256);
         QImage img(modules, modules, QImage::Format_ARGB32);
+        
+        // Generate deterministic pattern from hash for placeholder visualization
         for (int y = 0; y < modules; ++y) {
             for (int x = 0; x < modules; ++x) {
                 int idx = (x + y * modules) % digest.size();
@@ -1820,6 +1837,7 @@ private slots:
                 img.setPixelColor(x, y, dark ? Qt::black : Qt::white);
             }
         }
+        
         QImage scaled = img.scaled(qrLabel->size(), Qt::KeepAspectRatio, Qt::FastTransformation);
         qrLabel->setPixmap(QPixmap::fromImage(scaled));
     }

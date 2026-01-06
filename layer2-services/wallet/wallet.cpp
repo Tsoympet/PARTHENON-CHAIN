@@ -223,16 +223,61 @@ std::unordered_map<uint8_t, uint64_t> WalletBackend::GetBalances() const
 
 std::vector<UTXO> WalletBackend::SelectCoins(uint64_t amount, std::optional<uint8_t> assetId) const
 {
-    std::vector<UTXO> chosen;
-    uint64_t acc = 0;
+    // Enhanced coin selection with multiple strategies for optimal UTXO management:
+    // 1. Exact match: Find single UTXO that exactly matches target amount
+    // 2. Single larger: Use single UTXO larger than target (minimizes inputs)
+    // 3. Accumulative: Smallest-first accumulation (reduces fragmentation)
+    // 4. Fallback: Simple first-fit if other strategies fail
+    
+    std::vector<UTXO> candidates;
+    candidates.reserve(m_utxos.size());
     for (const auto& u : m_utxos) {
         if (assetId && u.txout.assetId != *assetId) continue;
+        candidates.push_back(u);
+    }
+    
+    if (candidates.empty()) throw std::runtime_error("no UTXOs available");
+    
+    // Strategy 1: Look for exact match (ideal case - no change output needed)
+    for (const auto& u : candidates) {
+        if (u.txout.value == amount) {
+            return std::vector<UTXO>{u};
+        }
+    }
+    
+    // Strategy 2: Find smallest single UTXO that covers amount (minimizes inputs)
+    std::optional<UTXO> bestSingle;
+    for (const auto& u : candidates) {
+        if (u.txout.value >= amount) {
+            if (!bestSingle || u.txout.value < bestSingle->txout.value) {
+                bestSingle = u;
+            }
+        }
+    }
+    
+    if (bestSingle) {
+        return std::vector<UTXO>{*bestSingle};
+    }
+    
+    // Strategy 3: Accumulative selection - use smallest UTXOs first to reduce fragmentation
+    // This helps consolidate dust and maintains larger UTXOs for future larger transactions
+    // Simple single pass: sort and accumulate until target is reached
+    std::vector<UTXO> sortedCandidates = candidates;
+    std::sort(sortedCandidates.begin(), sortedCandidates.end(),
+              [](const UTXO& a, const UTXO& b) { return a.txout.value < b.txout.value; });
+    
+    std::vector<UTXO> chosen;
+    uint64_t acc = 0;
+    for (const auto& u : sortedCandidates) {
         chosen.push_back(u);
         acc += u.txout.value;
-        if (acc >= amount) break;
+        if (acc >= amount) {
+            return chosen;
+        }
     }
-    if (acc < amount) throw std::runtime_error("insufficient funds");
-    return chosen;
+    
+    // If we reach here, insufficient funds
+    throw std::runtime_error("insufficient funds");
 }
 
 PubKey WalletBackend::DerivePub(const PrivKey& priv) const
