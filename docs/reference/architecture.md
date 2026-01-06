@@ -87,8 +87,8 @@ graph LR
 
 ## Mainnet Readiness Touchpoints
 
-- Layer 1 parameters (subsidy, halving interval, difficulty clamps) are frozen in `technical-spec.md` and must not drift across releases.
-- Layer 2 exposes RPC/auth surfaces; see `deployment.md` for hardening defaults and Prometheus endpoints.
+- Layer 1 parameters (subsidy, halving interval, difficulty clamps) are frozen in `../technical-specs/technical-spec.md` and must not drift across releases.
+- Layer 2 exposes RPC/auth surfaces; see `../operators/deployment.md` for hardening defaults and Prometheus endpoints.
 - Layer 3 and miners are replaceable as long as they respect the documented RPC/block-template contracts.
 
 ## Upgrade Strategy

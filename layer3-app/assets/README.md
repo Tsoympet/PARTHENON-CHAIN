@@ -6,7 +6,7 @@ without updating the UI code in `layer3-app/qt/main.cpp`.
 
 - `icons/` holds application and tray icons used across platforms.
 - `legal/` contains the EULA bundled with installers and shown on first launch.
-- `whitepaper.pdf` should mirror the content of `docs/whitepaper.md` for offline
+- `whitepaper.pdf` should mirror the content of `docs/reference/whitepaper.md` for offline
   consumption inside the app.
 
 To replace assets, drop updated files with the same names. The application will

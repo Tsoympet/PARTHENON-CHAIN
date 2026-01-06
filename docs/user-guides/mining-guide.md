@@ -125,4 +125,4 @@ Key flags:
 - **RPC auth failures:** Verify credentials and ensure RPC is bound to the expected interface.
 - **Low hash rate:** Reduce intensity, update drivers, or test another backend (CUDA vs OpenCL).
 - **Stales or rejects:** Improve connectivity to peers, lower overclocks, and ensure system clocks are synchronized (NTP).
-- **Build/runtime errors:** Rebuild miners with matching driver/toolkit versions; see `docs/building.md` for GPU build notes.
+- **Build/runtime errors:** Rebuild miners with matching driver/toolkit versions; see `../getting-started/building.md` for GPU build notes.

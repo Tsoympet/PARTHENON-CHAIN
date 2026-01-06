@@ -6,10 +6,10 @@ DRACHMA follows a conservative, minimal-trust philosophy inspired by Bitcoin Cor
 ## Scope
 Audit efforts should prioritize consensus-critical and security-sensitive surfaces:
 
-- **Layer 1 (Consensus):** Block/transaction validation, difficulty/retargeting, PoW hashing, block formats, serialization, database persistence. Key paths: `layer1-core/`, `common/`, `tests/` (consensus vectors), `docs/technical-spec.md`.
+- **Layer 1 (Consensus):** Block/transaction validation, difficulty/retargeting, PoW hashing, block formats, serialization, database persistence. Key paths: `layer1-core/`, `common/`, `tests/` (consensus vectors), `../technical-specs/technical-spec.md`.
 - **Cryptography:** Schnorr over secp256k1, tagged hashing, signature verification, RNG seeding. Key paths: `common/crypto/`, `layer1-core/crypto/` (if present), and fuzz targets.
 - **Networking / P2P:** Message parsing, DoS controls, peer selection, bandwidth/memory bounds, handshake and version negotiation. Key paths: `layer2-services/`, `common/net/`, `scripts/` for configs.
-- **Wallets:** Key generation, encryption at rest, signing flows, backup/restore, UI protections against accidental leaks. Key paths: `layer3-app/`, `docs/gui-user-guide.md`, `docs/security.md`.
+- **Wallets:** Key generation, encryption at rest, signing flows, backup/restore, UI protections against accidental leaks. Key paths: `layer3-app/`, `../getting-started/gui-user-guide.md`, `security-notes.md`.
 - **Miners:** Stratum parsing, target/difficulty handling, nonce search, pool authentication. Key paths: `miners/`, `scripts/`.
 - **Build/Packaging:** Reproducibility, dependency pinning, CI workflows. Key paths: `Dockerfile`, `docker-compose.yml`, `.github/workflows/`.
 

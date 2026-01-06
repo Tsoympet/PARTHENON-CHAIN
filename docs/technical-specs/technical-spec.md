@@ -102,4 +102,4 @@ Update `time` and `nonce` values with finalized parameters and compare the print
 - No privileged keys or governance layers
 - No premines or developer fees embedded in consensus
 
-Refer to [`docs/whitepaper.md`](whitepaper.md) and [`docs/architecture.md`](architecture.md) for additional context and motivations.
+Refer to [`../reference/whitepaper.md`](../reference/whitepaper.md) and [`../reference/architecture.md`](../reference/architecture.md) for additional context and motivations.

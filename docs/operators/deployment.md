@@ -5,7 +5,7 @@ This guide covers running DRACHMA nodes and the desktop wallet on testnet/mainne
 ## Quick start options
 - **Pre-built binaries (recommended when available):** Download the latest tagged release from the [GitHub Releases page](https://github.com/Tsoympet/BlockChainDrachma/releases), verify SHA-256 and GPG signatures, then follow the run commands below.
 - **Docker:** Use the included `Dockerfile` for a single node or `docker-compose.yml` for a multi-node testnet stack with monitoring.
-- **Build from source:** Follow `docs/building.md` for platform-specific instructions.
+- **Build from source:** Follow `../getting-started/building.md` for platform-specific instructions.
 
 ## Running a full node
 - Minimal testnet start:

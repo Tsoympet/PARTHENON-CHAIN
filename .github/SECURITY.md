@@ -6,4 +6,4 @@ This repository follows the DRACHMA responsible disclosure process. Please **do 
 - **Alternative:** Use GitHub's "Report a vulnerability" workflow to create a private Security Advisory.
 - **Disclosure:** No public disclosure until a coordinated fix or mitigation is available. Acknowledgment within 48 hours, triage within 7 days.
 
-See the [Security Audit Guide](../docs/audit-guide.md) and [docs/security/security-overview.md](../docs/security/security-overview.md) for scope, expectations, and additional resources.
+See the [Security Audit Guide](../docs/security/audit-guide.md) and [docs/security/security-overview.md](../docs/security/security-overview.md) for scope, expectations, and additional resources.

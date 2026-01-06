@@ -8,7 +8,7 @@ Use this checklist when cutting a new tag (e.g., `v0.1.0-rc`). Copy into the Git
 - [ ] Ensure build environment is reproducible (pinned toolchains, clean build directory).
 
 ## Build and signing
-- [ ] Build Release binaries for Linux, Windows, and macOS (see `docs/building.md`).
+- [ ] Build Release binaries for Linux, Windows, and macOS (see `../getting-started/building.md`).
 - [ ] Package installers/bundles (tar.gz, AppImage, zip/exe, dmg) and generate `checksums.txt`.
 - [ ] Generate SBOM (e.g., `syft packages dir:. -o json > sbom.json`).
 - [ ] Sign artifacts and tag with your maintainer GPG key. Required secrets for CI signing: `GPG_KEY` (ASCII-armored) and `GPG_PASSPHRASE` (optional).
