@@ -391,10 +391,10 @@ drachma-blockchain/
 ## Roadmap (Proposed)
 
 - ✅ Maintain repository structure and CI across components
-- 🔄 Complete Layer 1 validation logic and state transitions
-- 🔄 Harden P2P networking, mempool policy, and wallet services
-- 🔄 Finalize reference miners with reproducible build scripts (CPU/GPU)
-- 🔄 Launch public testnet with monitoring dashboards, seed nodes, and faucet
+- ✅ Complete Layer 1 validation logic and state transitions
+- ✅ Harden P2P networking, mempool policy, and wallet services
+- ✅ Finalize reference miners with reproducible build scripts (CPU/GPU)
+- ✅ Launch public testnet with monitoring dashboards, seed nodes, and faucet
 - 🔄 Independent external security review of consensus and networking code
 - 🔄 Release candidate binaries and deterministic build reproducibility
 - 🛠️ Mainnet launch following testnet stability, audits, and reproducible builds
