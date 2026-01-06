@@ -2,14 +2,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 24" width="180" height="24" role="img">
   <defs>
     <linearGradient id="logoCoinLight" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#fff4c4"/>
-      <stop offset="50%" stop-color="#f6c342"/>
-      <stop offset="100%" stop-color="#b47b07"/>
+      <stop offset="0%" stop-color="#F5F5F0"/>
+      <stop offset="50%" stop-color="#D4D4C8"/>
+      <stop offset="100%" stop-color="#8C8C7F"/>
     </linearGradient>
   </defs>
-  <rect width="180" height="24" rx="4" fill="#fdfbf3" stroke="#e1d5a7" stroke-width="0.4"/>
-  <circle cx="12" cy="12" r="10" fill="url(#logoCoinLight)" stroke="#8a5a00" stroke-width="0.7"/>
-  <path d="M12 5.2 8.3 14h1.9l.7-1.8h2.2l.8 1.8h1.9L12 5.2zm.3 6.1h-1.3l.7-1.7z" fill="#3b2400"/>
-  <text x="30" y="10.5" font-family="'Noto Sans', 'Segoe UI', sans-serif" font-size="7" font-weight="700" fill="#3b2400" letter-spacing="0.5">DRACHMA</text>
-  <text x="30" y="18" font-family="'Noto Sans', 'Segoe UI', sans-serif" font-size="4" fill="#6d520f">Blockchain Reserve Money</text>
+  <rect width="180" height="24" rx="4" fill="#fdfbf3" stroke="#CD7F32" stroke-width="0.5"/>
+  <circle cx="12" cy="12" r="10" fill="#1C1C1E" stroke="#CD7F32" stroke-width="1"/>
+  <!-- Simplified Parthenon columns in coin -->
+  <rect x="7" y="9" width="1.5" height="6" fill="url(#logoCoinLight)"/>
+  <rect x="10.5" y="9" width="1.5" height="6" fill="url(#logoCoinLight)"/>
+  <rect x="14" y="9" width="1.5" height="6" fill="url(#logoCoinLight)"/>
+  <path d="M 6 9 L 12 6 L 18 9 Z" fill="#CD7F32"/>
+  <text x="30" y="10.5" font-family="'Georgia', 'Noto Sans', 'Segoe UI', sans-serif" font-size="7" font-weight="700" fill="#1C1C1E" letter-spacing="0.3">PARTHENON CHAIN</text>
+  <text x="30" y="18" font-family="'Noto Sans', 'Segoe UI', sans-serif" font-size="4" fill="#5A5A52">Classical Blockchain</text>
 </svg>

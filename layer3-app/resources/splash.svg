@@ -1,24 +1,36 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-label="Drachma splash">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-label="Parthenon Chain splash">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0c1226"/>
-      <stop offset="100%" stop-color="#122d4a"/>
+      <stop offset="0%" stop-color="#1C1C1E"/>
+      <stop offset="100%" stop-color="#2E2E2A"/>
     </linearGradient>
-    <linearGradient id="coin" x1="30%" y1="30%" x2="70%" y2="70%">
-      <stop offset="0%" stop-color="#f6d365"/>
-      <stop offset="100%" stop-color="#fda085"/>
+    <linearGradient id="marbleGrad" x1="30%" y1="30%" x2="70%" y2="70%">
+      <stop offset="0%" stop-color="#F5F5F0"/>
+      <stop offset="50%" stop-color="#D4D4C8"/>
+      <stop offset="100%" stop-color="#8C8C7F"/>
     </linearGradient>
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000" flood-opacity="0.25"/>
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000" flood-opacity="0.35"/>
     </filter>
   </defs>
   <rect width="640" height="360" fill="url(#bg)" rx="18" ry="18"/>
   <g filter="url(#shadow)" transform="translate(0 -6)">
-    <circle cx="320" cy="180" r="90" fill="url(#coin)"/>
-    <circle cx="320" cy="180" r="70" fill="#fff" fill-opacity="0.1" stroke="#f1c152" stroke-width="4"/>
-    <path d="M320 115c-18 0-32 14-32 32v12h-18v30h18v56h34c34 0 62-28 62-62 0-35-28-63-64-63z m0 30c18 0 32 14 32 33 0 17-13 31-30 32l-2 .06V189h-16v-30h16v-14z" fill="#35260f" fill-opacity="0.9"/>
+    <circle cx="320" cy="180" r="90" fill="#1C1C1E" stroke="#CD7F32" stroke-width="4"/>
+    <!-- Parthenon structure in splash -->
+    <rect x="280" y="155" width="8" height="45" fill="url(#marbleGrad)"/>
+    <rect x="296" y="155" width="8" height="45" fill="url(#marbleGrad)"/>
+    <rect x="312" y="155" width="8" height="45" fill="url(#marbleGrad)"/>
+    <rect x="328" y="155" width="8" height="45" fill="url(#marbleGrad)"/>
+    <rect x="344" y="155" width="8" height="45" fill="url(#marbleGrad)"/>
+    <!-- Pediment -->
+    <path d="M 270 155 L 320 130 L 370 155 Z" fill="#CD7F32"/>
+    <!-- Base platform -->
+    <rect x="268" y="200" width="104" height="6" fill="url(#marbleGrad)"/>
   </g>
-  <text x="320" y="300" font-family="'Segoe UI', 'Inter', Arial, sans-serif" font-size="32" text-anchor="middle" fill="#f6f8fb" letter-spacing="2">
-    DRACHMA CORE
+  <text x="320" y="290" font-family="'Georgia', 'Segoe UI', 'Inter', serif" font-size="34" text-anchor="middle" fill="#F5F5F0" letter-spacing="2" font-weight="600">
+    PARTHENON CHAIN
+  </text>
+  <text x="320" y="315" font-family="'Segoe UI', 'Inter', Arial, sans-serif" font-size="14" text-anchor="middle" fill="#C0C0C0" letter-spacing="1">
+    Classical Blockchain
   </text>
 </svg>
