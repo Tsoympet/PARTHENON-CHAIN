@@ -4,14 +4,15 @@ A concise overview of supply, issuance, and fair-launch mechanics for the DRACHM
 
 ## Supply Overview
 - **Ticker:** DRM
-- **Total Supply Cap:** 41,000,000 DRM
+- **Total Supply Cap:** 42,000,000 DRM (asymptotic limit)
+- **Enforced Maximum:** 41,000,000 DRM (consensus range check prevents exceeding this value)
 - **Circulating Supply at Launch:** 0 DRM (all issuance via on-chain mining)
 
 ## Issuance Model
 - **Consensus Layer:** Layer 1 proof-of-work minting through block rewards.
 - **Starting Block Reward:** 10 DRM per block.
 - **Halving Interval:** Every 2,102,400 blocks (~4 years at 60s block time).
-- **Emission Curve:** Geometric halving until block rewards asymptotically approach zero, converging to the 41M cap.
+- **Emission Curve:** Geometric halving until block rewards asymptotically approach zero, converging toward 42M but capped at 41M by consensus.
 
 | Era | Block Range (inclusive) | Reward per Block (DRM) | Era Emission (DRM) | Cumulative Supply (DRM) |
 | --- | ----------------------- | ---------------------- | ------------------- | ----------------------- |
@@ -20,9 +21,11 @@ A concise overview of supply, issuance, and fair-launch mechanics for the DRACHM
 | 2 | 4,204,800 – 6,307,199 | 2.50000000 | 5,256,000 | 36,792,000 |
 | 3 | 6,307,200 – 8,409,599 | 1.25000000 | 2,628,000 | 39,420,000 |
 | 4 | 8,409,600 – 10,511,999 | 0.62500000 | 1,314,000 | 40,734,000 |
-| 5+ | 10,512,000 onward | 0.31250000 → 0 over time | ~266,000 (long tail) | 41,000,000 cap |
+| 5+ | 10,512,000 onward | 0.31250000 → 0 over time | ~266,000 (remaining) | 41,000,000 cap |
 
 **Halving math:** subsidy at height `h` is `floor(10 DRM * 1e8 / 2^(h // 2,102,400)) / 1e8` with consensus range checks to prevent overflow.
+
+**Note:** The geometric series would naturally converge to ~42,007,000 DRM over infinite time, but consensus validation enforces a hard cap of 41,000,000 DRM. Any block that would cause total supply to exceed this limit will be rejected.
 
 ### Emission Curve (Mermaid)
 

@@ -5,6 +5,7 @@ This document summarizes key protocol parameters for DRACHMA. Values may be fina
 ## Monetary Policy
 
 - **Supply Cap:** 41,000,000 DRM enforced by consensus range checks.
+- **Asymptotic Limit:** ~42,000,000 DRM (theoretical geometric series limit, but hard-capped at 41M)
 - **Block Subsidy (initial):** 10 DRM.
 - **Halving Interval:** 2,102,400 blocks (~4 years at 60-second targets).
 - **Minimum Subsidy:** 0 DRM (no tail emission).
@@ -19,10 +20,12 @@ This document summarizes key protocol parameters for DRACHMA. Values may be fina
 | 2 | 4,204,800 – 6,307,199 | 2.50000000 | 5,256,000 | 36,792,000 | ~4 years |
 | 3 | 6,307,200 – 8,409,599 | 1.25000000 | 2,628,000 | 39,420,000 | ~4 years |
 | 4 | 8,409,600 – 10,511,999 | 0.62500000 | 1,314,000 | 40,734,000 | ~4 years |
-| 5 | 10,512,000 – 12,614,399 | 0.31250000 | 657,000 | 41,391,000 | ~4 years |
-| 6+ | 12,614,400 onward | 0.15625000 → 0 | asymptotic tail | 41,000,000 cap | — |
+| 5 | 10,512,000 – 12,614,399 | 0.31250000 | 657,000 | 40,734,000* | ~4 years |
+| 6+ | 12,614,400 onward | 0.15625000 → 0 | minimal tail | 41,000,000 cap | — |
 
-Supply accumulates asymptotically to the 41M cap; later halvings naturally round down to zero once the minimum unit (1 sat = 1e-8 DRM) is reached.
+*Consensus enforces 41M hard cap. Theoretical emission continues but blocks exceeding the cap are rejected.
+
+Supply accumulates asymptotically toward ~42M but consensus validation enforces a strict 41M maximum; any block causing total supply to exceed 41,000,000 DRM is invalid.
 
 #### Halving Math
 - Subsidy per height `h` is `floor(initial_subsidy * 10^8 / 2^(h // interval)) / 10^8`.

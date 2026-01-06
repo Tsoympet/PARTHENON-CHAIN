@@ -7,7 +7,7 @@
 
 namespace {
 
-Block MakePrivateBlock(const uint256& prev, uint32_t time, const consensus::Params& params)
+Block MakePrivateBlock(const uint256& prev, uint32_t time, const consensus::Params& params, int height = 0)
 {
     Block block;
     block.header.version = 1;
@@ -21,7 +21,10 @@ Block MakePrivateBlock(const uint256& prev, uint32_t time, const consensus::Para
     coinbase.vin[0].prevout.index = std::numeric_limits<uint32_t>::max();
     coinbase.vin[0].scriptSig = {0x00, 0x01};
     coinbase.vin[0].assetId = static_cast<uint8_t>(AssetId::TALANTON);
-    coinbase.vout.push_back({50 * 100'000'000ULL, std::vector<uint8_t>(32, 0x99), static_cast<uint8_t>(AssetId::TALANTON)});
+    
+    // Use actual subsidy from consensus params
+    uint64_t subsidy = consensus::GetBlockSubsidy(height, params, static_cast<uint8_t>(AssetId::TALANTON));
+    coinbase.vout.push_back({subsidy, std::vector<uint8_t>(32, 0x99), static_cast<uint8_t>(AssetId::TALANTON)});
 
     block.transactions.push_back(coinbase);
     block.header.merkleRoot = ComputeMerkleRoot(block.transactions);
@@ -56,7 +59,7 @@ TEST(Integration, PrivateRegtestChainProgression)
     // Extend the chain twice to ensure monotonic time and merkle validity.
     for (int height = 1; height <= 2; ++height) {
         uint32_t t = startTime + params.nPowTargetSpacing * static_cast<uint32_t>(height);
-        Block next = MakePrivateBlock(tipHash, t, params);
+        Block next = MakePrivateBlock(tipHash, t, params, height);
         opts.medianTimePast = t - 1;
         opts.now = t;
         ASSERT_TRUE(ValidateBlock(next, params, height, {}, opts));
