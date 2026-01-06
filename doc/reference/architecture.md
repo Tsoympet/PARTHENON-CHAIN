@@ -2,6 +2,54 @@
 
 DRACHMA is organized into a strict three-layer stack to keep consensus-critical code minimal, isolate operational services, and allow the user interface to evolve independently. Each layer is versioned separately but communicates through stable, explicit interfaces.
 
+## Core vs Ecosystem Separation
+
+A fundamental architectural principle is the strict separation between protocol-level features (Core) and ecosystem-level integrations (Ecosystem).
+
+### Core (Protocol-Level)
+
+**Definition:** Features built into the consensus rules and enforced by all nodes.
+
+**Characteristics:**
+- Deterministic and verifiable by all nodes
+- Consensus-critical validation rules
+- Immutable without network upgrade
+- Auditable and formally verifiable
+- No external dependencies
+
+**Examples:**
+- Transaction validation rules
+- Block consensus (PoW)
+- Cryptographic primitives (Schnorr signatures)
+- Finality checkpoints (Obolos)
+- Fee calculation logic
+- Nonce-based replay protection
+- Settlement receipts
+- Account-based ledger (Obolos)
+
+### Ecosystem (Integration-Level)
+
+**Definition:** Features implemented by wallets, exchanges, and third-party services.
+
+**Characteristics:**
+- External to consensus
+- Service-provider dependent
+- Upgradable independently
+- User-facing features
+- May vary by jurisdiction
+
+**Examples:**
+- KYC (Know Your Customer)
+- AML (Anti-Money Laundering) enforcement
+- Identity verification
+- Custodial services
+- Exchange integrations
+- Tax reporting
+- Geographic restrictions
+- Compliance screening
+
+**Critical Distinction:** The protocol provides **tools** (settlement receipts, metadata fields, deterministic ordering) but does NOT enforce **policy** (KYC, AML, identity). This separation ensures the base layer remains neutral and globally accessible while allowing ecosystem participants to implement jurisdiction-specific compliance.
+
 ## Layer Overview
 
 - **Layer 1 – Core (Consensus Engine):** Implements deterministic validation and chainstate management. Responsibilities include block/transaction verification, UTXO set updates, PoW difficulty and target computation, and chain reorganization. Components live primarily under `layer1-core/` and `common/`.
@@ -11,9 +59,10 @@ DRACHMA is organized into a strict three-layer stack to keep consensus-critical 
 ## Mandatory WASM Sidechain
 
 - Deterministic WASM execution is required; there is no EVM/ABI path.
-- Domain law is enforced end-to-end: Layer-2 NFTs are asset-agnostic and anchored via `nft_state_root`; DRM→smart contracts; OBL→dApps. Mixed-asset execution or optional toggles are rejected.
+- Domain law is enforced end-to-end: Layer-2 NFTs are asset-agnostic and anchored via `nft_state_root`; DRM→smart contracts; OBL→settlement operations. Mixed-asset execution or optional toggles are rejected.
 - Checkpoints (state_root + execution_root + main-chain checkpoint) are mandatory for sidechain blocks and are validated alongside Layer 1.
-- RPC surfaces (`deploy_contract`, `call_contract`, `mint_nft`, `transfer_nft`, `call_dapp`) live in `sidechain/rpc/wasm_rpc.*`; the GUI auto-selects the correct asset for each action.
+- RPC surfaces (`deploy_contract`, `call_contract`, `mint_nft`, `transfer_nft`) live in `sidechain/rpc/wasm_rpc.*`; the GUI auto-selects the correct asset for each action.
+- **OBL Settlement Domain:** Obolos settlement operations (payment channels, path payments, finality proofs) are protocol-level features, NOT dApp execution. OBL uses account-based ledger with deterministic finality.
 
 ## Interaction Diagram
 
