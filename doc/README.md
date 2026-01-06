@@ -4,7 +4,7 @@ Welcome to the DRACHMA blockchain documentation. This directory contains compreh
 
 ## 📖 Documentation Overview
 
-This documentation is organized into **8 main categories** with **41 documents** covering all aspects of DRACHMA:
+This documentation is organized into **8 main categories** with **43+ documents** covering all aspects of DRACHMA:
 
 - **Getting Started** - New user guides (3 docs)
 - **User Guides** - Practical how-to guides (1+ docs)
@@ -14,6 +14,14 @@ This documentation is organized into **8 main categories** with **41 documents**
 - **Reference** - Design and architecture (5 docs)
 - **Security** - Security and auditing (6 docs)
 - **Assets** - Templates and resources (4 docs)
+
+## 🎯 Project Status & Tasks
+
+**NEW:** Comprehensive task documentation for project completion:
+- **[Quick Task Summary](QUICK-TASK-SUMMARY.md)** - Quick reference guide to pending tasks
+- **[Project Completion Tasks](PROJECT-COMPLETION-TASKS.md)** - Detailed task list for mainnet launch
+- **[Launch Action Items](LAUNCH-ACTION-ITEMS.md)** - Prioritized action plan
+- **[Mainnet Readiness](MAINNET-READINESS.md)** - Technical readiness assessment
 
 ## Documentation Structure
 
@@ -72,9 +80,13 @@ Templates and supporting materials for documentation and releases.
 ## Quick Links
 
 - **Main README:** [../README.md](../README.md)
+- **Project Completion Tasks:** [PROJECT-COMPLETION-TASKS.md](PROJECT-COMPLETION-TASKS.md) ⭐ NEW
+- **Quick Task Summary:** [QUICK-TASK-SUMMARY.md](QUICK-TASK-SUMMARY.md) ⭐ NEW
 - **Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md)
 - **License:** [../LICENSE](../LICENSE)
 - **Changelog:** [CHANGELOG.md](CHANGELOG.md)
+- **FAQ:** [FAQ.md](FAQ.md)
+- **Troubleshooting:** [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
 
 ## Getting Help
 
