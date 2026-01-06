@@ -1,20 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" role="img">
   <defs>
-    <linearGradient id="goldenDark" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#ffe07a"/>
-      <stop offset="45%" stop-color="#d9a021"/>
-      <stop offset="100%" stop-color="#8a5d00"/>
+    <linearGradient id="silverDark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e8e8e8"/>
+      <stop offset="50%" stop-color="#c0c0c0"/>
+      <stop offset="100%" stop-color="#8a8a8a"/>
     </linearGradient>
     <linearGradient id="rimDark" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#2d2108"/>
-      <stop offset="100%" stop-color="#1a1407"/>
+      <stop offset="0%" stop-color="#2d2d2d"/>
+      <stop offset="100%" stop-color="#1a1a1a"/>
     </linearGradient>
   </defs>
   <rect width="24" height="24" rx="4" fill="#0f0e0c"/>
-  <circle cx="12" cy="12" r="10.8" fill="url(#rimDark)" stroke="#f3c65c" stroke-width="0.6"/>
-  <circle cx="12" cy="12" r="9.2" fill="url(#goldenDark)" stroke="#fde9ad" stroke-width="0.8"/>
-  <path d="M12 4.6c2.9 0 5 1.7 5 4.1 0 2.6-2.2 4.8-5.6 7.1-.6.4-1.4.4-2-.1-.7-.5-.8-1.4-.2-2l.8-.8c-.5-.1-1-.3-1.4-.6-1-.6-1.7-1.7-1.7-3 0-2.4 2.2-4.7 5.1-4.7zm-1.9 5.1c0 1 .9 1.6 1.9 1.6.9 0 1.8-.6 1.8-1.6s-.9-1.6-1.8-1.6c-1 0-1.9.7-1.9 1.6z" fill="#0f0b06" opacity="0.82"/>
-  <text x="12" y="18" font-family="'Noto Sans', 'Segoe UI', sans-serif" font-size="3.6" text-anchor="middle" fill="#0b0702" letter-spacing="0.4">DRM</text>
-  <circle cx="12" cy="12" r="10.3" fill="none" stroke="#fbeac6" stroke-width="0.4" stroke-dasharray="0.5 0.9"/>
+  <circle cx="12" cy="12" r="10.8" fill="url(#rimDark)" stroke="#a0a0a0" stroke-width="0.6"/>
+  <circle cx="12" cy="12" r="9.2" fill="url(#silverDark)" stroke="#f0f0f0" stroke-width="0.8"/>
+  <!-- Athena's Owl - Ancient Greek Drachma symbol -->
+  <g transform="translate(12, 9)">
+    <!-- Owl body -->
+    <ellipse cx="0" cy="0" rx="2.8" ry="3.2" fill="#4a4a4a"/>
+    <!-- Owl eyes -->
+    <circle cx="-1" cy="-0.8" r="0.8" fill="#2a2a2a"/>
+    <circle cx="1" cy="-0.8" r="0.8" fill="#2a2a2a"/>
+    <circle cx="-1" cy="-0.8" r="0.4" fill="#e8e8e8"/>
+    <circle cx="1" cy="-0.8" r="0.4" fill="#e8e8e8"/>
+    <!-- Beak -->
+    <path d="M -0.3 0.2 L 0 0.8 L 0.3 0.2 Z" fill="#3a3a3a"/>
+    <!-- Wings -->
+    <path d="M -2.8 0.5 Q -3.5 1.5 -2.8 2.5" stroke="#3a3a3a" stroke-width="0.6" fill="none"/>
+    <path d="M 2.8 0.5 Q 3.5 1.5 2.8 2.5" stroke="#3a3a3a" stroke-width="0.6" fill="none"/>
+  </g>
+  <!-- Olive branch - symbol of peace and prosperity -->
+  <path d="M 16 15 Q 16.5 15.5 17 16 M 16.2 15.8 L 16.5 15.3 M 16.5 16.2 L 16.8 15.7" stroke="#5a5a5a" stroke-width="0.5" fill="none" stroke-linecap="round"/>
+  <text x="12" y="21.5" font-family="'Noto Sans', 'Segoe UI', sans-serif" font-size="3.2" text-anchor="middle" fill="#1a1a1a" font-weight="600" letter-spacing="0.2">DRM</text>
+  <circle cx="12" cy="12" r="10.3" fill="none" stroke="#d0d0d0" stroke-width="0.4" stroke-dasharray="0.5 0.9"/>
 </svg>

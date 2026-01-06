@@ -3,6 +3,17 @@
 ## Introduction
 Drachma is a minimalist proof-of-work cryptocurrency engineered for predictable issuance, transparent accounting, and conservative security assumptions. The protocol follows a Bitcoin-class model with SHA-256d proof-of-work, Schnorr signatures, a UTXO ledger, and straightforward networking. The design prioritizes determinism, reproducibility, and reviewability over novelty while maintaining production-grade operational expectations.
 
+### Historical Context: The Ancient Drachma
+The name "Drachma" (DRM) honors one of history's most enduring monetary standards—the ancient Greek drachma, which served as the foundational currency of Classical civilization for over a millennium. First minted around 600 BCE, the silver drachma became the international currency of the ancient Mediterranean world, facilitating trade from the Pillars of Hercules to the markets of Alexandria.
+
+**Key Historical Parallels:**
+- **Silver Standard**: Ancient drachmas were minted in silver, representing intrinsic, verifiable value—much like how DRM derives value from cryptographic proof-of-work rather than centralized decree.
+- **Athenian Owl**: The iconic symbol on Athenian tetradrachms (four-drachma coins) featured Athena's owl, representing wisdom, vigilance, and honest measure—values embedded in DRM's transparent consensus rules and open-source implementation.
+- **Durability**: The drachma persisted through the Classical, Hellenistic, and Roman periods, demonstrating the longevity possible when a monetary system is built on sound principles rather than ephemeral trends.
+- **Decentralized Minting**: While city-states controlled their own mints, the drachma standard was recognized across the Greek world, enabling trustless trade without central authority—analogous to DRM's permissionless, global network.
+
+The ancient drachma represented more than mere currency; it embodied the Hellenic ideals of *logos* (reason), *metron* (measure), and *kosmos* (order). DRM continues this tradition: a blockchain designed for clarity, predictability, and enduring value in an age of monetary experimentation.
+
 ## Monetary Policy
 - **Max supply:** 41,000,000 DRM
 - **Genesis premine:** None; the genesis coinbase is provably unspendable.
@@ -115,3 +126,18 @@ The 41,000,000 DRM maximum supply balances **scarcity** and **transactional util
 - The cap, coupled with bounded block sizes and conservative fee policies, keeps verification costs low enough for community-operated full nodes, preserving decentralization.
 
 Issuance transparency is enforced in consensus by hard range checks and overflow protections; any block exceeding the cap is invalid.
+
+## Symbolism: Owl and Olive Branch
+The visual identity of the DRM token draws directly from ancient Greek numismatic tradition:
+
+**Athena's Owl (γλαῦξ)**: The owl on classical Athenian tetradrachms symbolized wisdom (*sophia*), vigilance, and the honest measure. In ancient Athens, "bringing owls to Athens" meant bringing something to a place already abundant in it—testament to the currency's ubiquity and trust. For DRM, the owl represents:
+- **Transparency**: Clear-eyed vigilance over consensus rules and network state
+- **Wisdom**: Conservative cryptographic design built on proven primitives (SHA-256d, Schnorr)
+- **Permanence**: A monetary system designed to endure, not chase trends
+
+**Olive Branch (κλάδος ἐλαίας)**: The olive tree was sacred to Athena and symbolized peace, prosperity, and victory. Olive branches adorned Greek coins as a mark of civic virtue and economic stability. For DRM, the olive branch signifies:
+- **Fair Launch**: No premine, no privileged allocations—peaceful, equitable distribution
+- **Prosperity**: A blockchain enabling value transfer without central intermediaries
+- **Victory of Reason**: Order and predictability prevailing over chaos and speculation
+
+Together, the owl and olive branch encapsulate DRM's ethos: a cryptocurrency built with the timeless values of Classical Greece—reason, order, transparency, and lasting value—applied to modern decentralized systems.

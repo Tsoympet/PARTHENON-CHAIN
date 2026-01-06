@@ -1,5 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-label="asset-obl"><g fill="none" stroke="#E5E7EB" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-<path d="M5 9 12 5l7 4-7 4z"/>
-<path d="M5 13l7 4 7-4"/>
-<path d="M5 13v2l7 4 7-4v-2"/>
-</g></svg>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" role="img" aria-label="OBL Obol">
+  <defs>
+    <linearGradient id="copperOBLDark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#d4956c"/>
+      <stop offset="50%" stop-color="#b87333"/>
+      <stop offset="100%" stop-color="#8b4513"/>
+    </linearGradient>
+  </defs>
+  <circle cx="12" cy="12" r="11" fill="#5d2f0c" stroke="#5d2f0c" stroke-width="0.6"/>
+  <circle cx="12" cy="12" r="9.2" fill="url(#copperOBLDark)" stroke="#d4a574" stroke-width="0.8"/>
+  <!-- Charon's boat - ferryman symbol -->
+  <g transform="translate(12, 11)">
+    <path d="M -5 1 Q -5 2.5 -4 3 L 4 3 Q 5 2.5 5 1 L 4 1.5 L -4 1.5 Z" fill="#4a3000" stroke="#2a1800" stroke-width="0.5"/>
+    <rect x="-0.3" y="-2.5" width="0.6" height="3.5" fill="#2a1800"/>
+    <path d="M 0 -2.5 Q 2.5 -1.5 2.5 0.5 L 0 1 Z" fill="#6b5a42" stroke="#4a3000" stroke-width="0.4"/>
+    <line x1="4" y1="2" x2="6" y2="3.5" stroke="#4a3000" stroke-width="0.5"/>
+    <ellipse cx="6.3" cy="3.8" rx="0.8" ry="0.4" fill="#4a3000"/>
+  </g>
+  <text x="12" y="21.5" font-family="'Noto Sans', 'Segoe UI', sans-serif" font-size="3" text-anchor="middle" fill="#2a1800" font-weight="600" letter-spacing="0.2">OBL</text>
+  <circle cx="12" cy="12" r="10.3" fill="none" stroke="#c9945a" stroke-width="0.4" stroke-dasharray="0.5 0.9"/>
+</svg>
