@@ -10,7 +10,7 @@
   "reward": 5000000000,
   "defaultPort": 9333,
   "powLimit": "00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
-  "subsidyHalvingInterval": 210000,
+  "subsidyHalvingInterval": 2102400,
   "multiAssetActivationHeight": 1,
   "assets": {
     "TLN": { "id": 0, "powAllowed": true,  "posAllowed": false, "slotSpacing": 600, "apr": 0.0,  "maxMoney": 2100000000000000 },
