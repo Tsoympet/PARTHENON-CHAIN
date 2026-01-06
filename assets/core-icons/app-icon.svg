@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- DRACHMA App Icon - Simple placeholder -->
+  <circle cx="64" cy="64" r="60" fill="#2E7D32" stroke="#1B5E20" stroke-width="2"/>
+  <text x="64" y="74" font-family="Arial, sans-serif" font-size="48" font-weight="bold" 
+        text-anchor="middle" fill="#FFFFFF">Δ</text>
+  <text x="64" y="100" font-family="Arial, sans-serif" font-size="12" font-weight="normal" 
+        text-anchor="middle" fill="#E8F5E9">DRACHMA</text>
+</svg>
