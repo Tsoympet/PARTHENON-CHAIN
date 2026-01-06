@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <vector>
 #include <cstring>
-#include <openssl/sha.h>
+#include <openssl/evp.h>
 
 class BlockStore {
 public:
@@ -37,9 +37,14 @@ public:
 
         uint32_t totalSize = static_cast<uint32_t>(buffer.size());
         
-        // Calculate SHA-256 checksum for integrity verification
+        // Calculate SHA-256 checksum for integrity verification using modern EVP API
         std::array<uint8_t, 32> checksum;
-        SHA256(buffer.data(), buffer.size(), checksum.data());
+        unsigned int checksumLen = 0;
+        EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
+        EVP_DigestInit_ex(mdctx, EVP_sha256(), nullptr);
+        EVP_DigestUpdate(mdctx, buffer.data(), buffer.size());
+        EVP_DigestFinal_ex(mdctx, checksum.data(), &checksumLen);
+        EVP_MD_CTX_free(mdctx);
         
         // Write: [size][checksum][data]
         out.write(reinterpret_cast<const char*>(&totalSize), sizeof(totalSize));
@@ -87,9 +92,15 @@ public:
         in.read(reinterpret_cast<char*>(data.data()), size);
         if (!in) throw std::runtime_error("corrupt blockstore");
         
-        // Verify checksum for integrity
+        // Verify checksum for integrity using modern EVP API
         std::array<uint8_t, 32> computedChecksum;
-        SHA256(data.data(), data.size(), computedChecksum.data());
+        unsigned int checksumLen = 0;
+        EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
+        EVP_DigestInit_ex(mdctx, EVP_sha256(), nullptr);
+        EVP_DigestUpdate(mdctx, data.data(), data.size());
+        EVP_DigestFinal_ex(mdctx, computedChecksum.data(), &checksumLen);
+        EVP_MD_CTX_free(mdctx);
+        
         if (storedChecksum != computedChecksum) {
             throw std::runtime_error("block checksum mismatch - data corruption detected");
         }

@@ -86,8 +86,10 @@ std::vector<sidechain::wasm::Instruction> DecodeInstructions(const std::string& 
         try {
             uint8_t byte = std::stoi(cleaned.substr(i, 2), nullptr, 16);
             bytes.push_back(byte);
-        } catch (...) {
+        } catch (const std::invalid_argument&) {
             throw std::runtime_error("Invalid hex character in instruction data");
+        } catch (const std::out_of_range&) {
+            throw std::runtime_error("Hex value out of range in instruction data");
         }
     }
     
@@ -739,8 +741,10 @@ std::vector<uint8_t> RPCServer::ParseHex(const std::string& hex)
         try {
             uint8_t byte = std::stoi(hex.substr(i, 2), nullptr, 16);
             out.push_back(byte);
-        } catch (...) {
+        } catch (const std::invalid_argument&) {
             throw std::runtime_error("Invalid hex character");
+        } catch (const std::out_of_range&) {
+            throw std::runtime_error("Hex value out of range");
         }
     }
     return out;
