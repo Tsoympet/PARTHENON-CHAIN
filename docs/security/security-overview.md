@@ -23,9 +23,9 @@ Include impact, reproduction steps or PoC (logs/seeds), affected commits/tags, e
 Consensus code, networking/P2P surfaces, wallet key handling, miners, build/release pipelines, and default configurations are all in scope. Third-party forks or external pools are out of scope.
 
 ## Security Resources
-- [Security Audit Guide](docs/audit_guide.md)
-- [Threat Model](docs/threat_model.md)
-- [Fuzzing Playbook](docs/audit_guide.md#fuzzing-and-dynamic-analysis)
+- [Security Audit Guide](../audit-guide.md)
+- [Threat Model](../threat-model.md)
+- [Fuzzing Playbook](../audit-guide.md#fuzzing-and-dynamic-analysis)
 
 ### Fuzzing Results
 - Run libFuzzer targets with AddressSanitizer/UndefinedBehaviorSanitizer enabled; capture crash logs, minimized reproducers, and coverage summaries.

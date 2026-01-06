@@ -99,7 +99,7 @@ sudo make install
    ctest --test-dir build
    ```
 
-> Tip: See [`INSTALL.md`](INSTALL.md) for detailed installation options, [`docs/building.md`](docs/building.md) for platform-specific details, and [`docs/mining-guide.md`](docs/mining-guide.md) for GPU tuning and troubleshooting.
+> Tip: See [`INSTALL.md`](INSTALL.md) for detailed installation options, [`docs/building.md`](docs/building.md) for platform-specific details, and [`docs/user-guides/mining-guide.md`](docs/user-guides/mining-guide.md) for GPU tuning and troubleshooting.
 
 ---
 
@@ -363,7 +363,7 @@ Reference mining implementations are provided:
 - GPU miner (CUDA)
 - GPU miner (OpenCL)
 
-These miners serve as transparent reference tools and are not optimized black-box software. See [`docs/mining-guide.md`](docs/mining-guide.md) for configuration tips, intensity tuning, and monitoring guidance.
+These miners serve as transparent reference tools and are not optimized black-box software. See [`docs/user-guides/mining-guide.md`](docs/user-guides/mining-guide.md) for configuration tips, intensity tuning, and monitoring guidance.
 
 ---
 
