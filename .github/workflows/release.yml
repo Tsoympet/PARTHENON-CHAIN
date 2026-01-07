@@ -680,8 +680,13 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pyinstaller
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+            pip install pyinstaller
+          else
+            echo "Error: requirements.txt not found" >&2
+            exit 1
+          fi
 
       - name: Build standalone executable
         run: |
@@ -822,8 +827,8 @@ jobs:
                       "## Core Binaries\n\n"
                       "This release includes core binaries for:\n"
                       "- Linux x86_64\n"
-                      "- Windows x86_64 (MinGW cross-compiled)\n"
-                      "- Windows x86_64 (Native MSVC with NSIS installer)\n"
+                      "- Windows x86_64 (Portable ZIP - cross-compiled)\n"
+                      "- Windows x86_64 (Native Installer - NSIS)\n"
                       "- macOS x86_64 (Intel)\n"
                       "- macOS arm64 (Apple Silicon)\n\n"
                       "## Desktop Wallet (Qt)\n\n"
