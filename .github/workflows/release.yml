@@ -489,6 +489,7 @@ jobs:
 
       - name: Configure CMake (Windows)
         if: runner.os == 'Windows'
+        shell: pwsh
         run: |
           cmake -S . -B build -G "Visual Studio 17 2022" -A x64 `
             -DOPENSSL_ROOT_DIR="C:/Program Files/OpenSSL-Win64" `
@@ -779,7 +780,6 @@ jobs:
           ls -lh dist/
 
       - name: Sign release artifacts (if GPG key available)
-        if: ${{ secrets.GPG_PRIVATE_KEY != '' }}
         run: |
           if [ -n "${{ secrets.GPG_PRIVATE_KEY }}" ]; then
             echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
