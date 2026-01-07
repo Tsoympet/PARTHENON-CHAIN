@@ -170,6 +170,7 @@ target_link_libraries(drachmad PRIVATE drachma_layer2 Boost::system drachma_side
 set_target_properties(drachmad PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/layer1-core OUTPUT_NAME "drachmad")
 
 add_executable(drachma_cli layer1-core/drachma_cli.cpp)
+target_include_directories(drachma_cli PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/common)
 target_link_libraries(drachma_cli PRIVATE Boost::system)
 set_target_properties(drachma_cli PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/layer1-core OUTPUT_NAME "drachma-cli")
 

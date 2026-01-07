@@ -7,7 +7,41 @@
 #include <iostream>
 #include <string>
 
+#include "../common/version.h"
+
 namespace http = boost::beast::http;
+
+namespace {
+
+void PrintVersion()
+{
+    std::cout << PARTHENON_CHAIN_NAME << " (" << PARTHENON_CHAIN_CODENAME << ") CLI version "
+              << DRACHMA_VERSION_STRING << "\n";
+    std::cout << "Build: " << DRACHMA_BUILD_TYPE << "\n";
+}
+
+void PrintHelp()
+{
+    std::cout << "Usage: drachma-cli [options] <method> [params_json]\n\n";
+    std::cout << PARTHENON_CHAIN_NAME << " - RPC command-line interface\n\n";
+    std::cout << "Options:\n";
+    std::cout << "  --help                Show this help message and exit\n";
+    std::cout << "  --version             Show version information and exit\n";
+    std::cout << "  -rpcuser=<user>       RPC username (default: user)\n";
+    std::cout << "  -rpcpassword=<pass>   RPC password (default: pass)\n";
+    std::cout << "  -rpcport=<port>       RPC port (default: 8332)\n";
+    std::cout << "  -rpcconnect=<host>    RPC host (default: 127.0.0.1)\n\n";
+    std::cout << "Arguments:\n";
+    std::cout << "  method                RPC method to call\n";
+    std::cout << "  params_json           JSON parameters (default: null)\n\n";
+    std::cout << "Examples:\n";
+    std::cout << "  drachma-cli getblockcount\n";
+    std::cout << "  drachma-cli getblock '[\"blockhash\"]'\n";
+    std::cout << "  drachma-cli -rpcuser=myuser -rpcpassword=mypass getinfo\n\n";
+    std::cout << "For more information, visit: https://github.com/Tsoympet/PARTHENON-CHAIN\n";
+}
+
+} // namespace
 
 int main(int argc, char* argv[])
 {
@@ -20,7 +54,13 @@ int main(int argc, char* argv[])
 
     for (int i = 1; i < argc; ++i) {
         std::string arg(argv[i]);
-        if (arg.rfind("-rpcuser=", 0) == 0) user = arg.substr(9);
+        if (arg == "--help" || arg == "-h") {
+            PrintHelp();
+            return 0;
+        } else if (arg == "--version" || arg == "-v") {
+            PrintVersion();
+            return 0;
+        } else if (arg.rfind("-rpcuser=", 0) == 0) user = arg.substr(9);
         else if (arg.rfind("-rpcpassword=", 0) == 0) pass = arg.substr(13);
         else if (arg.rfind("-rpcport=", 0) == 0) {
             try {
@@ -36,8 +76,7 @@ int main(int argc, char* argv[])
     }
 
     if (method.empty()) {
-        std::cerr << "Usage: drachma-cli [-rpcuser=U] [-rpcpassword=P] [-rpcport=N] [-rpcconnect=HOST] method [params_json]\n";
-        std::cerr << "params_json should be valid JSON (e.g., null, \"\\\"DRM\\\"\", or an array like [\"DRM\"])\n";
+        PrintHelp();
         return 1;
     }
 

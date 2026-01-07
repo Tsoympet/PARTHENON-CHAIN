@@ -20,8 +20,33 @@
 #include "../sidechain/wasm/runtime/engine.h"
 #include "../sidechain/state/state_store.h"
 #include "../sidechain/rpc/wasm_rpc.h"
+#include "../common/version.h"
 
 namespace {
+
+void PrintVersion()
+{
+    std::cout << PARTHENON_CHAIN_NAME << " (" << PARTHENON_CHAIN_CODENAME << ") daemon version "
+              << DRACHMA_VERSION_STRING << "\n";
+    std::cout << "Build: " << DRACHMA_BUILD_TYPE << "\n";
+}
+
+void PrintHelp()
+{
+    std::cout << "Usage: drachmad [options]\n\n";
+    std::cout << PARTHENON_CHAIN_NAME << " - Proof-of-Work monetary blockchain daemon\n\n";
+    std::cout << "Options:\n";
+    std::cout << "  --help                Show this help message and exit\n";
+    std::cout << "  --version             Show version information and exit\n";
+    std::cout << "  --datadir=<path>      Data directory (default: ~/.drachma)\n";
+    std::cout << "  --network=<name>      Network to use: mainnet, testnet, regtest (default: mainnet)\n";
+    std::cout << "  --rpcuser=<user>      RPC username (default: user)\n";
+    std::cout << "  --rpcpassword=<pass>  RPC password (default: pass)\n";
+    std::cout << "  --rpcport=<port>      RPC port (default: 8332)\n";
+    std::cout << "  --port=<port>         P2P port (default: 9333)\n";
+    std::cout << "  --nolisten            Disable P2P listening\n\n";
+    std::cout << "For more information, visit: https://github.com/Tsoympet/PARTHENON-CHAIN\n";
+}
 
 std::string DefaultDataDir()
 {
@@ -54,6 +79,13 @@ Config ParseArgs(int argc, char* argv[])
     Config cfg;
     for (int i = 1; i < argc; ++i) {
         std::string arg(argv[i]);
+        if (arg == "--help" || arg == "-h") {
+            PrintHelp();
+            std::exit(0);
+        } else if (arg == "--version" || arg == "-v") {
+            PrintVersion();
+            std::exit(0);
+        }
         auto takeValue = [&](const std::string& prefix, auto& out) {
             if (arg.rfind(prefix, 0) == 0 && arg.size() > prefix.size()) {
                 using T = std::remove_reference_t<decltype(out)>;
