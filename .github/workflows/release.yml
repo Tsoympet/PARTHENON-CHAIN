@@ -288,16 +288,21 @@ jobs:
           - See docs/verifying-downloads.md for instructions
           
           To verify checksums in PowerShell:
-            (Get-FileHash drachmad.exe).Hash -eq (Get-Content SHA256SUMS | Select-String drachmad.exe).Line.Split()[0]
+            $hash = (Get-FileHash drachmad.exe -Algorithm SHA256).Hash
+            $expected = (Get-Content SHA256SUMS | Select-String drachmad.exe).ToString().Split()[0]
+            if ($hash -eq $expected) { Write-Host "Checksum verified!" } else { Write-Host "WARNING: Checksum mismatch!" }
           EOF
           
-          # Generate checksums
+          # Generate checksums - verify all expected binaries are present
           cd dist/parthenon-core
-          if ls *.exe 1> /dev/null 2>&1; then
-            sha256sum *.exe > SHA256SUMS
-          else
-            echo "Warning: No .exe files found to checksum" >&2
-          fi
+          EXPECTED_BINS=(drachmad.exe drachma-cli.exe drachma_cpu_miner.exe)
+          for bin in "${EXPECTED_BINS[@]}"; do
+            if [ ! -f "$bin" ]; then
+              echo "Error: Expected binary $bin not found!" >&2
+              exit 1
+            fi
+          done
+          sha256sum "${EXPECTED_BINS[@]}" > SHA256SUMS
           cd ../..
           
           # Create archive

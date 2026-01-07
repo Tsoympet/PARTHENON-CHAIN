@@ -35,7 +35,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT DRACHMA_COVERAGE)
     endif()
 endif()
 
-# Platform-specific setup
+# Threading setup
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 
 find_package(Threads REQUIRED)
