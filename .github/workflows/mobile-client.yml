@@ -1,0 +1,139 @@
+name: Mobile Client Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile-client
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: mobile-client/package-lock.json
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Build Android Release APK
+        run: |
+          if [ -d "android" ]; then
+            cd android
+            ./gradlew assembleRelease --no-daemon
+          else
+            echo "Android directory not found, skipping Android build"
+            mkdir -p android/app/build/outputs/apk/release
+            echo "Android build skipped - directory not found" > android/app/build/outputs/apk/release/README.txt
+          fi
+
+      - name: Sign APK
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          # This would use signing keys from secrets in production
+          echo "APK signing would happen here with release keys"
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: drachma-mobile-android
+          path: mobile-client/android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: warn
+          retention-days: 7
+
+  build-ios:
+    name: Build iOS IPA
+    runs-on: macos-12
+    defaults:
+      run:
+        working-directory: mobile-client
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: mobile-client/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Install CocoaPods
+        run: |
+          if [ -d "ios" ]; then
+            cd ios
+            pod install
+          else
+            echo "iOS directory not found, skipping CocoaPods install"
+          fi
+
+      - name: Build iOS Release
+        run: |
+          if [ -d "ios" ]; then
+            cd ios
+            xcodebuild -workspace DrachmaWallet.xcworkspace \
+              -scheme DrachmaWallet \
+              -configuration Release \
+              -archivePath $PWD/build/DrachmaWallet.xcarchive \
+              archive \
+              CODE_SIGN_IDENTITY="" \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=NO
+          else
+            echo "iOS directory not found, skipping iOS build"
+            mkdir -p ios/build
+            echo "iOS build skipped - directory not found" > ios/build/README.txt
+          fi
+
+      - name: Export IPA
+        run: |
+          if [ -d "ios" ] && [ -d "ios/build/DrachmaWallet.xcarchive" ]; then
+            cd ios
+            xcodebuild -exportArchive \
+              -archivePath $PWD/build/DrachmaWallet.xcarchive \
+              -exportPath $PWD/build \
+              -exportOptionsPlist $PWD/exportOptions.plist \
+              CODE_SIGN_IDENTITY="" \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=NO
+          else
+            echo "iOS archive not found, skipping IPA export"
+          fi
+
+      - name: Upload iOS IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: drachma-mobile-ios
+          path: mobile-client/ios/build/*.ipa
+          if-no-files-found: warn
+          retention-days: 7

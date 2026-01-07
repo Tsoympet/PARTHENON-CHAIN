@@ -397,13 +397,356 @@ jobs:
             dist/parthenon-core-${{ env.VERSION }}-macos-${{ matrix.arch }}.tar.gz
             dist/parthenon-core-${{ env.VERSION }}-macos-${{ matrix.arch }}.tar.gz.sha256
 
+  build-windows-native:
+    name: Build Windows Native Installer
+    runs-on: windows-latest
+    env:
+      BUILD_DIR: build-native
+      VERSION: >-
+        ${{ github.event_name == 'workflow_dispatch' &&
+        inputs.version_tag || github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Chocolatey
+        uses: crazy-max/ghaction-chocolatey@v3
+
+      - name: Install OpenSSL
+        run: choco install openssl --no-progress
+
+      - name: Install CMake
+        run: choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' --no-progress
+
+      - name: Install Boost
+        run: choco install boost-msvc-14.3 --no-progress
+
+      - name: Configure CMake
+        run: |
+          cmake -S . -B $env:BUILD_DIR -G "Visual Studio 17 2022" -A x64 `
+            -DOPENSSL_ROOT_DIR="C:/Program Files/OpenSSL-Win64" `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DDRACHMA_BUILD_TESTS=OFF `
+            -DDRACHMA_BUILD_GUI=OFF
+
+      - name: Build
+        run: cmake --build $env:BUILD_DIR --config Release --parallel
+
+      - name: Package Installer
+        run: |
+          cd $env:BUILD_DIR
+          cpack -C Release
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-windows-native
+          path: |
+            build-native/*.exe
+            build-native/*.zip
+
+  build-qt-wallet:
+    name: Build Qt Desktop Wallet
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            artifact_name: release-qt-wallet-windows
+          - os: macos-12
+            artifact_name: release-qt-wallet-macos
+          - os: ubuntu-20.04
+            artifact_name: release-qt-wallet-linux
+    env:
+      VERSION: >-
+        ${{ github.event_name == 'workflow_dispatch' &&
+        inputs.version_tag || github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: '6.5.3'
+          modules: 'qtwebengine qtwebview'
+
+      - name: Install dependencies (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          choco install openssl cmake boost-msvc-14.3 --no-progress
+
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install cmake ninja openssl@3 boost leveldb
+
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update && sudo apt-get install -y \
+            cmake ninja-build libssl-dev libboost-all-dev libleveldb-dev
+
+      - name: Configure CMake (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 `
+            -DOPENSSL_ROOT_DIR="C:/Program Files/OpenSSL-Win64" `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DDRACHMA_BUILD_TESTS=OFF `
+            -DDRACHMA_BUILD_GUI=ON `
+            -DCMAKE_PREFIX_PATH="${env:Qt6_DIR}"
+
+      - name: Configure CMake (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DDRACHMA_BUILD_TESTS=OFF \
+            -DDRACHMA_BUILD_GUI=ON \
+            -DOPENSSL_ROOT_DIR=$(brew --prefix openssl@3) \
+            -DBoost_INCLUDE_DIR=$(brew --prefix boost)/include \
+            -DCMAKE_PREFIX_PATH="${Qt6_DIR}"
+
+      - name: Configure CMake (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DDRACHMA_BUILD_TESTS=OFF \
+            -DDRACHMA_BUILD_GUI=ON \
+            -DCMAKE_PREFIX_PATH="${Qt6_DIR}"
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          cd build
+          cpack -C Release -G NSIS
+
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          cd build
+          cpack -G DragNDrop
+
+      - name: Package (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          cd build
+          cpack -G DEB
+          cpack -G RPM
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: |
+            build/*.exe
+            build/*.dmg
+            build/*.deb
+            build/*.rpm
+
+  build-mobile-client:
+    name: Build Mobile Client
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: android
+            artifact_name: release-mobile-android
+          - os: macos-12
+            platform: ios
+            artifact_name: release-mobile-ios
+    defaults:
+      run:
+        working-directory: mobile-client
+    env:
+      VERSION: >-
+        ${{ github.event_name == 'workflow_dispatch' &&
+        inputs.version_tag || github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: mobile-client/package-lock.json
+
+      - name: Setup Java (Android)
+        if: matrix.platform == 'android'
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Cache Gradle (Android)
+        if: matrix.platform == 'android'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+
+      - name: Build Android APK
+        if: matrix.platform == 'android'
+        run: |
+          if [ -d "android" ]; then
+            cd android
+            ./gradlew assembleRelease --no-daemon
+          else
+            echo "Android directory not found, skipping Android build"
+            exit 0
+          fi
+
+      - name: Install CocoaPods (iOS)
+        if: matrix.platform == 'ios'
+        run: |
+          if [ -d "ios" ]; then
+            cd ios
+            pod install
+          else
+            echo "iOS directory not found, skipping iOS build"
+            exit 0
+          fi
+
+      - name: Build iOS Archive
+        if: matrix.platform == 'ios'
+        run: |
+          if [ -d "ios" ]; then
+            cd ios
+            xcodebuild -workspace DrachmaWallet.xcworkspace \
+              -scheme DrachmaWallet \
+              -configuration Release \
+              -archivePath $PWD/build/DrachmaWallet.xcarchive \
+              archive \
+              CODE_SIGN_IDENTITY="" \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=NO
+          else
+            echo "iOS directory not found, skipping iOS build"
+            exit 0
+          fi
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: |
+            mobile-client/android/app/build/outputs/apk/release/*.apk
+            mobile-client/ios/build/*.xcarchive
+          if-no-files-found: warn
+
+  build-explorer:
+    name: Build Explorer
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: explorer
+    env:
+      VERSION: >-
+        ${{ github.event_name == 'workflow_dispatch' &&
+        inputs.version_tag || github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./explorer
+          push: false
+          tags: drachma-explorer:${{ env.VERSION }}
+          outputs: type=docker,dest=/tmp/drachma-explorer-${{ env.VERSION }}.tar
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+            pip install pyinstaller
+          else
+            echo "Error: requirements.txt not found" >&2
+            exit 1
+          fi
+
+      - name: Build standalone executable
+        run: |
+          pyinstaller --onefile --name drachma-explorer app.py
+
+      - name: Package Explorer
+        run: |
+          mkdir -p dist/explorer-package
+          cp dist/drachma-explorer dist/explorer-package/
+          cp -r templates dist/explorer-package/
+          cp index.html dist/explorer-package/
+          cp style.css dist/explorer-package/
+          cp app.js dist/explorer-package/
+          echo "${{ env.VERSION }}" > dist/explorer-package/VERSION
+          
+          # Create README
+          cat > dist/explorer-package/README.txt << 'EOF'
+          PARTHENON CHAIN Explorer
+
+          This package contains a standalone blockchain explorer for PARTHENON CHAIN.
+
+          Prerequisites:
+          - A running PARTHENON CHAIN node with RPC enabled
+
+          Configuration:
+          Set the following environment variables:
+          - DRACHMA_RPC_URL: RPC endpoint (default: http://localhost:18443)
+          - DRACHMA_RPC_USER: RPC username
+          - DRACHMA_RPC_PASS: RPC password
+          - DRACHMA_NETWORK: Network type (mainnet/testnet/regtest)
+
+          To run:
+          ./drachma-explorer
+
+          For Docker deployment, use the docker image artifact.
+
+          See https://github.com/Tsoympet/PARTHENON-CHAIN for more information.
+          EOF
+          
+          # Create tarball
+          cd dist
+          tar -czf explorer-${VERSION}-linux-x86_64.tar.gz explorer-package/
+          sha256sum explorer-${VERSION}-linux-x86_64.tar.gz > explorer-${VERSION}-linux-x86_64.tar.gz.sha256
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-explorer
+          path: |
+            /tmp/drachma-explorer-${{ env.VERSION }}.tar
+            explorer/dist/explorer-${{ env.VERSION }}-linux-x86_64.tar.gz
+            explorer/dist/explorer-${{ env.VERSION }}-linux-x86_64.tar.gz.sha256
+
   publish:
     if: >-
       github.event_name == 'push' ||
       (github.event_name == 'workflow_dispatch' &&
       inputs.publish_release == 'true')
     name: Publish release
-    needs: [build-linux, build-windows, build-macos]
+    needs: [build-linux, build-windows, build-macos, build-windows-native, build-qt-wallet, build-mobile-client, build-explorer]
     runs-on: ubuntu-latest
     env:
       VERSION: >-
@@ -423,7 +766,16 @@ jobs:
       - name: Prepare release assets
         run: |
           mkdir -p dist
+          # Core binaries
           find artifacts -type f \( -name "*.tar.gz" -o -name "*.zip" -o -name "*.sha256" \) -exec cp {} dist/ \;
+          # Windows native installers
+          find artifacts/release-windows-native -type f \( -name "*.exe" \) -exec cp {} dist/ \; 2>/dev/null || true
+          # Qt wallet installers
+          find artifacts/release-qt-wallet-* -type f \( -name "*.exe" -o -name "*.dmg" -o -name "*.deb" -o -name "*.rpm" \) -exec cp {} dist/ \; 2>/dev/null || true
+          # Mobile client builds
+          find artifacts/release-mobile-* -type f \( -name "*.apk" -o -name "*.xcarchive" \) -exec cp {} dist/ \; 2>/dev/null || true
+          # Explorer builds
+          find artifacts/release-explorer -type f \( -name "*.tar" -o -name "*.tar.gz" -o -name "*.sha256" \) -exec cp {} dist/ \; 2>/dev/null || true
           ls -lh dist/
 
       - name: Sign release artifacts (if GPG key available)
@@ -431,8 +783,10 @@ jobs:
         run: |
           if [ -n "${{ secrets.GPG_PRIVATE_KEY }}" ]; then
             echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
-            for file in dist/*.tar.gz dist/*.zip; do
-              gpg --batch --yes --detach-sign --armor "$file"
+            for file in dist/*.tar.gz dist/*.zip dist/*.exe dist/*.dmg dist/*.deb dist/*.rpm dist/*.apk dist/*.tar; do
+              if [ -f "$file" ]; then
+                gpg --batch --yes --detach-sign --armor "$file"
+              fi
             done
             echo "Release artifacts signed with GPG"
           fi
@@ -470,12 +824,26 @@ jobs:
               else:
                   notes_path.write_text(
                       f"PARTHENON CHAIN {version}\n\n"
-                      "## Binaries\n\n"
-                      "This release includes binaries for:\n"
+                      "## Core Binaries\n\n"
+                      "This release includes core binaries for:\n"
                       "- Linux x86_64\n"
-                      "- Windows x86_64\n"
+                      "- Windows x86_64 (Portable ZIP - cross-compiled)\n"
+                      "- Windows x86_64 (Native Installer - NSIS)\n"
                       "- macOS x86_64 (Intel)\n"
                       "- macOS arm64 (Apple Silicon)\n\n"
+                      "## Desktop Wallet (Qt)\n\n"
+                      "Desktop GUI wallet available for:\n"
+                      "- Windows (NSIS installer)\n"
+                      "- macOS (DMG)\n"
+                      "- Linux (DEB and RPM packages)\n\n"
+                      "## Mobile Wallet\n\n"
+                      "Mobile wallet builds:\n"
+                      "- Android APK\n"
+                      "- iOS Archive (requires signing for installation)\n\n"
+                      "## Blockchain Explorer\n\n"
+                      "Explorer packages:\n"
+                      "- Standalone Linux binary\n"
+                      "- Docker image\n\n"
                       "## Verification\n\n"
                       "Always verify checksums before running binaries.\n"
                       "See docs/verifying-downloads.md for instructions.\n"

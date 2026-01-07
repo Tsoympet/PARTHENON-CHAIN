@@ -1,0 +1,153 @@
+name: Qt Desktop Wallet Installer
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-windows:
+    name: Build Windows Qt Wallet
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: '6.5.3'
+          host: 'windows'
+          target: 'desktop'
+          arch: 'win64_msvc2019_64'
+          modules: 'qtwebengine qtwebview'
+
+      - name: Install Chocolatey
+        uses: crazy-max/ghaction-chocolatey@v3
+
+      - name: Install OpenSSL
+        run: choco install openssl --no-progress
+
+      - name: Install CMake
+        run: choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' --no-progress
+
+      - name: Install Boost
+        run: choco install boost-msvc-14.3 --no-progress
+
+      - name: Configure CMake
+        run: |
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 `
+            -DOPENSSL_ROOT_DIR="C:/Program Files/OpenSSL-Win64" `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DDRACHMA_BUILD_TESTS=OFF `
+            -DDRACHMA_BUILD_GUI=ON `
+            -DCMAKE_PREFIX_PATH="${env:Qt6_DIR}"
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Package Qt Wallet Installer
+        run: |
+          cd build
+          cpack -C Release -G NSIS
+
+      - name: Upload Qt Wallet Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: drachma-qt-wallet-installer
+          path: build/parthenon-chain-*-gui.exe
+          if-no-files-found: warn
+          retention-days: 7
+
+  build-macos:
+    name: Build macOS Qt Wallet
+    runs-on: macos-12
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: '6.5.3'
+          host: 'mac'
+          target: 'desktop'
+          modules: 'qtwebengine qtwebview'
+
+      - name: Install dependencies
+        run: |
+          brew install cmake ninja openssl@3 boost leveldb
+
+      - name: Configure CMake
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DDRACHMA_BUILD_TESTS=OFF \
+            -DDRACHMA_BUILD_GUI=ON \
+            -DOPENSSL_ROOT_DIR=$(brew --prefix openssl@3) \
+            -DBoost_INCLUDE_DIR=$(brew --prefix boost)/include \
+            -DCMAKE_PREFIX_PATH="${Qt6_DIR}"
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Package Qt Wallet DMG
+        run: |
+          cd build
+          cpack -G DragNDrop
+
+      - name: Upload Qt Wallet DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: drachma-qt-wallet-macos
+          path: build/*.dmg
+          if-no-files-found: warn
+          retention-days: 7
+
+  build-linux:
+    name: Build Linux Qt Wallet
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: '6.5.3'
+          host: 'linux'
+          target: 'desktop'
+          modules: 'qtwebengine qtwebview'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y \
+            cmake ninja-build libssl-dev libboost-all-dev libleveldb-dev
+
+      - name: Configure CMake
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DDRACHMA_BUILD_TESTS=OFF \
+            -DDRACHMA_BUILD_GUI=ON \
+            -DCMAKE_PREFIX_PATH="${Qt6_DIR}"
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Package Qt Wallet
+        run: |
+          cd build
+          cpack -G DEB
+          cpack -G RPM
+
+      - name: Upload Qt Wallet Packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: drachma-qt-wallet-linux
+          path: |
+            build/*.deb
+            build/*.rpm
+          if-no-files-found: warn
+          retention-days: 7

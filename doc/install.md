@@ -75,9 +75,22 @@ drachmad --help
 
 ### Windows
 
+**Option 1: Using the Windows Installer (Recommended)**
+
+1. Download the Windows installer from the [Releases page](https://github.com/Tsoympet/PARTHENON-CHAIN/releases)
+   - Look for `parthenon-chain-vX.Y.Z-Windows-x86_64.exe` (NSIS installer)
+2. Run the installer and follow the installation wizard
+3. The installer will:
+   - Install all core binaries to `C:\Program Files\ParthenonChain\`
+   - Add shortcuts to the Start Menu
+   - Optionally add binaries to PATH
+
+**Option 2: Manual Installation from ZIP**
+
 ```powershell
-# Download from GitHub releases page
+# Download the ZIP archive from GitHub releases page
 # https://github.com/Tsoympet/PARTHENON-CHAIN/releases
+# Look for parthenon-core-vX.Y.Z-win-x86_64.zip
 
 # Extract the ZIP file to a folder (e.g., C:\parthenon-chain)
 
@@ -94,12 +107,30 @@ cd C:\parthenon-chain
 
 1. Visit https://github.com/Tsoympet/PARTHENON-CHAIN/releases
 2. Find the latest stable release (not marked as "pre-release")
-3. Download the appropriate archive for your platform:
+3. Download the appropriate package for your platform:
+   
+   **Core Binaries:**
    - Linux: `parthenon-core-vX.Y.Z-linux-x86_64.tar.gz`
-   - Windows: `parthenon-core-vX.Y.Z-win-x86_64.zip`
+   - Windows ZIP: `parthenon-core-vX.Y.Z-win-x86_64.zip`
+   - Windows Installer: `parthenon-chain-vX.Y.Z-Windows-x86_64.exe`
    - macOS Intel: `parthenon-core-vX.Y.Z-macos-x86_64.tar.gz`
    - macOS Apple Silicon: `parthenon-core-vX.Y.Z-macos-arm64.tar.gz`
-4. Also download the corresponding `.sha256` checksum file
+   
+   **Qt Desktop Wallet (GUI):**
+   - Windows: `parthenon-chain-vX.Y.Z-gui.exe` (NSIS installer)
+   - macOS: `parthenon-chain-vX.Y.Z.dmg`
+   - Linux Debian/Ubuntu: `parthenon-chain-qt_vX.Y.Z_amd64.deb`
+   - Linux Fedora/RHEL: `parthenon-chain-qt-vX.Y.Z.x86_64.rpm`
+   
+   **Mobile Wallet:**
+   - Android: `drachma-mobile-vX.Y.Z.apk`
+   - iOS: Available through TestFlight (contact developers)
+   
+   **Blockchain Explorer:**
+   - Standalone Linux: `explorer-vX.Y.Z-linux-x86_64.tar.gz`
+   - Docker Image: `drachma-explorer-vX.Y.Z.tar`
+
+4. Also download the corresponding `.sha256` checksum file for verification
 
 ### What's Included
 

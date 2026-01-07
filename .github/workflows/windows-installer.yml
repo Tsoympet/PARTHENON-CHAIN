@@ -1,0 +1,48 @@
+name: Windows Build & Installer
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Chocolatey
+        uses: crazy-max/ghaction-chocolatey@v3
+
+      - name: Install OpenSSL
+        run: choco install openssl --no-progress
+
+      - name: Install CMake
+        run: choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' --no-progress
+
+      - name: Install Boost
+        run: choco install boost-msvc-14.3 --no-progress
+
+      - name: Configure CMake
+        run: |
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DOPENSSL_ROOT_DIR="C:/Program Files/OpenSSL-Win64" -DCMAKE_BUILD_TYPE=Release -DDRACHMA_BUILD_TESTS=OFF -DDRACHMA_BUILD_GUI=OFF
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Package Installer
+        run: |
+          cd build
+          cpack -C Release
+
+      - name: Upload Installer Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: drachma-installers
+          path: |
+            build/*.exe
+            build/*.zip
+          if-no-files-found: warn
+          retention-days: 7
