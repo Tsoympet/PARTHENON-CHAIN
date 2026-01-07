@@ -411,6 +411,8 @@ jobs:
 
       - name: Install Chocolatey
         uses: crazy-max/ghaction-chocolatey@v3
+        with:
+          args: --version
 
       - name: Install OpenSSL
         run: choco install openssl --no-progress
