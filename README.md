@@ -31,46 +31,140 @@ This repository contains the **reference implementation** of the PARTHENON CHAIN
 
 ## Releases
 
-Official binaries and source archives will be published on the GitHub Releases page. Each release will be tagged (vX.Y.Z); the next recommended cut is **`v0.1.0-rc`** to align with the release workflow and explorer shipped in this repository update. Every release will include:
-- **Reproducible builds** - Built with deterministic flags for independent verification
-- **Signed artifacts** - Release tag and archives signed with the maintainer GPG key
-- **SHA-256 checksums** - For every downloadable file
-- **GPG signatures** - Detached signatures for all binaries
-- **SBOM** - Software Bill of Materials listing all dependencies
-- **Changelog** - Highlighting consensus-impacting changes
+Official binaries are published on the [GitHub Releases page](https://github.com/Tsoympet/PARTHENON-CHAIN/releases) for all major platforms. Each release is tagged (vX.Y.Z) and includes:
 
-**Always verify signatures and checksums before running binaries.** See [Release Verification Guide](doc/release-signing.md) for instructions.
+### Available Platforms
+
+- **Linux x86_64** - Ubuntu 20.04+ compatible, statically linked where possible
+- **macOS x86_64** - Intel Macs, macOS 11+
+- **macOS arm64** - Apple Silicon Macs (M1/M2/M3)
+- **Windows x86_64** - Windows 10+ (manual build required currently)
+
+### Download & Verify
+
+1. **Download binaries** from [Releases](https://github.com/Tsoympet/PARTHENON-CHAIN/releases)
+   - Example: `parthenon-core-v0.1.0-linux-x86_64.tar.gz`
+   - Also download the `.sha256` checksum file
+
+2. **Verify checksums** (required for security):
+   ```bash
+   # Linux/macOS
+   sha256sum -c parthenon-core-v0.1.0-linux-x86_64.tar.gz.sha256
+   
+   # Windows (PowerShell)
+   (Get-FileHash parthenon-core-v0.1.0-win-x86_64.zip).Hash -eq (Get-Content parthenon-core-v0.1.0-win-x86_64.zip.sha256).Split()[0]
+   ```
+
+3. **Extract and run**:
+   ```bash
+   tar -xzf parthenon-core-v0.1.0-linux-x86_64.tar.gz
+   ./drachmad --version
+   ./drachmad --help
+   ```
+
+**Important:** Always verify checksums before running binaries. See [Verifying Downloads](doc/verifying-downloads.md) for detailed instructions including GPG signature verification.
+
+### What's Included
+
+Each release archive contains:
+- **drachmad** - Core daemon (full node)
+- **drachma-cli** - Command-line RPC client
+- **drachma_cpu_miner** - CPU mining software
+- **README.txt** - Quick start guide
+- **LICENSE** - MIT License
+- **VERSION** - Version information
+- **SHA256SUMS** - Binary checksums
+
+### Release Quality
+
+Every release includes:
+- **Reproducible builds** - Built with deterministic flags for independent verification
+- **SHA-256 checksums** - For every downloadable file
+- **GPG signatures** - Detached signatures (when available)
+- **Automated testing** - All tests pass before release
+- **Changelog** - Complete list of changes, especially consensus-impacting ones
 
 ### Building Releases
 
-For reproducible builds:
+For reproducible builds from source:
 ```bash
 ./scripts/reproducible-build.sh
 ```
 
-See [Reproducible Builds Guide](doc/reproducible-builds.md) for details.
+For Gitian deterministic builds:
+```bash
+# See contrib/gitian-descriptors/README.md
+cd gitian-builder
+./bin/gbuild ../PARTHENON-CHAIN/contrib/gitian-descriptors/gitian-linux.yml
+```
+
+See [Reproducible Builds Guide](doc/reproducible-builds.md) and [Gitian Building](contrib/gitian-descriptors/README.md) for details.
 
 ---
 
 ## Downloads & Installation
 
-- **Latest downloads:** [GitHub Releases](https://github.com/Tsoympet/PARTHENON-CHAIN/releases) (tar.gz/AppImage for Linux, `.zip`/`.exe` for Windows, `.dmg` for macOS).
-- **Install from source:** Use the convenient Makefile (similar to Bitcoin Core):
-  ```bash
-  git clone https://github.com/Tsoympet/PARTHENON-CHAIN.git
-  cd PARTHENON-CHAIN
-  make
-  sudo make install
-  ```
-  See [`doc/INSTALL.md`](doc/INSTALL.md) for detailed installation instructions.
-- **One-line installers:** `./scripts/install-linux.sh`, `./scripts/install-macos.sh`, and `.\scripts\install-windows.ps1` automate the build and installation process.
-- **Build from source (advanced):** See [`doc/getting-started/building.md`](doc/getting-started/building.md) for platform-specific setup, CMake options, and Qt deployment tips.
-- **Docker quickstart:**
-  ```bash
-  docker-compose up -d
-  docker-compose logs -f drachma-seed-a
-  ```
-  Use `Dockerfile` for a single-node image or the compose stack for a multi-node testnet with monitoring.
+### Pre-built Binaries (Recommended)
+
+Download the latest release for your platform:
+
+**[→ Download Latest Release](https://github.com/Tsoympet/PARTHENON-CHAIN/releases/latest)**
+
+Available platforms:
+- Linux x86_64 (Ubuntu 20.04+ compatible)
+- macOS x86_64 (Intel Macs)
+- macOS arm64 (Apple Silicon)
+- Windows x86_64 (build from source or use WSL)
+
+Quick install:
+```bash
+# Download (example for Linux)
+wget https://github.com/Tsoympet/PARTHENON-CHAIN/releases/latest/download/parthenon-core-v0.1.0-linux-x86_64.tar.gz
+wget https://github.com/Tsoympet/PARTHENON-CHAIN/releases/latest/download/parthenon-core-v0.1.0-linux-x86_64.tar.gz.sha256
+
+# Verify checksum
+sha256sum -c parthenon-core-v0.1.0-linux-x86_64.tar.gz.sha256
+
+# Extract and install
+tar -xzf parthenon-core-v0.1.0-linux-x86_64.tar.gz
+sudo install -m 755 drachmad drachma-cli drachma_cpu_miner /usr/local/bin/
+
+# Run
+drachmad --help
+```
+
+See [Installation Guide](doc/install.md) for detailed platform-specific instructions.
+
+### Build from Source
+
+**Option 1: Simple build (recommended)**
+```bash
+git clone https://github.com/Tsoympet/PARTHENON-CHAIN.git
+cd PARTHENON-CHAIN
+make
+sudo make install
+```
+
+**Option 2: Platform-specific installers**
+- Linux: `./scripts/install-linux.sh`
+- macOS: `./scripts/install-macos.sh`
+- Windows: `.\scripts\install-windows.ps1`
+
+**Option 3: Advanced build**
+
+See [`doc/getting-started/building.md`](doc/getting-started/building.md) for:
+- Platform-specific dependencies
+- CMake build options
+- Qt GUI compilation
+- GPU miner compilation
+
+**Option 4: Docker**
+```bash
+docker-compose up -d
+docker-compose logs -f drachma-seed-a
+```
+
+Use `Dockerfile` for single-node or compose stack for multi-node testnet with monitoring.
 
 ---
 
