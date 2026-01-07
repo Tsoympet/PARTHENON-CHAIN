@@ -97,6 +97,30 @@ This guide addresses common problems encountered when building, running, and usi
    make test
    ```
 
+### Coverage Tool Issues
+
+**Symptom:** Error message about "coverage.py not installed" or coverage-related failures
+
+**Solution:**
+
+This project uses **gcovr** (C++ coverage tool), NOT Python's coverage.py. If you see coverage-related errors:
+
+```bash
+# Install gcovr (the correct tool for this C++ project)
+sudo apt-get install gcovr  # Ubuntu/Debian
+pip install gcovr           # Via pip (any OS)
+```
+
+**Common misconception:** coverage.py is a Python-specific code coverage tool and is not needed for this C++ blockchain project. The CI workflow and build system use gcovr to analyze C++ code coverage.
+
+To generate coverage reports locally:
+```bash
+cmake -S . -B build-cov -DCMAKE_BUILD_TYPE=Debug -DDRACHMA_COVERAGE=ON
+cmake --build build-cov --parallel
+ctest --test-dir build-cov --output-on-failure
+gcovr --root . --object-directory build-cov --print-summary
+```
+
 ---
 
 ## Runtime Issues
