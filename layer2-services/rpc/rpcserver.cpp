@@ -75,22 +75,43 @@ std::vector<sidechain::wasm::Instruction> DecodeInstructions(const std::string& 
     std::vector<sidechain::wasm::Instruction> out;
     auto cleaned = hex;
     cleaned.erase(std::remove(cleaned.begin(), cleaned.end(), '"'), cleaned.end());
-    std::vector<uint8_t> bytes;
     
     // Validate hex string format
     if (cleaned.size() % 2 != 0) {
         throw std::runtime_error("Invalid hex string: odd length");
     }
     
+    // Pre-allocate bytes vector to avoid reallocations
+    std::vector<uint8_t> bytes;
+    bytes.reserve(cleaned.size() / 2);
+    
+    // Optimize: use lookup table for hex conversion instead of stoi
+    static const int8_t hex_lut[256] = {
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+         0, 1, 2, 3, 4, 5, 6, 7, 8, 9,-1,-1,-1,-1,-1,-1,
+        -1,10,11,12,13,14,15,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+        -1,10,11,12,13,14,15,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
+    };
+    
     for (size_t i = 0; i + 2 <= cleaned.size(); i += 2) {
-        try {
-            uint8_t byte = std::stoi(cleaned.substr(i, 2), nullptr, 16);
-            bytes.push_back(byte);
-        } catch (const std::invalid_argument&) {
+        int8_t high = hex_lut[static_cast<uint8_t>(cleaned[i])];
+        int8_t low = hex_lut[static_cast<uint8_t>(cleaned[i + 1])];
+        if (high < 0 || low < 0) {
             throw std::runtime_error("Invalid hex character in instruction data");
-        } catch (const std::out_of_range&) {
-            throw std::runtime_error("Hex value out of range in instruction data");
         }
+        bytes.push_back(static_cast<uint8_t>((high << 4) | low));
     }
     
     if (bytes.empty()) return out;
@@ -100,11 +121,14 @@ std::vector<sidechain::wasm::Instruction> DecodeInstructions(const std::string& 
         throw std::runtime_error("Invalid instruction data: size not multiple of 5");
     }
     
+    // Pre-allocate output vector
+    const size_t instructionCount = bytes.size() / 5;
+    if (instructionCount > MAX_INSTRUCTIONS) {
+        throw std::runtime_error("Too many instructions");
+    }
+    out.reserve(instructionCount);
+    
     for (size_t i = 0; i + 5 <= bytes.size(); i += 5) {
-        if (out.size() >= MAX_INSTRUCTIONS) {
-            throw std::runtime_error("Too many instructions");
-        }
-        
         sidechain::wasm::Instruction ins;
         ins.op = static_cast<sidechain::wasm::OpCode>(bytes[i]);
         int32_t imm = 0;

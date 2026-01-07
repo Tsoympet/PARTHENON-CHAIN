@@ -94,11 +94,24 @@ std::vector<Transaction> Mempool::Snapshot() const
 {
     std::lock_guard<std::mutex> g(m_mutex);
     std::vector<Transaction> out;
-    out.reserve(m_entries.size());
-    for (const auto& kv : m_entries) out.push_back(kv.second.tx);
-    std::sort(out.begin(), out.end(), [](const Transaction& a, const Transaction& b) {
-        return a.GetHash() < b.GetHash();
+    out.reserve(m_entries.size()); // Pre-allocate to avoid reallocations
+    
+    // Build a vector of (hash, transaction) pairs to avoid recomputing hashes during sort
+    std::vector<std::pair<uint256, Transaction>> pairs;
+    pairs.reserve(m_entries.size());
+    for (const auto& kv : m_entries) {
+        pairs.emplace_back(kv.first, kv.second.tx); // Use entry's hash key directly
+    }
+    
+    // Sort by pre-computed hash
+    std::sort(pairs.begin(), pairs.end(), [](const auto& a, const auto& b) {
+        return a.first < b.first;
     });
+    
+    // Extract transactions in sorted order
+    for (auto& p : pairs) {
+        out.push_back(std::move(p.second));
+    }
     return out;
 }
 

@@ -323,14 +323,21 @@ bool ValidateTransactions(const std::vector<Transaction>& txs, const consensus::
     std::vector<uint8_t> kernel;
     kernel.reserve(32 + 4 + 4 + stakedUtxo->scriptPubKey.size());
     append32(kernel, stakeIn.prevout.hash);
-    kernel.push_back(static_cast<uint8_t>(stakeIn.prevout.index & 0xff));
-    kernel.push_back(static_cast<uint8_t>((stakeIn.prevout.index >> 8) & 0xff));
-    kernel.push_back(static_cast<uint8_t>((stakeIn.prevout.index >> 16) & 0xff));
-    kernel.push_back(static_cast<uint8_t>((stakeIn.prevout.index >> 24) & 0xff));
-    kernel.push_back(static_cast<uint8_t>(posTime & 0xff));
-    kernel.push_back(static_cast<uint8_t>((posTime >> 8) & 0xff));
-    kernel.push_back(static_cast<uint8_t>((posTime >> 16) & 0xff));
-    kernel.push_back(static_cast<uint8_t>((posTime >> 24) & 0xff));
+    // Optimize: write index and time as 4-byte chunks instead of byte-by-byte
+    uint8_t indexBytes[4] = {
+        static_cast<uint8_t>(stakeIn.prevout.index & 0xff),
+        static_cast<uint8_t>((stakeIn.prevout.index >> 8) & 0xff),
+        static_cast<uint8_t>((stakeIn.prevout.index >> 16) & 0xff),
+        static_cast<uint8_t>((stakeIn.prevout.index >> 24) & 0xff)
+    };
+    uint8_t timeBytes[4] = {
+        static_cast<uint8_t>(posTime & 0xff),
+        static_cast<uint8_t>((posTime >> 8) & 0xff),
+        static_cast<uint8_t>((posTime >> 16) & 0xff),
+        static_cast<uint8_t>((posTime >> 24) & 0xff)
+    };
+    kernel.insert(kernel.end(), indexBytes, indexBytes + 4);
+    kernel.insert(kernel.end(), timeBytes, timeBytes + 4);
     kernel.insert(kernel.end(), stakedUtxo->scriptPubKey.begin(), stakedUtxo->scriptPubKey.end());
 
     uint256 kernelHash = tagged_hash("STAKE", kernel.data(), kernel.size());

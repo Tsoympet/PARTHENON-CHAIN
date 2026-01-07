@@ -39,6 +39,8 @@ std::vector<uint256> ForkResolver::ReorgPath(const uint256& newTip) const
 {
     std::lock_guard<std::mutex> l(m_mu);
     std::vector<uint256> path;
+    // Pre-allocate for typical chain depth to avoid reallocations
+    path.reserve(16);
     auto it = m_index.find(newTip);
     while (it != m_index.end()) {
         path.push_back(it->second.hash);

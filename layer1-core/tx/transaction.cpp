@@ -10,8 +10,14 @@
 
 static void WriteUint32(std::vector<uint8_t>& out, uint32_t v)
 {
-    for (int i = 0; i < 4; ++i)
-        out.push_back(static_cast<uint8_t>((v >> (8 * i)) & 0xFF));
+    // Optimize: write all 4 bytes at once using array
+    uint8_t bytes[4] = {
+        static_cast<uint8_t>(v & 0xFF),
+        static_cast<uint8_t>((v >> 8) & 0xFF),
+        static_cast<uint8_t>((v >> 16) & 0xFF),
+        static_cast<uint8_t>((v >> 24) & 0xFF)
+    };
+    out.insert(out.end(), bytes, bytes + 4);
 }
 
 static void WriteUint8(std::vector<uint8_t>& out, uint8_t v)
@@ -30,8 +36,18 @@ static uint32_t ReadUint32(const std::vector<uint8_t>& data, size_t& offset)
 
 static void WriteUint64(std::vector<uint8_t>& out, uint64_t v)
 {
-    for (int i = 0; i < 8; ++i)
-        out.push_back(static_cast<uint8_t>((v >> (8 * i)) & 0xFF));
+    // Optimize: write all 8 bytes at once using array
+    uint8_t bytes[8] = {
+        static_cast<uint8_t>(v & 0xFF),
+        static_cast<uint8_t>((v >> 8) & 0xFF),
+        static_cast<uint8_t>((v >> 16) & 0xFF),
+        static_cast<uint8_t>((v >> 24) & 0xFF),
+        static_cast<uint8_t>((v >> 32) & 0xFF),
+        static_cast<uint8_t>((v >> 40) & 0xFF),
+        static_cast<uint8_t>((v >> 48) & 0xFF),
+        static_cast<uint8_t>((v >> 56) & 0xFF)
+    };
+    out.insert(out.end(), bytes, bytes + 8);
 }
 
 static uint64_t ReadUint64(const std::vector<uint8_t>& data, size_t& offset)
@@ -138,6 +154,9 @@ std::array<uint8_t, 32> ComputeInputDigest(const Transaction& tx, size_t inputIn
         throw std::runtime_error("input index out of range");
 
     std::vector<uint8_t> ser;
+    // Pre-allocate approximate size to reduce reallocations
+    size_t estimated = 16 + tx.vin.size() * 45 + tx.vout.size() * 13;
+    ser.reserve(estimated);
     WriteUint32(ser, tx.version);
     WriteUint32(ser, static_cast<uint32_t>(tx.vin.size()));
     for (const auto& in : tx.vin) {
