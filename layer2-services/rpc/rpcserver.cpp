@@ -573,10 +573,17 @@ void RPCServer::LogRequest(const std::string& remote, const std::string& method,
     // Format: timestamp | remote_ip | method | status | error_msg
     auto now = std::chrono::system_clock::now();
     auto time_t = std::chrono::system_clock::to_time_t(now);
-    auto tm = std::gmtime(&time_t);
+    
+    // Thread-safe time formatting
+    std::tm tm_buf{};
+#ifdef _WIN32
+    gmtime_s(&tm_buf, &time_t);
+#else
+    gmtime_r(&time_t, &tm_buf);
+#endif
     
     char timestamp[32];
-    std::strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", tm);
+    std::strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &tm_buf);
     
     std::cerr << "[RPC] " << timestamp << " | " 
               << remote << " | " 
