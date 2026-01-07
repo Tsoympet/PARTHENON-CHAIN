@@ -76,7 +76,7 @@ Wallets are local-only HD wallets producing Schnorr keypairs. Seeds are 24-word 
 - Schnorr signatures and constant-time verification mitigate timing leaks.
 - Difficulty clamping prevents large oscillations while retaining responsiveness.
 - UTXO set updates are atomic per block and reorg-safe through rollback metadata.
-- No governance, staking, or admin keys exist; all participants follow the same rules.
+- No governance or admin keys exist; all participants follow the same rules.
 
 ## Security Model
 DRACHMA assumes an **open, adversarial environment** with the following invariants:

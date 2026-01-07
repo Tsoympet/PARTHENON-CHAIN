@@ -334,10 +334,8 @@ void RPCServer::AttachCoreHandlers(mempool::Mempool& pool, wallet::WalletBackend
         for (const auto& policy : consensus::GetAllAssetPolicies()) {
             if (!first) ss << ",";
             ss << "\"" << consensus::AssetSymbol(policy.assetId) << "\":{";
-            ss << "\"posAllowed\":" << (policy.posAllowed ? "true" : "false") << ",";
-            ss << "\"balance\":" << wallet.GetBalance(policy.assetId) << ",";
-            ss << "\"slotSpacing\":" << policy.posSlotSpacing << ",";
-            ss << "\"apr\":" << policy.posApr << "}";
+            ss << "\"posAllowed\":false,";
+            ss << "\"balance\":" << wallet.GetBalance(policy.assetId) << "}";
             first = false;
         }
         ss << "}";
@@ -354,14 +352,10 @@ void RPCServer::AttachCoreHandlers(mempool::Mempool& pool, wallet::WalletBackend
             ss << "\"" << consensus::AssetSymbol(policy.assetId) << "\":{";
             ss << "\"id\":" << static_cast<int>(policy.assetId) << ",";
             ss << "\"powAllowed\":" << (policy.powAllowed ? "true" : "false") << ",";
-            ss << "\"posAllowed\":" << (policy.posAllowed ? "true" : "false") << ",";
+            ss << "\"posAllowed\":false,";
             ss << "\"halvingInterval\":" << policy.powHalvingInterval << ",";
             ss << "\"initialSubsidy\":" << policy.powInitialSubsidy << ",";
-            ss << "\"maxMoney\":" << policy.maxMoney << ",";
-            ss << "\"posSlotSpacing\":" << policy.posSlotSpacing << ",";
-            ss << "\"posApr\":" << policy.posApr << ",";
-            ss << "\"posEth2Curve\":" << (policy.posEth2Curve ? "true" : "false") << ",";
-            ss << "\"minStakeAgeSlots\":" << policy.minStakeAgeSlots << "}";
+            ss << "\"maxMoney\":" << policy.maxMoney << "}";
             first = false;
         }
         if (!trimmed.empty() && trimmed != "null") {

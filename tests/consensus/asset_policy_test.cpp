@@ -14,19 +14,7 @@ int main()
 {
     const auto& params = consensus::Testnet();
 
-    // All assets are now PoW-only; PoS rewards must be zero for all.
-    auto tlnReward = consensus::GetPoSReward(100 * COIN, params, static_cast<uint8_t>(AssetId::TALANTON));
-    assert(tlnReward == 0);
-
-    // DRM is now PoW-only; PoS reward must be zero.
-    auto drmReward = consensus::GetPoSReward(100 * COIN, params, static_cast<uint8_t>(AssetId::DRACHMA));
-    assert(drmReward == 0);
-
-    // OBL is now PoW-only; PoS reward must be zero.
-    auto oblReward = consensus::GetPoSReward(100 * COIN, params, static_cast<uint8_t>(AssetId::OBOLOS));
-    assert(oblReward == 0);
-
-    // Verify PoW block subsidies are correct for all assets
+    // Verify PoW block subsidies are correct for all assets (all are now PoW-only)
     auto tlnSubsidy = consensus::GetBlockSubsidy(0, params, static_cast<uint8_t>(AssetId::TALANTON));
     assert(tlnSubsidy == 5 * COIN); // TLN: 5 per block
 

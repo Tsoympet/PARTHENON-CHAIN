@@ -308,40 +308,6 @@ int main()
         assert(!ValidateTransactions(txs, params, 12, lookup));
     }
 
-    // Cached lookup should hit after the first miss when the same prevout is reused (double-spend remains invalid).
-    {
-        UTXOSet utxos;
-        OutPoint prev = MakeOutPoint(0xED, 0);
-        TxOut stakeOut = MakeTxOut(1000, static_cast<uint8_t>(AssetId::DRACHMA));
-        utxos[prev] = stakeOut;
-
-        Transaction stake;
-        stake.vin.resize(1);
-        stake.vin[0].prevout = prev;
-        stake.vin[0].scriptSig = {0x01};
-        stake.vin[0].assetId = stakeOut.assetId;
-        stake.vout.resize(2);
-        stake.vout[0] = MakeTxOut(0, stakeOut.assetId);
-        stake.vout[1] = MakeTxOut(stakeOut.value, stakeOut.assetId);
-
-        Transaction doubleSpend = stake;
-        doubleSpend.vout[1].value = 700; // conflicting spend
-
-        size_t lookups = 0;
-        auto countingLookup = [&utxos, &lookups](const OutPoint& op) -> std::optional<TxOut> {
-            ++lookups;
-            auto it = utxos.find(op);
-            if (it == utxos.end()) return std::nullopt;
-            return it->second;
-        };
-
-        std::vector<Transaction> txs{stake, doubleSpend};
-        const bool ok = ValidateTransactions(
-            txs, params, params.nPoSActivationHeight, countingLookup, true, params.nGenesisBits, 2000);
-        assert(!ok);
-        assert(lookups == 1); // second access hits validation cache
-    }
-
     // Rate limiter should short-circuit header validation before any heavy work.
     {
         BlockHeader h{};

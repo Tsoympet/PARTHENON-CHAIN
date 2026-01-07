@@ -18,7 +18,7 @@ This document answers common questions about the PARTHENON CHAIN blockchain.
 PARTHENON CHAIN (formerly DRACHMA) is a multi-asset blockchain built on Classical principles featuring:
 - **Proof-of-Work** (SHA-256d) consensus for security
 - **Three native assets:** TLN (Talanton/Bronze), DRM (Drachma/Silver), OBL (Obolos/Aegean Blue)
-- **Hybrid PoW/PoS** support with different rules per asset
+- **Pure PoW** - all assets are mined via proof-of-work
 - **WASM-based smart contracts** and NFTs
 - **No premine** - fair launch with transparent emission schedule
 - **Classical design** - built to endure like the Parthenon
@@ -46,7 +46,7 @@ See `ANALYSIS-EXECUTIVE-SUMMARY.md` for the complete launch roadmap.
 - **Multi-asset:** Three assets with different monetary policies
 - **Schnorr signatures:** More efficient than ECDSA
 - **WASM smart contracts:** Mandatory execution layer
-- **Hybrid PoW/PoS:** DRM and OBL support staking
+- **Pure PoW:** All assets are mined via proof-of-work
 - **Faster blocks:** 60-second target (vs. Bitcoin's 10 minutes)
 - **Different supply:** 41M DRM (vs. Bitcoin's 21M BTC)
 - **Timeless design:** Built on Classical principles of order and permanence
@@ -60,18 +60,18 @@ See `ANALYSIS-EXECUTIVE-SUMMARY.md` for the complete launch roadmap.
 - Halvings every 2,102,400 blocks (~4 years)
 
 **DRM (Drachma):**
-- Hybrid PoW + PoS asset
+- Pure PoW asset
 - Max supply: 41,000,000
 - Initial block reward: 10 DRM
-- PoS staking with 4% APR
+- Halvings every 2,102,400 blocks (~4 years)
 - Primary settlement asset
 
 **OBL (Obolos):**
-- Pure PoS asset (no mining)
+- Pure PoW asset
 - Max supply: 61,000,000
-- Earned through staking only
-- Eth2-style variable APR (0.5%-5%)
-- Designed for dApps and governance
+- Initial block reward: 8 OBL
+- Halvings every 2,102,400 blocks (~4 years)
+- Designed for dApps and settlements
 
 ---
 
@@ -164,56 +164,9 @@ Testnet difficulty is very low for easy testing.
 ### Can I mine multiple assets simultaneously?
 
 **Only one asset per block:**
-- Miners choose which asset to mine (TLN or DRM)
-- OBL cannot be mined (PoS only)
-- Different assets compete for the same SHA-256d hash power
-
----
-
-## Staking Questions
-
-### How does staking work?
-
-**Proof-of-Stake** is available for DRM and OBL:
-
-1. Hold coins in a wallet
-2. Keep wallet online and unlocked for staking
-3. Wait for minimum stake depth (confirmations)
-4. Earn staking rewards based on:
-   - Amount staked
-   - Time held
-   - Network participation
-
-### What's the minimum stake?
-
-**Minimum stake depth:** 500 blocks for coins to mature
-
-**No minimum amount** - any amount can stake, but tiny amounts may rarely produce blocks.
-
-### What are the staking rewards?
-
-**DRM:** ~4% annual return (APR)
-
-**OBL:** Variable APR (Eth2-style curve)
-- ~5% at low participation
-- ~1.5% at high participation
-- Encourages balanced network participation
-
-### Can I stake and mine simultaneously?
-
-Yes! You can:
-- Mine TLN or DRM with PoW
-- Stake DRM or OBL with PoS
-- All in the same wallet/node
-
-### Is there slashing?
-
-**No slashing** in the current design. Unlike Ethereum 2.0, there are no penalties for:
-- Downtime
-- Double-signing
-- Validator misbehavior
-
-This makes staking more forgiving for casual users.
+- Miners choose which asset to mine (TLN, DRM, or OBL)
+- All three assets are mined via proof-of-work
+- Different assets can be mined by the same hardware
 
 ---
 
@@ -306,8 +259,7 @@ NFTs are **asset-agnostic Layer-2 records** anchored to Layer 1:
 ### Was there a premine?
 
 **No premine.** All coins are:
-- Mined via PoW (TLN, DRM)
-- Earned via PoS (DRM, OBL)
+- Mined via PoW (TLN, DRM, OBL)
 - No ICO, no founders' reward, no treasury
 
 See `doc/reference/fair-launch.md` for details.
@@ -327,7 +279,7 @@ See `doc/reference/economics.md` for detailed emission tables.
 **Eventually, no.** The geometric series converges:
 - TLN → exactly 21,000,000 (then zero)
 - DRM → converges to 41,000,000 (hard cap enforced)
-- OBL → staking inflation, but capped at 61,000,000
+- OBL → converges to 61,000,000 (hard cap enforced)
 
 After many halvings, block subsidies become negligible and fees dominate.
 
@@ -384,7 +336,7 @@ See `doc/getting-started/quickstart.md` for setup.
 
 **Cryptographically:** Uses battle-tested primitives (SHA-256d, secp256k1, Schnorr).
 
-**Consensus:** Based on proven PoW model with added PoS support.
+**Consensus:** Based on proven PoW model (pure proof-of-work).
 
 **Audit status:** Pre-audit. External security review pending before mainnet.
 
