@@ -146,13 +146,13 @@ PARTHENON CHAIN ships a **mandatory WASM execution layer** that is anchored to L
 |-------------------|-------------------------------|------------------------------------------------------------------------|
 | NFTs (Layer 2)    | Asset-agnostic; anchored via `nft_state_root` | `mint_nft`, `transfer_nft`, `list_nft`, `place_nft_bid`, `settle_nft_sale` |
 | Smart contracts   | DRM (`asset_id=1`)            | `deploy_contract`, `call_contract`                                     |
-| dApps / interaction | OBL (`asset_id=2`)          | `call_dapp`                                                            |
+| Settlement operations | OBL (`asset_id=2`)          | `obl_sendTransaction`, `obl_sendPathPayment`, `obl_openChannel`       |
 
 - **Execution:** Deterministic WASM only; no EVM/ABI/solidity or wrapped assets. NFT records are standalone cultural entries, settled with fixed gas and never inflate TLN/DRM/OBL supply.
 - **Marketplace:** NFT value discovery happens on-chain in DRM or OBL only; royalties are enforced at settlement and paid automatically to creators.
 - **Anchors:** Sidechain checkpoints are required; they cannot be disabled in the wallet or node.
-- **Wallet UX:** The Sidechain tab surfaces Layer-2 NFTs as first-class records without showing TLN, DRM for contracts, and OBL for dApps; it displays the WASM manifest instead of ABI JSON.
-- **dApp gateway:** Defaults to `http://localhost:8080` for OBL-backed dApps; RPC defaults to `http://localhost:9334/wasm`.
+- **Wallet UX:** The Sidechain tab surfaces Layer-2 NFTs as first-class records without showing TLN, DRM for contracts, and OBL for settlement operations; it displays the WASM manifest instead of ABI JSON.
+- **Settlement:** OBL provides account-based settlement with sub-5 second finality, payment channels, and institutional features. No dApp execution on OBL.
 - **Invariant:** NFTs are standalone Layer-2 records and are not connected to TLN in any way.
 
 ### Live Testnet
@@ -265,10 +265,11 @@ Security-impacting changes and reports are welcomed; consensus/crypto modificati
 
 - **Proof-of-Work:** SHA-256d (double SHA-256), unmodified
 - **Launch Model:** No premine, no privileged rewards, no special launch logic
-- **Supply Cap:** 41,000,000 DRM
+- **Supply Caps:** 21M TLN, 41M DRM, 61M OBL (all PoW-mined)
 - **Consensus First:** All critical rules reside exclusively in Layer 1
 - **No Governance Logic:** No voting systems, no administrative keys
-- **Execution model:** Mandatory WASM sidechain with enforced domain law (Layer-2 NFTs are asset-agnostic; DRM→contracts; OBL→dApps)
+- **Execution model:** Mandatory WASM sidechain with enforced domain law (Layer-2 NFTs are asset-agnostic; DRM→contracts; OBL→settlement operations)
+- **Settlement Layer:** OBL provides institutional-grade payment settlement with deterministic finality, account-based ledger, and predictable fees
 
 Network neutrality is achieved through **absence of privilege**, not through special enforcement mechanisms.
 
@@ -442,12 +443,17 @@ Remaining hardening items and edge-case gaps are tracked in:
 **Why no smart contracts or on-chain governance?**
 
 - PARTHENON CHAIN aims to be a minimal monetary network with transparent, predictable rules.
-- Avoiding programmability reduces attack surface and consensus complexity.
+- Smart contracts are supported via DRM asset for those who need programmability.
+- OBL focuses on settlement operations, not general computation.
+- Avoiding unnecessary programmability reduces attack surface and consensus complexity.
 
 **What is the total supply and issuance schedule?**
 
-- Hard cap of **41,000,000 DRM**.
+- **TLN (Talanton):** 21,000,000 cap, PoW-only
+- **DRM (Drachma):** 41,000,000 cap, PoW-only
+- **OBL (Obolos):** 61,000,000 cap, PoW-only
 - Block subsidy declines on a predictable schedule (see [`doc/technical-specs/technical-spec.md`](doc/technical-specs/technical-spec.md) for parameters) to encourage long-term participation.
+- All assets are mined via Proof-of-Work; no Proof-of-Stake, no premine.
 
 **How is the fair launch verifiable?**
 

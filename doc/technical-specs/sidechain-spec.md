@@ -5,7 +5,7 @@
 - Mandatory domain separation:
   - NFTs live in a Layer-2 domain anchored by `nft_state_root` and do **not** couple to TLN or any other asset.
   - DRM (`asset_id=1`) → smart contracts only.
-  - OBL (`asset_id=2`) → dApps only.
+  - OBL (`asset_id=2`) → settlement operations only (account-based, payment channels, routing).
 - Sidechain state is independent from the main-chain UTXO model; checkpoints anchor execution roots back to the main chain.
 - NFT, marketplace, and event roots (`nft_state_root`, `market_state_root`, `event_root`) are anchored per-block to keep cultural records and price history immutable.
 
@@ -19,9 +19,9 @@
 ### Execution Domains
 | Domain            | Asset        | Allowed actions                                                                 | Forbidden actions                          |
 |-------------------|--------------|---------------------------------------------------------------------------------|--------------------------------------------|
-| Smart Contracts   | DRM (`1`)    | Deploy/call WASM contracts, pay gas                                             | Mint/transfer NFTs, execute dApps          |
-| NFTs              | None (L2)    | Mint, transfer, lookup ownership/metadata; list/bid/settle marketplace trades with enforced royalties | Deploy/call contracts, run dApps           |
-| dApps             | OBL (`2`)    | Lightweight WASM calls for interactions/reads                                   | Deploy DRM contracts, mint/transfer NFTs   |
+| Smart Contracts   | DRM (`1`)    | Deploy/call WASM contracts, pay gas                                             | Mint/transfer NFTs, execute settlement ops |
+| NFTs              | None (L2)    | Mint, transfer, lookup ownership/metadata; list/bid/settle marketplace trades with enforced royalties | Deploy/call contracts, run settlement ops  |
+| Settlement Ops    | OBL (`2`)    | Account-based transfers, payment channels, path payments, finality proofs       | Deploy DRM contracts, mint/transfer NFTs   |
 
 NFT sale settlement is denominated strictly in DRM or OBL; TLN is rejected as a payment currency. NFT state stays isolated from TLN/DRM/OBL supply and never touches balances.
 
@@ -45,7 +45,11 @@ Implemented in `sidechain/rpc/wasm_rpc.*`:
 - `mint_nft`: mints standalone NFT record with creator, canonical reference hash, immutable `royalty_bps` under the NFT domain (asset-agnostic).
 - `transfer_nft`: updates ownership; enforces current owner check without touching TLN.
 - `list_nft` / `place_nft_bid` / `settle_nft_sale`: marketplace flows that settle in DRM or OBL, automatically splitting royalties to creators.
-- `call_dapp` (OBL): runs dApp WASM with OBL gas.
+- `obl_sendTransaction` (OBL): account-based transfer with nonce-based replay protection.
+- `obl_sendPathPayment` (OBL): multi-hop settlement routing.
+- `obl_openChannel` / `obl_updateChannel` / `obl_closeChannel` (OBL): payment channel operations.
+- `obl_getFinalityProof` (OBL): retrieve cryptographic finality proof for settlement.
+- `obl_getSettlementReceipt` (OBL): get immutable settlement receipt with metadata.
 
 ## Directory Layout (mandatory)
 ```
@@ -56,7 +60,7 @@ sidechain/
     validator/    # asset law + checkpoint validation
   contracts/      # DRM contract modules
   nfts/           # Layer-2 NFT modules (asset-agnostic)
-  dapps/          # OBL-backed dApps
+  settlement/     # OBL settlement operations (account-based, channels, routing)
   state/          # isolated state store
   rpc/            # RPC façades for sidechain actions
   sidechain_spec.md

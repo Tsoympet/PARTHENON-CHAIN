@@ -48,4 +48,4 @@ graph LR
 - Block rewards are the sole issuance mechanism; there are no stealth mints, developer rewards, or advisor grants embedded in the protocol.
 - Difficulty adjustment and validation rules are enforced at launch to prevent timestamp or reward manipulation.
 - Wallets and explorers will clearly display circulating supply and remaining issuance to maintain user trust.
-- The mandatory merge-mined WASM sidechain does not expand total supply; NFT execution uses fixed gas without TLN coupling, DRM funds contracts, and OBL funds dApps. No wrapped assets are minted.
+- The mandatory merge-mined WASM sidechain does not expand total supply; NFT execution uses fixed gas without TLN coupling, DRM funds contracts, and OBL provides settlement operations. No wrapped assets are minted.

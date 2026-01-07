@@ -250,7 +250,9 @@ TEST(RPC, EndpointsRespond)
     std::string staking = RpcCall(env.io, env.rpc_port, "{\"method\":\"getstakinginfo\",\"params\":null}");
     EXPECT_NE(staking.find("\"DRM\""), std::string::npos);
     EXPECT_NE(staking.find("\"OBL\""), std::string::npos);
-    EXPECT_NE(staking.find("\"posAllowed\":true"), std::string::npos);
+    // All assets are now PoW-only, so posAllowed should be false for all
+    EXPECT_EQ(staking.find("\"posAllowed\":true"), std::string::npos);
+    EXPECT_NE(staking.find("\"posAllowed\":false"), std::string::npos);
 
     std::string numericParams = RpcCall(env.io, env.rpc_port, "{\"method\":\"getbalance\",\"params\":123}");
     EXPECT_EQ(numericParams, "{\"result\":null}");

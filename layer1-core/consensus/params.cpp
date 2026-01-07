@@ -27,12 +27,12 @@ static Params mainParams {
     DEFAULT_THRESHOLD,
     DEFAULT_WINDOW,
     { VBDeployment{28, -1, -1} },
-    true,              // fHybridPoS
-    100000,            // nPoSActivationHeight (draft)
-    500,               // nPoSMinStakeDepth
-    90,                // nPoSTargetSpacing (seconds)
-    1,                 // PoS reward numerator
-    2,                 // PoS reward denominator (50% of PoW)
+    false,             // fHybridPoS - disabled, PoW-only
+    0,                 // nPoSActivationHeight (disabled)
+    0,                 // nPoSMinStakeDepth (disabled)
+    0,                 // nPoSTargetSpacing (disabled)
+    0,                 // PoS reward numerator (disabled)
+    0,                 // PoS reward denominator (disabled)
     1                  // nMultiAssetActivationHeight
 };
 
@@ -51,12 +51,12 @@ static Params testParams {
     DEFAULT_THRESHOLD,
     DEFAULT_WINDOW,
     { VBDeployment{28, -1, -1} },
-    true,
-    1000,
-    50,
-    90,
-    1,
-    2,
+    false,             // fHybridPoS - disabled, PoW-only
+    0,                 // nPoSActivationHeight (disabled)
+    0,                 // nPoSMinStakeDepth (disabled)
+    0,                 // nPoSTargetSpacing (disabled)
+    0,                 // PoS reward numerator (disabled)
+    0,                 // PoS reward denominator (disabled)
     1
 };
 
@@ -72,7 +72,7 @@ constexpr size_t kAssetCount = static_cast<size_t>(AssetId::OBOLOS) + 1;
 const AssetPolicy& DefaultPolicy()
 {
     static AssetPolicy fallback{
-        static_cast<uint8_t>(AssetId::DRACHMA), true, true, 2102400, 10 * COIN, 41000000ULL * COIN, 600, 0.04, false, 41000000ULL * COIN, 144};
+        static_cast<uint8_t>(AssetId::DRACHMA), true, false, 2102400, 10 * COIN, 41000000ULL * COIN, 600, 0.0, false, 41000000ULL * COIN, 0};
     return fallback;
 }
 
@@ -80,10 +80,24 @@ const AssetPolicy& DefaultPolicy()
 
 const AssetPolicy& GetAssetPolicy(uint8_t assetId)
 {
+    // AssetPolicy fields: assetId, powAllowed, posAllowed, powHalvingInterval, powInitialSubsidy,
+    //                     maxMoney, posSlotSpacing, posApr, posEth2Curve, posSupplyTarget, minStakeAgeSlots
     static const AssetPolicy kPolicies[] = {
-        {static_cast<uint8_t>(AssetId::TALANTON), true, false, 2102400, 5 * COIN, 21000000ULL * COIN, 600, 0.0, false, 21000000ULL * COIN, 0},
-        {static_cast<uint8_t>(AssetId::DRACHMA), true, true, 2102400, 10 * COIN, 41000000ULL * COIN, 600, 0.04, false, 41000000ULL * COIN, 144},
-        {static_cast<uint8_t>(AssetId::OBOLOS), false, true, 0, 0, 61000000ULL * COIN, 600, 0.05, true, 61000000ULL * COIN, 144},
+        // TLN: PoW-only, 5 per block, 21M cap
+        {static_cast<uint8_t>(AssetId::TALANTON), /*powAllowed=*/true, /*posAllowed=*/false, 
+         /*powHalvingInterval=*/2102400, /*powInitialSubsidy=*/5 * COIN, /*maxMoney=*/21000000ULL * COIN, 
+         /*posSlotSpacing=*/600, /*posApr=*/0.0, /*posEth2Curve=*/false, /*posSupplyTarget=*/21000000ULL * COIN, 
+         /*minStakeAgeSlots=*/0},
+        // DRM: PoW-only, 10 per block, 41M cap
+        {static_cast<uint8_t>(AssetId::DRACHMA), /*powAllowed=*/true, /*posAllowed=*/false, 
+         /*powHalvingInterval=*/2102400, /*powInitialSubsidy=*/10 * COIN, /*maxMoney=*/41000000ULL * COIN, 
+         /*posSlotSpacing=*/600, /*posApr=*/0.0, /*posEth2Curve=*/false, /*posSupplyTarget=*/41000000ULL * COIN, 
+         /*minStakeAgeSlots=*/0},
+        // OBL: PoW-only, 8 per block, 61M cap (settlement token)
+        {static_cast<uint8_t>(AssetId::OBOLOS), /*powAllowed=*/true, /*posAllowed=*/false, 
+         /*powHalvingInterval=*/2102400, /*powInitialSubsidy=*/8 * COIN, /*maxMoney=*/61000000ULL * COIN, 
+         /*posSlotSpacing=*/600, /*posApr=*/0.0, /*posEth2Curve=*/false, /*posSupplyTarget=*/61000000ULL * COIN, 
+         /*minStakeAgeSlots=*/0},
     };
 
     for (const auto& policy : kPolicies) {

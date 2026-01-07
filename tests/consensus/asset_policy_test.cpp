@@ -14,21 +14,27 @@ int main()
 {
     const auto& params = consensus::Testnet();
 
-    // TLN is PoW-only; PoS reward must be zero.
+    // All assets are now PoW-only; PoS rewards must be zero for all.
     auto tlnReward = consensus::GetPoSReward(100 * COIN, params, static_cast<uint8_t>(AssetId::TALANTON));
     assert(tlnReward == 0);
 
-    // DRM PoS: 4% APR with 10-minute slots.
-    const double slotsPerYear = 31536000.0 / 600.0;
-    uint64_t stake = 100 * COIN;
-    uint64_t expectedDrm = static_cast<uint64_t>((static_cast<double>(stake) * 0.04) / slotsPerYear);
-    auto drmReward = consensus::GetPoSReward(stake, params, static_cast<uint8_t>(AssetId::DRACHMA));
-    assert(drmReward == expectedDrm);
+    // DRM is now PoW-only; PoS reward must be zero.
+    auto drmReward = consensus::GetPoSReward(100 * COIN, params, static_cast<uint8_t>(AssetId::DRACHMA));
+    assert(drmReward == 0);
 
-    // OBL uses Eth2-style curve; for small participation it should exceed DRM's per-slot reward.
-    auto oblReward = consensus::GetPoSReward(stake, params, static_cast<uint8_t>(AssetId::OBOLOS));
-    assert(oblReward > drmReward);
-    assert(oblReward > 0);
+    // OBL is now PoW-only; PoS reward must be zero.
+    auto oblReward = consensus::GetPoSReward(100 * COIN, params, static_cast<uint8_t>(AssetId::OBOLOS));
+    assert(oblReward == 0);
+
+    // Verify PoW block subsidies are correct for all assets
+    auto tlnSubsidy = consensus::GetBlockSubsidy(0, params, static_cast<uint8_t>(AssetId::TALANTON));
+    assert(tlnSubsidy == 5 * COIN); // TLN: 5 per block
+
+    auto drmSubsidy = consensus::GetBlockSubsidy(0, params, static_cast<uint8_t>(AssetId::DRACHMA));
+    assert(drmSubsidy == 10 * COIN); // DRM: 10 per block
+
+    auto oblSubsidy = consensus::GetBlockSubsidy(0, params, static_cast<uint8_t>(AssetId::OBOLOS));
+    assert(oblSubsidy == 8 * COIN); // OBL: 8 per block
 
     // Version bits guard rails.
     try {
