@@ -1,12 +1,12 @@
 # PARTHENON CHAIN
 
-[![CI](https://github.com/Tsoympet/BlockChainDrachma/actions/workflows/ci.yml/badge.svg)](https://github.com/Tsoympet/BlockChainDrachma/actions/workflows/ci.yml)
-[![Release](https://github.com/Tsoympet/BlockChainDrachma/actions/workflows/release.yml/badge.svg)](https://github.com/Tsoympet/BlockChainDrachma/actions/workflows/release.yml)
-[![codecov](https://codecov.io/gh/Tsoympet/BlockChainDrachma/graph/badge.svg?token=pbNZjIpSXO)](https://codecov.io/gh/Tsoympet/BlockChainDrachma)
+[![CI](https://github.com/Tsoympet/PARTHENON-CHAIN/actions/workflows/ci.yml/badge.svg)](https://github.com/Tsoympet/PARTHENON-CHAIN/actions/workflows/ci.yml)
+[![Release](https://github.com/Tsoympet/PARTHENON-CHAIN/actions/workflows/release.yml/badge.svg)](https://github.com/Tsoympet/PARTHENON-CHAIN/actions/workflows/release.yml)
+[![codecov](https://codecov.io/gh/Tsoympet/PARTHENON-CHAIN/graph/badge.svg?token=pbNZjIpSXO)](https://codecov.io/gh/Tsoympet/PARTHENON-CHAIN)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![GitHub Stars](https://img.shields.io/github/stars/Tsoympet/BlockChainDrachma?style=social)](https://github.com/Tsoympet/BlockChainDrachma/stargazers)
-[![GitHub Forks](https://img.shields.io/github/forks/Tsoympet/BlockChainDrachma?style=social)](https://github.com/Tsoympet/BlockChainDrachma/network/members)
-[![Open Issues](https://img.shields.io/github/issues/Tsoympet/BlockChainDrachma)](https://github.com/Tsoympet/BlockChainDrachma/issues)
+[![GitHub Stars](https://img.shields.io/github/stars/Tsoympet/PARTHENON-CHAIN?style=social)](https://github.com/Tsoympet/PARTHENON-CHAIN/stargazers)
+[![GitHub Forks](https://img.shields.io/github/forks/Tsoympet/PARTHENON-CHAIN?style=social)](https://github.com/Tsoympet/PARTHENON-CHAIN/network/members)
+[![Open Issues](https://img.shields.io/github/issues/Tsoympet/PARTHENON-CHAIN)](https://github.com/Tsoympet/PARTHENON-CHAIN/issues)
 [![Security Policy](https://img.shields.io/badge/Security-Policy-orange)](doc/security/security-overview.md)
 [![Audit Status](https://img.shields.io/badge/Audit-In%20preparation-blueviolet)](doc/security/audit-guide.md)
 [![Discussions](https://img.shields.io/badge/Discussions-join-blue.svg)](#community--support)
@@ -41,11 +41,11 @@ Always verify signatures and checksums before running binaries.
 
 ## Downloads & Installation
 
-- **Latest downloads:** [GitHub Releases](https://github.com/Tsoympet/BlockChainDrachma/releases) (tar.gz/AppImage for Linux, `.zip`/`.exe` for Windows, `.dmg` for macOS).
+- **Latest downloads:** [GitHub Releases](https://github.com/Tsoympet/PARTHENON-CHAIN/releases) (tar.gz/AppImage for Linux, `.zip`/`.exe` for Windows, `.dmg` for macOS).
 - **Install from source:** Use the convenient Makefile (similar to Bitcoin Core):
   ```bash
-  git clone https://github.com/Tsoympet/BlockChainDrachma.git
-  cd BlockChainDrachma
+  git clone https://github.com/Tsoympet/PARTHENON-CHAIN.git
+  cd PARTHENON-CHAIN
   make
   sudo make install
   ```
@@ -66,8 +66,8 @@ Always verify signatures and checksums before running binaries.
 **Option 1: Simple Installation (Recommended)**
 ```bash
 # Clone the repository
-git clone https://github.com/Tsoympet/BlockChainDrachma.git
-cd BlockChainDrachma
+git clone https://github.com/Tsoympet/PARTHENON-CHAIN.git
+cd PARTHENON-CHAIN
 
 # Build and install (Linux/macOS)
 make
@@ -83,8 +83,8 @@ sudo make install
 1. **Install prerequisites:** CMake (>=3.18), a C++17 toolchain, OpenSSL, Boost, and system dependencies for your OS. For GPU miners install **CUDA** or **OpenCL** SDKs and matching drivers.
 2. **Clone and configure the build:**
    ```bash
-   git clone https://github.com/Tsoympet/BlockChainDrachma.git
-   cd BlockChainDrachma
+   git clone https://github.com/Tsoympet/PARTHENON-CHAIN.git
+   cd PARTHENON-CHAIN
    cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
    ```
 3. **Compile:**
@@ -477,7 +477,7 @@ Remaining hardening items and edge-case gaps are tracked in:
 ## Community & Support
 
 - **Website:** [https://drachma.org](https://drachma.org) (roadmap, binaries, and trusted mirrors)
-- **GitHub Discussions:** [https://github.com/Tsoympet/BlockChainDrachma/discussions](https://github.com/Tsoympet/BlockChainDrachma/discussions)
+- **GitHub Discussions:** [https://github.com/Tsoympet/PARTHENON-CHAIN/discussions](https://github.com/Tsoympet/PARTHENON-CHAIN/discussions)
 - **Matrix (bridged to IRC):** [https://matrix.to/#/#drachma:matrix.org](https://matrix.to/#/#drachma:matrix.org)
 - **Discord:** [https://discord.gg/drachma](https://discord.gg/drachma) (invite placeholder until public launch)
 - **Mailing list:** [mailto:announce@drachma.org](mailto:announce@drachma.org) for release/testnet notices

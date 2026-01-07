@@ -5,7 +5,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
        build-essential cmake git ca-certificates \
-       libssl-dev libboost-all-dev python3 \
+       libssl-dev libboost-all-dev libleveldb-dev python3 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/drachma
