@@ -25,6 +25,8 @@ jobs:
 
       - name: Install Chocolatey
         uses: crazy-max/ghaction-chocolatey@v3
+        with:
+          args: --version
 
       - name: Install OpenSSL
         run: choco install openssl --no-progress
@@ -62,7 +64,7 @@ jobs:
 
   build-macos:
     name: Build macOS Qt Wallet
-    runs-on: macos-12
+    runs-on: macos-13
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -107,7 +109,7 @@ jobs:
 
   build-linux:
     name: Build Linux Qt Wallet
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
