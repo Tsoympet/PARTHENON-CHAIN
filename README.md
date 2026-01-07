@@ -38,7 +38,7 @@ Official binaries are published on the [GitHub Releases page](https://github.com
 - **Linux x86_64** - Ubuntu 20.04+ compatible, statically linked where possible
 - **macOS x86_64** - Intel Macs, macOS 11+
 - **macOS arm64** - Apple Silicon Macs (M1/M2/M3)
-- **Windows x86_64** - Windows 10+ (manual build required currently)
+- **Windows x86_64** - Windows 10+, automated builds available
 
 ### Download & Verify
 
@@ -114,7 +114,7 @@ Available platforms:
 - Linux x86_64 (Ubuntu 20.04+ compatible)
 - macOS x86_64 (Intel Macs)
 - macOS arm64 (Apple Silicon)
-- Windows x86_64 (build from source or use WSL)
+- Windows x86_64 (Windows 10+)
 
 Quick install:
 ```bash
