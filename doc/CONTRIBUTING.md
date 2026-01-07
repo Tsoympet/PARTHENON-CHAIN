@@ -62,6 +62,29 @@ Consensus, cryptography, and wallet key-handling changes require extra scrutiny:
 - For networking or miner changes, include reproducible test vectors or pcap/log snippets when possible.
 - Document any platform-specific test coverage (e.g., macOS/Windows/Linux) and simulator/emulator use.
 
+### Code Coverage
+
+This project uses **gcovr** for C++ code coverage analysis, not Python's coverage.py. To generate coverage reports locally:
+
+```bash
+# Install gcovr (if not already installed)
+sudo apt-get install gcovr  # Ubuntu/Debian
+# or
+pip install gcovr           # Via pip
+
+# Build with coverage enabled
+cmake -S . -B build-cov -DCMAKE_BUILD_TYPE=Debug -DDRACHMA_COVERAGE=ON
+cmake --build build-cov --parallel
+
+# Run tests
+ctest --test-dir build-cov --output-on-failure
+
+# Generate coverage report
+gcovr --root . --object-directory build-cov --print-summary
+```
+
+The CI workflow automatically generates coverage reports and uploads them to Codecov. View the coverage status using the Codecov badge in the main [README.md](../../README.md).
+
 ## Commit Guidelines
 
 - Use descriptive commit messages (e.g., `layer1: tighten block header checks`).

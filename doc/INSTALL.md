@@ -96,7 +96,9 @@ CMake options:
 - `DRACHMA_BUILD_TESTS` - Build test executables (default: ON)
 - `DRACHMA_BUILD_GUI` - Build Qt desktop wallet (default: OFF)
 - `DRACHMA_ENABLE_OPENCL` - Enable OpenCL GPU miner (default: OFF)
-- `DRACHMA_COVERAGE` - Enable coverage instrumentation (default: OFF)
+- `DRACHMA_COVERAGE` - Enable coverage instrumentation using gcovr (default: OFF)
+
+**Note:** For code coverage, this project uses **gcovr** (C++ coverage tool), not Python's coverage.py. Install gcovr with `sudo apt-get install gcovr` or `pip install gcovr`.
 
 Example:
 ```bash
