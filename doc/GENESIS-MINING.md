@@ -87,6 +87,7 @@ The testnet uses placeholder genesis values that are regenerated when needed:
 You can verify the genesis block parameters using the included verification script:
 
 ```bash
+# The script is written in Python 3 but has .sh extension for convenience
 python3 scripts/verify-genesis.sh
 ```
 

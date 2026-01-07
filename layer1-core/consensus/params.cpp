@@ -21,7 +21,7 @@ static Params mainParams {
     false,             // no min-difficulty blocks
     1740787200,        // genesis time (2025-03-01 00:00:00 UTC)
     0x1e0fffff,        // initial difficulty
-    2437501,           // mainnet genesis nonce (mined)
+    2437501,           // mainnet genesis nonce (mined for 2025-03-01 launch)
     "DRACHMA: Proof before trust",
     {},                // checkpoints
     DEFAULT_THRESHOLD,
