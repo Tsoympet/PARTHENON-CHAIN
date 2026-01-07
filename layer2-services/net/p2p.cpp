@@ -275,8 +275,10 @@ void P2PNetwork::LoadDNSSeeds()
                     AddPeerAddress(host + ":" + std::to_string(port));
                 }
             }
-        } catch (...) {
-            // ignore missing file
+        } catch (const boost::property_tree::ptree_error& e) {
+            // ignore missing or malformed seed file
+        } catch (const std::exception& e) {
+            // ignore other errors loading seed file
         }
     }
 }

@@ -213,7 +213,11 @@ void StratumClient::HandleDifficulty(const boost::property_tree::ptree& msg)
         auto params = msg.get_child("params");
         currentDifficulty_ = params.front().second.get_value<double>();
         std::cout << "Difficulty updated to " << currentDifficulty_ << std::endl;
-    } catch (...) {
+    } catch (const boost::property_tree::ptree_error& e) {
+        std::cerr << "Failed to parse difficulty: " << e.what() << ", using default 1.0\n";
+        currentDifficulty_ = 1.0;
+    } catch (const std::exception& e) {
+        std::cerr << "Error updating difficulty: " << e.what() << ", using default 1.0\n";
         currentDifficulty_ = 1.0;
     }
 }

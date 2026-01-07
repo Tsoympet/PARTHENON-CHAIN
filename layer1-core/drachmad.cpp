@@ -60,7 +60,11 @@ Config ParseArgs(int argc, char* argv[])
                 try {
                     out = static_cast<T>(std::stoul(arg.substr(prefix.size())));
                     return true;
-                } catch (...) {
+                } catch (const std::invalid_argument& e) {
+                    std::cerr << "Invalid numeric value for " << prefix << ": " << e.what() << "\n";
+                    return false;
+                } catch (const std::out_of_range& e) {
+                    std::cerr << "Numeric value out of range for " << prefix << ": " << e.what() << "\n";
                     return false;
                 }
             }

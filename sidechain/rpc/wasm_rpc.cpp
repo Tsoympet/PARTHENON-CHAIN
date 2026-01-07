@@ -74,7 +74,9 @@ bool Deserialize(const std::vector<uint8_t>& data, NftRecord& out) {
     try {
         out.mint_height = std::stoull(parts[4]);
         out.royalty_bps = static_cast<uint16_t>(std::stoul(parts[5]));
-    } catch (...) {
+    } catch (const std::invalid_argument& e) {
+        return false;
+    } catch (const std::out_of_range& e) {
         return false;
     }
     return true;
@@ -119,7 +121,9 @@ bool DeserializeListing(const std::vector<uint8_t>& bytes, Listing& out) {
         out.asset = static_cast<uint8_t>(std::stoul(parts[1]));
         out.price = std::stoull(parts[2]);
         out.height = std::stoull(parts[3]);
-    } catch (...) {
+    } catch (const std::invalid_argument& e) {
+        return false;
+    } catch (const std::out_of_range& e) {
         return false;
     }
     return true;
@@ -141,7 +145,9 @@ bool DeserializeBid(const std::vector<uint8_t>& bytes, Bid& out) {
         out.asset = static_cast<uint8_t>(std::stoul(parts[1]));
         out.price = std::stoull(parts[2]);
         out.height = std::stoull(parts[3]);
-    } catch (...) {
+    } catch (const std::invalid_argument& e) {
+        return false;
+    } catch (const std::out_of_range& e) {
         return false;
     }
     return true;
@@ -159,7 +165,9 @@ uint64_t DecodeAmount(const std::vector<uint8_t>& bytes) {
     if (bytes.empty()) return 0;
     try {
         return std::stoull(std::string(bytes.begin(), bytes.end()));
-    } catch (...) {
+    } catch (const std::invalid_argument& e) {
+        return 0;
+    } catch (const std::out_of_range& e) {
         return 0;
     }
 }

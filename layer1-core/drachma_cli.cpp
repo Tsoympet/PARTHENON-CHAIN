@@ -25,8 +25,11 @@ int main(int argc, char* argv[])
         else if (arg.rfind("-rpcport=", 0) == 0) {
             try {
                 port = static_cast<uint16_t>(std::stoul(arg.substr(9)));
-            } catch (...) {
-                std::cerr << "Invalid rpcport value\n";
+            } catch (const std::invalid_argument& e) {
+                std::cerr << "Invalid rpcport value: not a number\n";
+                return 1;
+            } catch (const std::out_of_range& e) {
+                std::cerr << "Invalid rpcport value: out of range\n";
                 return 1;
             }
         }

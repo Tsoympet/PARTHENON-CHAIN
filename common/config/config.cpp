@@ -67,7 +67,9 @@ uint16_t ToPort(const std::string& s, uint16_t fallback)
         if (v <= 0 || v > 65535)
             throw std::out_of_range("port range");
         return static_cast<uint16_t>(v);
-    } catch (...) {
+    } catch (const std::invalid_argument& e) {
+        return fallback;
+    } catch (const std::out_of_range& e) {
         return fallback;
     }
 }

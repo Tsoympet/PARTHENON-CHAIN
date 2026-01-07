@@ -200,7 +200,11 @@ static Block DeserializeBlock(const std::vector<uint8_t>& buf)
         offset += len;
         try {
             block.transactions.push_back(DeserializeTransaction(txBytes));
-        } catch (...) {
+        } catch (const std::runtime_error& e) {
+            // Invalid transaction in block - skip and continue
+            break;
+        } catch (const std::exception& e) {
+            // Other deserialization error - skip and continue
             break;
         }
     }
@@ -245,7 +249,10 @@ void RPCServer::AttachCoreHandlers(mempool::Mempool& pool, wallet::WalletBackend
                 out = candidate;
                 return true;
             }
-        } catch (...) {
+        } catch (const std::invalid_argument& e) {
+            // Not a valid number
+        } catch (const std::out_of_range& e) {
+            // Number out of range
         }
         return false;
     };
@@ -306,7 +313,13 @@ void RPCServer::AttachCoreHandlers(mempool::Mempool& pool, wallet::WalletBackend
 
     Register("estimatefee", [&pool](const std::string& params) {
         size_t percentile = 50;
-        try { percentile = std::stoul(TrimQuotes(params)); } catch (...) {}
+        try { 
+            percentile = std::stoul(TrimQuotes(params)); 
+        } catch (const std::invalid_argument& e) {
+            // Use default percentile if invalid
+        } catch (const std::out_of_range& e) {
+            // Use default percentile if out of range
+        }
         return std::to_string(pool.EstimateFeeRate(percentile));
     });
 
@@ -638,7 +651,8 @@ bool RPCServer::CheckAuth(const std::string& header) const
         decoded.resize(boost::beast::detail::base64::decoded_size(encoded.size()));
         auto len = boost::beast::detail::base64::decode(&decoded[0], encoded.data(), encoded.size());
         decoded.resize(len.first);
-    } catch (...) {
+    } catch (const std::exception& e) {
+        // Base64 decode failed
         return false;
     }
     auto pos = decoded.find(':');
