@@ -40,6 +40,12 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 
 find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
+
+# Boost handling for compatibility with both old and new versions
+# For Boost 1.73+, set CMP0167 to allow native BoostConfig
+if(POLICY CMP0167)
+    cmake_policy(SET CMP0167 NEW)
+endif()
 find_package(Boost REQUIRED COMPONENTS system)
 find_package(CUDAToolkit QUIET)
 if(DRACHMA_ENABLE_OPENCL)
@@ -225,7 +231,7 @@ endif()
 # Optional Qt GUI (off by default to avoid toolchain requirement in CI)
 if(DRACHMA_BUILD_GUI)
     set(CMAKE_AUTOMOC ON)
-    find_package(Qt6 COMPONENTS Widgets Network WebEngineWidgets QUIET)
+    find_package(Qt6 COMPONENTS Widgets Network WebEngineWidgets REQUIRED)
     find_package(OpenSSL REQUIRED)
 
     set(DRACHMA_QT_RESOURCES)
@@ -237,14 +243,8 @@ if(DRACHMA_BUILD_GUI)
         ${CMAKE_CURRENT_SOURCE_DIR}/layer3-app/qt/nftgallery.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/layer3-app/qt/dappbrowser.cpp)
     set(DRACHMA_QT_QRC ${CMAKE_CURRENT_SOURCE_DIR}/layer3-app/resources/icons.qrc)
-    if(Qt6_FOUND)
-        qt_add_resources(DRACHMA_QT_RESOURCES ${DRACHMA_QT_QRC})
-        list(APPEND DRACHMA_QT_LIBS Qt6::Widgets Qt6::Network Qt6::WebEngineWidgets)
-    else()
-        find_package(Qt5 COMPONENTS Widgets Network WebEngineWidgets REQUIRED)
-        qt5_add_resources(DRACHMA_QT_RESOURCES ${DRACHMA_QT_QRC})
-        list(APPEND DRACHMA_QT_LIBS Qt5::Widgets Qt5::Network Qt5::WebEngineWidgets)
-    endif()
+    qt_add_resources(DRACHMA_QT_RESOURCES ${DRACHMA_QT_QRC})
+    set(DRACHMA_QT_LIBS Qt6::Widgets Qt6::Network Qt6::WebEngineWidgets)
 
     add_executable(drachma_qt ${DRACHMA_QT_SOURCES} ${DRACHMA_QT_RESOURCES})
     target_include_directories(drachma_qt PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/layer1-core ${CMAKE_CURRENT_SOURCE_DIR}/layer2-services)
