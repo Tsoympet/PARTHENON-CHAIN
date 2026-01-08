@@ -28,19 +28,23 @@ jobs:
         with:
           args: --version
 
-      - name: Install OpenSSL
-        run: choco install openssl --no-progress
-
       - name: Install CMake
         run: choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' --no-progress
 
-      - name: Install Boost
-        run: choco install boost-msvc-14.3 --no-progress
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: 'a42af01b72c28a8e1d7b48107b33e4f286a55ef6'
+
+      - name: Install dependencies via vcpkg
+        run: |
+          vcpkg install openssl:x64-windows boost-system:x64-windows leveldb:x64-windows
 
       - name: Configure CMake
         run: |
           cmake -S . -B build -G "Visual Studio 17 2022" -A x64 `
-            -DOPENSSL_ROOT_DIR="C:/Program Files/OpenSSL-Win64" `
+            -DCMAKE_TOOLCHAIN_FILE="${env:VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET=x64-windows `
             -DCMAKE_BUILD_TYPE=Release `
             -DDRACHMA_BUILD_TESTS=OFF `
             -DDRACHMA_BUILD_GUI=ON `
@@ -83,12 +87,19 @@ jobs:
 
       - name: Configure CMake
         run: |
+          # Find Boost CMake config directory
+          BOOST_CMAKE_DIR=$(find $(brew --prefix boost)/lib/cmake -name "Boost-*" -type d | head -n1)
+          if [ -z "$BOOST_CMAKE_DIR" ]; then
+            echo "Error: Could not find Boost CMake config directory"
+            exit 1
+          fi
           cmake -S . -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DDRACHMA_BUILD_TESTS=OFF \
             -DDRACHMA_BUILD_GUI=ON \
             -DOPENSSL_ROOT_DIR=$(brew --prefix openssl@3) \
-            -DBoost_INCLUDE_DIR=$(brew --prefix boost)/include \
+            -DBoost_NO_BOOST_CMAKE=OFF \
+            -DBoost_DIR="${BOOST_CMAKE_DIR}" \
             -DCMAKE_PREFIX_PATH="${Qt6_DIR}"
 
       - name: Build
