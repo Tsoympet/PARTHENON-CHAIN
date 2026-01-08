@@ -129,7 +129,8 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y \
-            cmake ninja-build libssl-dev libboost-all-dev libleveldb-dev
+            cmake ninja-build libssl-dev libboost-all-dev libleveldb-dev \
+            qt6-webengine-dev qt6-webengine-dev-tools
 
       - name: Configure CMake
         run: |
