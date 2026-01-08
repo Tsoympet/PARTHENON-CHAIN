@@ -21,7 +21,7 @@ jobs:
           host: 'windows'
           target: 'desktop'
           arch: 'win64_msvc2019_64'
-          modules: 'qtwebengine qtwebview'
+          modules: 'qtwebengine qtwebchannel qtwebview'
 
       - name: Install Chocolatey
         uses: crazy-max/ghaction-chocolatey@v3
@@ -34,7 +34,7 @@ jobs:
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
         with:
-          vcpkgGitCommitId: 'a42af01b72c28a8e1d7b48107b33e4f286a55ef6'  # 2024.11.16 release
+          vcpkgGitCommitId: '84bab45d415d22042bd0b9081aea57f362da3f35'  # 2025.12.12 release
 
       - name: Install dependencies via vcpkg
         run: |
@@ -79,7 +79,7 @@ jobs:
           version: '6.5.3'
           host: 'mac'
           target: 'desktop'
-          modules: 'qtwebengine qtwebview'
+          modules: 'qtwebengine qtwebchannel qtwebview'
 
       - name: Install dependencies
         run: |
@@ -98,7 +98,7 @@ jobs:
             -DDRACHMA_BUILD_TESTS=OFF \
             -DDRACHMA_BUILD_GUI=ON \
             -DOPENSSL_ROOT_DIR=$(brew --prefix openssl@3) \
-            -DBoost_NO_BOOST_CMAKE=OFF \
+            -DBoost_NO_BOOST_CMAKE=ON \
             -DBoost_DIR="${BOOST_CMAKE_DIR}" \
             -DCMAKE_PREFIX_PATH="${Qt6_DIR}"
 
@@ -131,7 +131,7 @@ jobs:
           version: '6.5.3'
           host: 'linux'
           target: 'desktop'
-          modules: 'qtwebengine qtwebview'
+          modules: 'qtwebengine qtwebchannel qtwebview'
 
       - name: Install dependencies
         run: |
