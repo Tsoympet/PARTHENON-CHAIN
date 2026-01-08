@@ -21,7 +21,7 @@ jobs:
           host: 'windows'
           target: 'desktop'
           arch: 'win64_msvc2019_64'
-          modules: 'qtwebengine qtwebchannel qtwebview'
+          modules: 'qtwebengine qtwebchannel qtwebview qtpositioning qtwebenginecore qtwebenginewidgets'
 
       - name: Install Chocolatey
         uses: crazy-max/ghaction-chocolatey@v3
@@ -79,7 +79,7 @@ jobs:
           version: '6.5.3'
           host: 'mac'
           target: 'desktop'
-          modules: 'qtwebengine qtwebchannel qtwebview'
+          modules: 'qtwebengine qtwebchannel qtwebview qtpositioning qtwebenginecore qtwebenginewidgets'
 
       - name: Install dependencies
         run: |
@@ -124,7 +124,7 @@ jobs:
           version: '6.5.3'
           host: 'linux'
           target: 'desktop'
-          modules: 'qtwebengine qtwebchannel qtwebview'
+          modules: 'qtwebengine qtwebchannel qtwebview qtpositioning qtwebenginecore qtwebenginewidgets'
 
       - name: Install dependencies
         run: |
