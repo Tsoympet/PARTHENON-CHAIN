@@ -12,6 +12,7 @@ A mobile wallet for PARTHENON CHAIN (Drachma) blockchain, supporting iOS and And
 - **Offline Mode**: View balances and generate addresses offline
 - **NFT Gallery**: View and manage NFTs from Layer 2
 - **Staking Interface**: Monitor and manage staking rewards
+- **Mobile Mining**: Specialized lightweight mining for mobile devices (battery-aware, temperature-monitored)
 
 ## Technology Stack
 
@@ -76,6 +77,7 @@ mobile-client/
 │   │   ├── wallet/        # Wallet management
 │   │   ├── rpc/           # RPC client
 │   │   ├── crypto/        # Cryptographic operations
+│   │   ├── mining/        # Mobile mining (specialized, not PC miners)
 │   │   └── storage/       # Secure storage
 │   ├── store/             # Redux store
 │   │   ├── slices/        # Feature slices
@@ -161,6 +163,35 @@ cd android
 ./gradlew assembleRelease
 ```
 
+## Mobile Mining
+
+The mobile wallet includes a **specialized mobile mining implementation** that is fundamentally different from PC miners.
+
+**Key Features:**
+- Battery-aware mining with automatic throttling
+- Temperature monitoring and auto-stop
+- Background/foreground adaptive behavior
+- Optimized for ARM processors (not x86 AVX2/CUDA/OpenCL)
+- Small hash batches with sleep intervals
+
+**Important:** This is NOT the same as PC miners. See [MOBILE_MINING.md](MOBILE_MINING.md) for complete documentation.
+
+### Quick Start
+
+```typescript
+import {MobileMiningService} from './services/mining/MobileMiningService';
+
+const miningService = new MobileMiningService(rpcClient, {
+  enableOnCharging: true,
+  enableOnBattery: false,
+  minBatteryLevel: 30,
+});
+
+await miningService.startMining();
+```
+
+For detailed configuration and usage, see [MOBILE_MINING.md](MOBILE_MINING.md).
+
 ## Features Roadmap
 
 ### Version 0.1.0 (Current)
@@ -172,6 +203,7 @@ cd android
 - [ ] Transaction history
 
 ### Version 0.2.0
+- [ ] Mobile mining (specialized for phones)
 - [ ] NFT gallery and marketplace
 - [ ] Staking interface
 - [ ] Advanced fee estimation

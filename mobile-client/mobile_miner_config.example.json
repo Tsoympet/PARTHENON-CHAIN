@@ -1,0 +1,59 @@
+{
+  "_comment": "PARTHENON CHAIN Mobile Mining Configuration",
+  "_comment2": "This configuration is SPECIALIZED for mobile devices",
+  "_comment3": "DO NOT use this with PC miners (CPU/GPU/CUDA/OpenCL)",
+  "_comment4": "Mobile mining uses fundamentally different approach:",
+  "_comment5": "- Battery-aware throttling",
+  "_comment6": "- Temperature monitoring",
+  "_comment7": "- Small hash batches with sleep intervals",
+  "_comment8": "- ARM processor optimization (not x86/AVX2)",
+  "_comment9": "- Background/foreground adaptive behavior",
+  
+  "enabled": false,
+  
+  "_comment_pool": "Mobile-optimized mining pool settings",
+  "poolUrl": "stratum+tcp://mobile.pool.drachma.org:3334",
+  "workerName": "mobile-miner-1",
+  "poolPassword": "x",
+  
+  "_comment_battery": "Battery and charging settings (mobile-specific)",
+  "maxBatteryDrain": 5,
+  "enableOnBattery": false,
+  "enableOnCharging": true,
+  "minBatteryLevel": 30,
+  
+  "_comment_thermal": "Temperature limits (mobile-specific)",
+  "maxTemperature": 40,
+  
+  "_comment_performance": "Mobile-optimized performance settings",
+  "_comment_performance2": "Note: hashBatchSize is much smaller than PC miners (100 vs 1024+)",
+  "hashBatchSize": 100,
+  "sleepBetweenBatches": 100,
+  
+  "_comment_background": "Background mining settings",
+  "lowPowerMode": true,
+  "backgroundHashBatchSize": 10,
+  
+  "_comparison": {
+    "_note": "Key differences from PC miners:",
+    "mobile": {
+      "hashBatchSize": 100,
+      "sleepBetweenBatches": "100ms",
+      "threads": "single or minimal",
+      "optimization": "ARM processors",
+      "features": ["battery monitoring", "temperature monitoring", "background throttling"]
+    },
+    "pc_cpu": {
+      "hashBatchSize": "1024-4096",
+      "sleepBetweenBatches": "0ms (continuous)",
+      "threads": "4-32 (multi-core)",
+      "optimization": "x86 AVX2",
+      "features": ["multi-threading", "SIMD optimizations"]
+    },
+    "pc_gpu": {
+      "hashBatchSize": "millions per kernel",
+      "optimization": "CUDA/OpenCL",
+      "features": ["GPU acceleration", "parallel processing"]
+    }
+  }
+}
