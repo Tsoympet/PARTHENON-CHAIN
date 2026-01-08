@@ -87,19 +87,19 @@ jobs:
 
       - name: Configure CMake
         run: |
-          # Find Boost CMake config directory
-          BOOST_CMAKE_DIR=$(find $(brew --prefix boost)/lib/cmake -name "Boost-*" -type d | head -n1)
-          if [ -z "$BOOST_CMAKE_DIR" ]; then
-            echo "Error: Could not find Boost CMake config directory"
-            exit 1
-          fi
+          # Set Boost paths
+          BOOST_ROOT=$(brew --prefix boost)
+          BOOST_INCLUDE_DIR="${BOOST_ROOT}/include"
+          
           cmake -S . -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DDRACHMA_BUILD_TESTS=OFF \
             -DDRACHMA_BUILD_GUI=ON \
             -DOPENSSL_ROOT_DIR=$(brew --prefix openssl@3) \
+            -DBOOST_ROOT="${BOOST_ROOT}" \
+            -DBoost_INCLUDE_DIR="${BOOST_INCLUDE_DIR}" \
             -DBoost_NO_BOOST_CMAKE=ON \
-            -DBoost_DIR="${BOOST_CMAKE_DIR}" \
+            -DBoost_NO_SYSTEM_PATHS=OFF \
             -DCMAKE_PREFIX_PATH="${Qt6_DIR}"
 
       - name: Build
