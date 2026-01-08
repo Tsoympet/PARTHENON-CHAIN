@@ -222,14 +222,6 @@ if(DRACHMA_ENABLE_OPENCL AND OpenCL_FOUND)
     target_compile_definitions(drachma_opencl_miner PRIVATE CL_TARGET_OPENCL_VERSION=120)
 endif()
 
-if(DRACHMA_BUILD_GUI)
-    find_package(Qt5 COMPONENTS Widgets Network Gui REQUIRED)
-    add_executable(drachma_wallet
-        layer3-app/qt/main.cpp)
-    target_link_libraries(drachma_wallet PRIVATE Qt5::Widgets Qt5::Network Qt5::Gui)
-    target_compile_definitions(drachma_wallet PRIVATE QT_NO_KEYWORDS)
-endif()
-
 # Optional Qt GUI (off by default to avoid toolchain requirement in CI)
 if(DRACHMA_BUILD_GUI)
     set(CMAKE_AUTOMOC ON)
