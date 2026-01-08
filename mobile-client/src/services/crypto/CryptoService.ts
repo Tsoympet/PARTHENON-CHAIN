@@ -95,10 +95,10 @@ export class CryptoService {
     if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
       crypto.getRandomValues(bytes);
     } else {
-      // Fallback for environments without crypto
-      for (let i = 0; i < length; i++) {
-        bytes[i] = Math.floor(Math.random() * 256);
-      }
+      // Fail fast if no secure random source is available
+      throw new Error(
+        'No secure random number generator available. Please ensure react-native-get-random-values is properly configured.'
+      );
     }
     return bytes;
   }

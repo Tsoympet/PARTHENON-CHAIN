@@ -4,15 +4,7 @@
 
 import React from 'react';
 import {View, Text, StyleSheet, TouchableOpacity} from 'react-native';
-
-export interface Transaction {
-  id: string;
-  type: 'send' | 'receive';
-  amount: string;
-  address: string;
-  timestamp: number;
-  status: 'pending' | 'confirmed' | 'failed';
-}
+import {Transaction} from '@types';
 
 interface TransactionItemProps {
   transaction: Transaction;
@@ -30,6 +22,8 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
       : transaction.status === 'pending'
       ? '#FFC107'
       : '#DC3545';
+  
+  const displayAddress = isSend ? transaction.to : transaction.from;
 
   return (
     <TouchableOpacity
@@ -39,7 +33,7 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
       <View style={styles.left}>
         <Text style={styles.type}>{isSend ? '↑ Sent' : '↓ Received'}</Text>
         <Text style={styles.address}>
-          {transaction.address.slice(0, 10)}...
+          {displayAddress.slice(0, 10)}...
         </Text>
       </View>
       <View style={styles.right}>

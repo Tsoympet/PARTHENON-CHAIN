@@ -4,23 +4,26 @@
 
 import React from 'react';
 import {View, Text, StyleSheet, FlatList, SafeAreaView} from 'react-native';
-import {TransactionItem, Transaction} from '@components';
+import {TransactionItem} from '@components';
+import {Transaction} from '@types';
 
 // Mock data - replace with Redux state
 const mockTransactions: Transaction[] = [
   {
     id: '1',
     type: 'receive',
+    from: 'drm1234567890abcdef',
+    to: 'drm0000000000000000',
     amount: '100.00',
-    address: 'drm1234567890abcdef',
     timestamp: Date.now() - 3600000,
     status: 'confirmed',
   },
   {
     id: '2',
     type: 'send',
+    from: 'drm0000000000000000',
+    to: 'drm0987654321fedcba',
     amount: '50.00',
-    address: 'drm0987654321fedcba',
     timestamp: Date.now() - 7200000,
     status: 'confirmed',
   },
