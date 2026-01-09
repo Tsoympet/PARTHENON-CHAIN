@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" role="img" aria-label="TLN Talanton">
+  <defs>
+    <linearGradient id="bronzeTLNDark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f4a460"/>
+      <stop offset="50%" stop-color="#cd7f32"/>
+      <stop offset="100%" stop-color="#8b5a00"/>
+    </linearGradient>
+  </defs>
+  <circle cx="12" cy="12" r="11" fill="#654321" stroke="#6b4423" stroke-width="0.6"/>
+  <circle cx="12" cy="12" r="9.2" fill="url(#bronzeTLNDark)" stroke="#f4c542" stroke-width="0.8"/>
+  <!-- Balance scales - symbol of weighing talent -->
+  <g transform="translate(12, 11)">
+    <rect x="-5" y="-0.5" width="10" height="1" fill="#4a3000"/>
+    <path d="M -4 0 L -5.5 2.5 L -2.5 2.5 Z" fill="#6b4423" stroke="#4a3000" stroke-width="0.4"/>
+    <path d="M 4 0 L 2.5 2.5 L 5.5 2.5 Z" fill="#6b4423" stroke="#4a3000" stroke-width="0.4"/>
+    <rect x="-0.4" y="-3.5" width="0.8" height="4" fill="#4a3000"/>
+    <line x1="-4" y1="0" x2="-4" y2="2" stroke="#4a3000" stroke-width="0.3"/>
+    <line x1="4" y1="0" x2="4" y2="2" stroke="#4a3000" stroke-width="0.3"/>
+  </g>
+  <text x="12" y="21.5" font-family="'Noto Sans', 'Segoe UI', sans-serif" font-size="3" text-anchor="middle" fill="#2a1800" font-weight="600" letter-spacing="0.2">TLN</text>
+  <circle cx="12" cy="12" r="10.3" fill="none" stroke="#e0b070" stroke-width="0.4" stroke-dasharray="0.5 0.9"/>
+</svg>
