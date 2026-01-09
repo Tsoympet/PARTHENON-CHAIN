@@ -8,7 +8,7 @@ Lottie animations provide smooth, lightweight animations exported from After Eff
 
 ## Current Status
 
-This directory is a placeholder. Animations will be added as the UI is developed.
+This directory contains the initial animation set used by the wallet UI.
 
 ## Planned Animations
 

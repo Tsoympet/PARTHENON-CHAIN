@@ -3,17 +3,14 @@ const reactNativePackagesToTransform = [
   'react-native',
   '@react-native',
   '@react-navigation',
-  'react-native-vector-icons',
   'react-native-svg',
   'react-native-qrcode-svg',
-  'react-native-mmkv',
-  'react-native-keychain',
-  'react-native-biometrics',
-  'react-native-get-random-values',
+  'expo',
+  '@expo',
 ];
 
 module.exports = {
-  preset: 'react-native',
+  preset: 'jest-expo',
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   setupFiles: ['<rootDir>/jest.setup.js'],
   transformIgnorePatterns: [

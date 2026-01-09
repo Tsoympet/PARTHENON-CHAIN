@@ -4,7 +4,8 @@ This directory contains custom fonts for the Drachma Mobile Wallet.
 
 ## Included Fonts
 
-Currently, this directory is a placeholder. Custom fonts will be added as needed.
+The mobile client currently relies on system fonts for performance and consistency.
+Custom font files can be added here when brand typography is finalized.
 
 ## Recommended Fonts
 
@@ -17,8 +18,8 @@ Currently, this directory is a placeholder. Custom fonts will be added as needed
 To add custom fonts:
 
 1. Place font files (.ttf, .otf) in this directory
-2. Update `react-native.config.js` to include custom fonts
-3. Run `npx react-native-asset` to link fonts
+2. Add the font paths to the Expo config (`app.json` or `app.config.js`)
+3. Run `expo prebuild` if you need native projects
 4. Reference fonts in styles by family name
 
 ## Guidelines

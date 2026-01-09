@@ -2,43 +2,59 @@
  * Home Screen
  */
 
-import React from 'react';
-import {View, Text, StyleSheet, ScrollView, SafeAreaView} from 'react-native';
+import React, {useMemo} from 'react';
+import {ScrollView, SafeAreaView, StyleSheet, Text, View} from 'react-native';
+import {useNavigation} from '@react-navigation/native';
 import {useSelector} from 'react-redux';
 import {RootState} from '@store';
 import {BalanceCard, Button} from '@components';
+import LottieView from 'lottie-react-native';
 
 export const HomeScreen: React.FC = () => {
-  const {balance, address} = useSelector((state: RootState) => state.wallet);
+  const navigation = useNavigation();
+  const {currentAddress, balances} = useSelector((state: RootState) => state.wallet);
+  const drmBalance = useMemo(
+    () => balances.find(balance => balance.assetId === 'drm'),
+    [balances]
+  );
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>Drachma Wallet</Text>
+
+        <View style={styles.animationContainer}>
+          <LottieView
+            source={require('../../../assets/animations/mining-active.json')}
+            autoPlay
+            loop
+            style={styles.animation}
+          />
+        </View>
         
-        <BalanceCard 
-          balance={balance || '0.00'} 
-          currency="DRACHMA"
+        <BalanceCard
+          balance={(drmBalance?.balance ?? 0).toFixed(4)}
+          currency="DRM"
         />
 
         <View style={styles.actions}>
           <Button 
             title="Send" 
-            onPress={() => {}} 
+            onPress={() => navigation.navigate('Send' as never)} 
             style={styles.actionButton}
           />
           <Button 
             title="Receive" 
-            onPress={() => {}} 
+            onPress={() => navigation.navigate('Receive' as never)} 
             style={styles.actionButton}
             variant="outline"
           />
         </View>
 
-        {address && (
+        {currentAddress && (
           <View style={styles.addressSection}>
             <Text style={styles.sectionTitle}>Your Address</Text>
-            <Text style={styles.address}>{address}</Text>
+            <Text style={styles.address}>{currentAddress}</Text>
           </View>
         )}
       </ScrollView>
@@ -60,6 +76,14 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 24,
     textAlign: 'center',
+  },
+  animationContainer: {
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  animation: {
+    width: 120,
+    height: 120,
   },
   actions: {
     flexDirection: 'row',

@@ -19,13 +19,22 @@ export interface WalletData {
 
 export interface WalletState {
   isInitialized: boolean;
-  isLocked: boolean;
   currentAddress: string | null;
-  accounts: WalletAccount[];
-  balance: string;
-  address: string | null;
+  balances: AssetBalance[];
+  transactions: TransactionSummary[];
   isLoading: boolean;
   error: string | null;
+}
+
+export interface TransactionSummary {
+  id: string;
+  txid?: string;
+  type: 'send' | 'receive';
+  amount: string;
+  assetId: string;
+  confirmations: number;
+  timestamp: number;
+  address: string;
 }
 
 export interface AssetBalance {

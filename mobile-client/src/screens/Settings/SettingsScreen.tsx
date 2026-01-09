@@ -5,6 +5,7 @@
 import React from 'react';
 import {View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity} from 'react-native';
 import {Card, Button} from '@components';
+import {APP_CONFIG} from '@constants';
 
 interface SettingItemProps {
   title: string;
@@ -36,7 +37,7 @@ export const SettingsScreen: React.FC = () => {
           />
           <SettingItem
             title="Security"
-            subtitle="Biometrics, PIN"
+            subtitle="Device passcode and app lock"
             onPress={() => console.log('Security settings')}
           />
         </View>
@@ -59,7 +60,7 @@ export const SettingsScreen: React.FC = () => {
           <Text style={styles.sectionTitle}>About</Text>
           <SettingItem
             title="Version"
-            subtitle="0.1.0"
+            subtitle={APP_CONFIG.APP_VERSION}
             onPress={() => console.log('Version info')}
           />
           <SettingItem

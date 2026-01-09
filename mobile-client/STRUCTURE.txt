@@ -1,0 +1,319 @@
+mobile-client/
+├── .env.example
+├── .eslintrc.js
+├── .gitignore
+├── .prettierrc.js
+├── App.tsx
+├── COMPLETION_SUMMARY.md
+├── ICONS.md
+├── MOBILE_MINING.md
+├── README.md
+├── SETUP.md
+├── STRUCTURE.md
+├── STRUCTURE.txt
+├── app.json
+├── babel.config.js
+├── index.js
+├── jest.config.js
+├── jest.setup.js
+├── metro.config.js
+├── mobile_miner_config.example.json
+├── package.json
+├── tsconfig.json
+├── types.d.ts
+├── __mocks__/
+│   └── svgMock.js
+├── __tests__/
+│   ├── README.md
+│   ├── components.test.tsx
+│   ├── crypto.test.ts
+│   ├── integration.test.tsx
+│   ├── screens.test.tsx
+│   └── utils.test.ts
+├── android/
+│   ├── README.md
+│   ├── app/
+│   │   └── src/
+│   │       └── main/
+│   │           └── AndroidManifest.xml
+│   ├── build.gradle
+│   └── gradle.properties
+├── assets/
+│   ├── README.md
+│   ├── animations/
+│   │   ├── README.md
+│   │   ├── error.json
+│   │   ├── loading.json
+│   │   ├── mining-active.json
+│   │   ├── success.json
+│   │   ├── transaction-sent.json
+│   │   └── wallet-created.json
+│   ├── fonts/
+│   │   └── README.md
+│   ├── icons/
+│   │   ├── assets/
+│   │   │   ├── asset-drm.svg
+│   │   │   ├── asset-obl.svg
+│   │   │   └── asset-tln.svg
+│   │   ├── core/
+│   │   │   ├── app-icon.svg
+│   │   │   ├── splash-icon.svg
+│   │   │   └── tray-icon.svg
+│   │   ├── nft/
+│   │   │   ├── nft-default.svg
+│   │   │   ├── nft-hero.svg
+│   │   │   ├── nft-monument.svg
+│   │   │   ├── nft-mythology.svg
+│   │   │   └── nft-symbol.svg
+│   │   └── ui/
+│   │       ├── address-book.svg
+│   │       ├── app_icon.svg
+│   │       ├── asset-drm.svg
+│   │       ├── asset-obl.svg
+│   │       ├── asset-tln.svg
+│   │       ├── backup.svg
+│   │       ├── balance.svg
+│   │       ├── block.svg
+│   │       ├── cpu.svg
+│   │       ├── dark/
+│   │       │   ├── address-book.svg
+│   │       │   ├── app_icon.svg
+│   │       │   ├── asset-drm.svg
+│   │       │   ├── asset-obl.svg
+│   │       │   ├── asset-tln.svg
+│   │       │   ├── backup.svg
+│   │       │   ├── balance.svg
+│   │       │   ├── block.svg
+│   │       │   ├── cpu.svg
+│   │       │   ├── difficulty.svg
+│   │       │   ├── disk.svg
+│   │       │   ├── error.svg
+│   │       │   ├── hash.svg
+│   │       │   ├── history.svg
+│   │       │   ├── info.svg
+│   │       │   ├── key.svg
+│   │       │   ├── lock.svg
+│   │       │   ├── log.svg
+│   │       │   ├── logo.svg
+│   │       │   ├── mempool.svg
+│   │       │   ├── memory.svg
+│   │       │   ├── mining.svg
+│   │       │   ├── network-connected.svg
+│   │       │   ├── network-disconnected.svg
+│   │       │   ├── network.svg
+│   │       │   ├── peers.svg
+│   │       │   ├── qr.svg
+│   │       │   ├── receive.svg
+│   │       │   ├── restore.svg
+│   │       │   ├── rewards.svg
+│   │       │   ├── security.svg
+│   │       │   ├── send.svg
+│   │       │   ├── settings.svg
+│   │       │   ├── shield.svg
+│   │       │   ├── stake-active.svg
+│   │       │   ├── stake-inactive.svg
+│   │       │   ├── staking.svg
+│   │       │   ├── status-connected.svg
+│   │       │   ├── status-disconnected.svg
+│   │       │   ├── sync.svg
+│   │       │   ├── synced.svg
+│   │       │   ├── transactions.svg
+│   │       │   ├── tx-confirmed.svg
+│   │       │   ├── tx-failed.svg
+│   │       │   ├── tx-in.svg
+│   │       │   ├── tx-out.svg
+│   │       │   ├── tx-pending.svg
+│   │       │   ├── unlock.svg
+│   │       │   ├── validator.svg
+│   │       │   ├── wallet.svg
+│   │       │   └── warning.svg
+│   │       ├── difficulty.svg
+│   │       ├── disk.svg
+│   │       ├── error.svg
+│   │       ├── hash.svg
+│   │       ├── history.svg
+│   │       ├── info.svg
+│   │       ├── key.svg
+│   │       ├── light/
+│   │       │   ├── address-book.svg
+│   │       │   ├── app_icon.svg
+│   │       │   ├── asset-drm.svg
+│   │       │   ├── asset-obl.svg
+│   │       │   ├── asset-tln.svg
+│   │       │   ├── backup.svg
+│   │       │   ├── balance.svg
+│   │       │   ├── block.svg
+│   │       │   ├── cpu.svg
+│   │       │   ├── difficulty.svg
+│   │       │   ├── disk.svg
+│   │       │   ├── error.svg
+│   │       │   ├── hash.svg
+│   │       │   ├── history.svg
+│   │       │   ├── info.svg
+│   │       │   ├── key.svg
+│   │       │   ├── lock.svg
+│   │       │   ├── log.svg
+│   │       │   ├── logo.svg
+│   │       │   ├── mempool.svg
+│   │       │   ├── memory.svg
+│   │       │   ├── mining.svg
+│   │       │   ├── network-connected.svg
+│   │       │   ├── network-disconnected.svg
+│   │       │   ├── network.svg
+│   │       │   ├── peers.svg
+│   │       │   ├── qr.svg
+│   │       │   ├── receive.svg
+│   │       │   ├── restore.svg
+│   │       │   ├── rewards.svg
+│   │       │   ├── security.svg
+│   │       │   ├── send.svg
+│   │       │   ├── settings.svg
+│   │       │   ├── shield.svg
+│   │       │   ├── stake-active.svg
+│   │       │   ├── stake-inactive.svg
+│   │       │   ├── staking.svg
+│   │       │   ├── status-connected.svg
+│   │       │   ├── status-disconnected.svg
+│   │       │   ├── sync.svg
+│   │       │   ├── synced.svg
+│   │       │   ├── transactions.svg
+│   │       │   ├── tx-confirmed.svg
+│   │       │   ├── tx-failed.svg
+│   │       │   ├── tx-in.svg
+│   │       │   ├── tx-out.svg
+│   │       │   ├── tx-pending.svg
+│   │       │   ├── unlock.svg
+│   │       │   ├── validator.svg
+│   │       │   ├── wallet.svg
+│   │       │   └── warning.svg
+│   │       ├── lock.svg
+│   │       ├── log.svg
+│   │       ├── logo.svg
+│   │       ├── mempool.svg
+│   │       ├── memory.svg
+│   │       ├── mining.svg
+│   │       ├── network-connected.svg
+│   │       ├── network-disconnected.svg
+│   │       ├── network.svg
+│   │       ├── peers.svg
+│   │       ├── qr.svg
+│   │       ├── receive.svg
+│   │       ├── restore.svg
+│   │       ├── rewards.svg
+│   │       ├── security.svg
+│   │       ├── send.svg
+│   │       ├── settings.svg
+│   │       ├── shield.svg
+│   │       ├── stake-active.svg
+│   │       ├── stake-inactive.svg
+│   │       ├── staking.svg
+│   │       ├── status-connected.svg
+│   │       ├── status-disconnected.svg
+│   │       ├── sync.svg
+│   │       ├── synced.svg
+│   │       ├── transactions.svg
+│   │       ├── tx-confirmed.svg
+│   │       ├── tx-failed.svg
+│   │       ├── tx-in.svg
+│   │       ├── tx-out.svg
+│   │       ├── tx-pending.svg
+│   │       ├── unlock.svg
+│   │       ├── validator.svg
+│   │       ├── wallet-32.png
+│   │       ├── wallet-64.png
+│   │       ├── wallet.png
+│   │       └── warning.svg
+│   ├── images/
+│   │   └── README.md
+│   └── README.md
+├── ios/
+│   ├── DrachmaMobileWallet/
+│   │   ├── AppDelegate.h
+│   │   ├── AppDelegate.m
+│   │   ├── Info.plist
+│   │   └── main.m
+│   ├── Podfile
+│   └── README.md
+└── src/
+    ├── components/
+    │   ├── common/
+    │   │   ├── Button.tsx
+    │   │   ├── Card.tsx
+    │   │   ├── Input.tsx
+    │   │   └── index.ts
+    │   ├── nft/
+    │   │   ├── NFTCard.tsx
+    │   │   ├── NFTGallery.tsx
+    │   │   └── index.ts
+    │   ├── wallet/
+    │   │   ├── AddressDisplay.tsx
+    │   │   ├── BalanceCard.tsx
+    │   │   ├── TransactionItem.tsx
+    │   │   └── index.ts
+    │   └── index.ts
+    ├── constants/
+    │   └── index.ts
+    ├── navigation/
+    │   └── AppNavigator.tsx
+    ├── screens/
+    │   ├── Home/
+    │   │   ├── HomeScreen.tsx
+    │   │   └── index.ts
+    │   ├── Wallet/
+    │   │   ├── WalletScreen.tsx
+    │   │   └── index.ts
+    │   ├── NFT/
+    │   │   ├── NFTScreen.tsx
+    │   │   └── index.ts
+    │   ├── Receive/
+    │   │   ├── ReceiveScreen.tsx
+    │   │   └── index.ts
+    │   ├── Send/
+    │   │   ├── SendScreen.tsx
+    │   │   └── index.ts
+    │   ├── Settings/
+    │   │   ├── SettingsScreen.tsx
+    │   │   └── index.ts
+    │   ├── Transactions/
+    │   │   ├── TransactionsScreen.tsx
+    │   │   └── index.ts
+    │   └── index.ts
+    ├── services/
+    │   ├── crypto/
+    │   │   ├── CryptoService.ts
+    │   │   └── index.ts
+    │   ├── mining/
+    │   │   ├── MobileMiningService.ts
+    │   │   └── index.ts
+    │   ├── rpc/
+    │   │   ├── RPCClient.ts
+    │   │   └── index.ts
+    │   ├── storage/
+    │   │   ├── SecureStorage.ts
+    │   │   └── index.ts
+    │   ├── wallet/
+    │   │   ├── WalletService.ts
+    │   │   └── index.ts
+    │   └── index.ts
+    ├── store/
+    │   ├── middleware/
+    │   │   ├── index.ts
+    │   │   ├── logger.ts
+    │   │   └── persist.ts
+    │   ├── slices/
+    │   │   ├── index.ts
+    │   │   ├── miningSlice.ts
+    │   │   ├── networkSlice.ts
+    │   │   └── walletSlice.ts
+    │   └── index.ts
+    ├── types/
+    │   ├── index.ts
+    │   ├── mining.ts
+    │   ├── network.ts
+    │   ├── nft.ts
+    │   ├── transaction.ts
+    │   └── wallet.ts
+    └── utils/
+        ├── format.ts
+        ├── index.ts
+        └── validation.ts

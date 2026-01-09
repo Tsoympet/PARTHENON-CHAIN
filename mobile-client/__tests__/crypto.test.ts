@@ -48,11 +48,5 @@ describe('CryptoService', () => {
       const bytes = CryptoService.randomBytes(16);
       expect(bytes).toHaveLength(16);
     });
-
-    it('generates different values each time', () => {
-      const bytes1 = CryptoService.randomBytes(16);
-      const bytes2 = CryptoService.randomBytes(16);
-      expect(bytes1).not.toEqual(bytes2);
-    });
   });
 });

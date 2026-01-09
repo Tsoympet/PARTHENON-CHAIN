@@ -11,13 +11,12 @@ ios/
 │   ├── AppDelegate.m
 │   ├── Info.plist
 │   └── main.m
-├── DrachmaMobileWallet.xcodeproj/
 └── Podfile
 ```
 
 ## Building
 
-To build the iOS app:
+To build the iOS app after running `expo prebuild`:
 
 ```bash
 cd ios

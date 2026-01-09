@@ -3,35 +3,16 @@
  */
 
 import React from 'react';
-import {View, Text, StyleSheet, FlatList, SafeAreaView} from 'react-native';
+import {FlatList, SafeAreaView, StyleSheet, Text, View} from 'react-native';
+import {useSelector} from 'react-redux';
 import {TransactionItem} from '@components';
+import {RootState} from '@store';
 import {Transaction} from '@types';
 
-// Mock data - replace with Redux state
-const mockTransactions: Transaction[] = [
-  {
-    id: '1',
-    type: 'receive',
-    from: 'drm1234567890abcdef',
-    to: 'drm0000000000000000',
-    amount: '100.00',
-    timestamp: Date.now() - 3600000,
-    status: 'confirmed',
-  },
-  {
-    id: '2',
-    type: 'send',
-    from: 'drm0000000000000000',
-    to: 'drm0987654321fedcba',
-    amount: '50.00',
-    timestamp: Date.now() - 7200000,
-    status: 'confirmed',
-  },
-];
-
 export const TransactionsScreen: React.FC = () => {
+  const transactions = useSelector((state: RootState) => state.wallet.transactions);
+
   const handleTransactionPress = (transaction: Transaction) => {
-    // TODO: Navigate to transaction details
     console.log('Transaction pressed:', transaction.id);
   };
 
@@ -41,7 +22,7 @@ export const TransactionsScreen: React.FC = () => {
         <Text style={styles.title}>Transactions</Text>
       </View>
       <FlatList
-        data={mockTransactions}
+        data={transactions}
         renderItem={({item}) => (
           <TransactionItem
             transaction={item}

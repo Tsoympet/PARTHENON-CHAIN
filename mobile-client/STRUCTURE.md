@@ -8,123 +8,8 @@ The mobile client is built with React Native and TypeScript, following a modular
 
 ## Directory Structure
 
-```
-mobile-client/
-├── src/
-│   ├── components/        # Reusable UI components
-│   │   ├── common/        # Buttons, inputs, cards
-│   │   │   ├── Button.tsx
-│   │   │   ├── Input.tsx
-│   │   │   ├── Card.tsx
-│   │   │   └── index.ts
-│   │   ├── wallet/        # Wallet-specific components
-│   │   │   ├── BalanceCard.tsx
-│   │   │   ├── AddressDisplay.tsx
-│   │   │   ├── TransactionItem.tsx
-│   │   │   └── index.ts
-│   │   ├── nft/           # NFT gallery components
-│   │   │   ├── NFTCard.tsx
-│   │   │   ├── NFTGallery.tsx
-│   │   │   └── index.ts
-│   │   └── index.ts
-│   ├── screens/           # App screens
-│   │   ├── Home/          # Home screen with balance overview
-│   │   │   ├── HomeScreen.tsx
-│   │   │   └── index.ts
-│   │   ├── Send/          # Send transaction screen
-│   │   │   ├── SendScreen.tsx
-│   │   │   └── index.ts
-│   │   ├── Receive/       # Receive screen with QR code
-│   │   │   ├── ReceiveScreen.tsx
-│   │   │   └── index.ts
-│   │   ├── Transactions/  # Transaction history
-│   │   │   ├── TransactionsScreen.tsx
-│   │   │   └── index.ts
-│   │   ├── Settings/      # App settings
-│   │   │   ├── SettingsScreen.tsx
-│   │   │   └── index.ts
-│   │   ├── NFT/           # NFT gallery view
-│   │   │   ├── NFTScreen.tsx
-│   │   │   └── index.ts
-│   │   └── index.ts
-│   ├── navigation/        # Navigation configuration
-│   │   └── AppNavigator.tsx
-│   ├── services/          # Business logic
-│   │   ├── wallet/        # Wallet management (BIP39, key derivation)
-│   │   │   ├── WalletService.ts
-│   │   │   └── index.ts
-│   │   ├── rpc/           # RPC client for blockchain interaction
-│   │   │   ├── RPCClient.ts
-│   │   │   └── index.ts
-│   │   ├── crypto/        # Cryptographic operations (signing, hashing)
-│   │   │   ├── CryptoService.ts
-│   │   │   └── index.ts
-│   │   ├── mining/        # Mobile mining (specialized, not PC miners)
-│   │   │   ├── MobileMiningService.ts
-│   │   │   └── index.ts
-│   │   ├── storage/       # Secure storage (MMKV, Keychain)
-│   │   │   ├── SecureStorage.ts
-│   │   │   └── index.ts
-│   │   └── index.ts
-│   ├── store/             # Redux store
-│   │   ├── slices/        # Feature slices (wallet, network, mining)
-│   │   │   ├── walletSlice.ts
-│   │   │   ├── networkSlice.ts
-│   │   │   ├── miningSlice.ts
-│   │   │   └── index.ts
-│   │   ├── middleware/    # Custom middleware (logger, persist)
-│   │   │   ├── logger.ts
-│   │   │   ├── persist.ts
-│   │   │   └── index.ts
-│   │   └── index.ts
-│   ├── utils/             # Utility functions
-│   │   ├── format.ts      # Formatting utilities
-│   │   ├── validation.ts  # Validation utilities
-│   │   └── index.ts
-│   ├── constants/         # App constants
-│   │   └── index.ts       # Network configs, error messages, etc.
-│   └── types/             # TypeScript types
-│       ├── wallet.ts
-│       ├── network.ts
-│       ├── transaction.ts
-│       ├── mining.ts
-│       ├── nft.ts
-│       └── index.ts
-├── android/               # Android native code
-│   ├── app/
-│   │   └── src/
-│   │       └── main/
-│   │           ├── AndroidManifest.xml
-│   │           ├── java/
-│   │           └── res/
-│   ├── build.gradle
-│   └── gradle.properties
-├── ios/                   # iOS native code
-│   ├── DrachmaMobileWallet/
-│   │   ├── AppDelegate.h
-│   │   ├── AppDelegate.m
-│   │   ├── Info.plist
-│   │   └── main.m
-│   ├── DrachmaMobileWallet.xcodeproj/
-│   └── Podfile
-├── assets/                # Images, fonts, etc.
-│   ├── icons/            # Icon sets
-│   │   ├── core/        # Core app icons (app-icon, splash, tray)
-│   │   ├── assets/      # Asset type icons (TLN, DRM, OBL)
-│   │   ├── nft/         # NFT-related icons
-│   │   └── ui/          # UI icons for wallet features
-│   │       ├── light/   # Light theme variants
-│   │       └── dark/    # Dark theme variants
-│   ├── images/          # App images and graphics (placeholder)
-│   ├── fonts/           # Custom fonts (placeholder)
-│   └── animations/      # Lottie animations (placeholder)
-└── __tests__/            # Test files
-    ├── components.test.tsx  # Component tests
-    ├── utils.test.ts        # Utility function tests
-    ├── crypto.test.ts       # Cryptographic service tests
-    ├── screens.test.tsx     # Screen component tests
-    └── integration.test.tsx # Integration tests
-```
+The full, generated file tree is stored in `STRUCTURE.txt` so the listing reflects the
+real files rather than a hand-maintained Markdown block.
 
 ## Key Features
 
@@ -147,11 +32,12 @@ mobile-client/
 ### Screens
 
 1. **Home**: Balance overview and quick actions
-2. **Send**: Transaction creation form
-3. **Receive**: Address display with QR code
-4. **Transactions**: Transaction history list
-5. **Settings**: App configuration and security settings
-6. **NFT**: NFT gallery view
+2. **Wallet**: Account creation, address, and balances
+3. **Send**: Transaction creation form
+4. **Receive**: Address display with QR code
+5. **Transactions**: Transaction history list
+6. **Settings**: App configuration and security settings
+7. **NFT**: NFT gallery view
 
 ### Services
 
@@ -159,7 +45,7 @@ mobile-client/
 - **RPCClient**: Blockchain communication (balance queries, transaction submission)
 - **CryptoService**: Cryptographic primitives (Schnorr/ECDSA signatures, hashing)
 - **MobileMiningService**: Mobile-optimized mining (battery-aware, background mode)
-- **SecureStorage**: Encrypted storage using MMKV and Keychain
+- **SecureStorage**: Encrypted storage using Expo SecureStore
 
 ### State Management
 
@@ -224,8 +110,8 @@ npm test
 
 ## Security Considerations
 
-- Private keys stored in secure storage (Keychain on iOS, Keystore on Android)
-- Sensitive data encrypted using MMKV
+- Private keys stored in secure storage (Expo SecureStore)
+- Sensitive data encrypted using platform keychain/keystore
 - BIP39 mnemonic generation with proper entropy
 - Schnorr signatures for transactions
 - Input validation and sanitization
@@ -233,7 +119,7 @@ npm test
 ## Next Steps
 
 1. Implement QR code scanning for address input
-2. Add biometric authentication
+2. Add secure app lock and quick unlock flow
 3. Implement real-time balance updates
 4. Add transaction notifications
 5. Implement NFT metadata fetching

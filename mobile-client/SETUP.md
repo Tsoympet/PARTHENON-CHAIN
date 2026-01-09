@@ -13,7 +13,6 @@ Before you begin, ensure you have the following installed:
 
 ### iOS Development (macOS only)
 - **Xcode** 14.x or later
-- **CocoaPods** 1.11.x or later
 - **iOS Simulator** or physical iOS device
 
 ### Android Development
@@ -60,35 +59,17 @@ MOBILE_MINING_ENABLED=false
 
 ### 4. Platform-Specific Setup
 
-#### iOS Setup
+Expo handles native configuration through prebuild when needed:
 
 ```bash
-cd ios
-pod install
-cd ..
+npm run prebuild
 ```
-
-If you encounter issues with CocoaPods, try:
-
-```bash
-cd ios
-pod deintegrate
-pod install
-cd ..
-```
-
-#### Android Setup
-
-1. Open Android Studio
-2. File > Open > Select `mobile-client/android` directory
-3. Wait for Gradle sync to complete
-4. Download any missing SDK components if prompted
 
 ## Running the App
 
-### Start Metro Bundler
+### Start Expo
 
-In a terminal, start the Metro bundler:
+In a terminal, start the Expo dev server:
 
 ```bash
 npm start
@@ -106,12 +87,6 @@ In a new terminal:
 npm run ios
 # or
 yarn ios
-```
-
-To run on a specific simulator:
-
-```bash
-npx react-native run-ios --simulator="iPhone 14 Pro"
 ```
 
 ### Run on Android
@@ -172,32 +147,32 @@ To manually reload:
 
 ## Debugging
 
-### React Native Debugger
+### React Native Debugger (Optional)
 
 1. Install React Native Debugger:
    ```bash
    brew install --cask react-native-debugger  # macOS
    ```
 
-2. Start the debugger (make sure it's running on port 8081)
+2. Start the debugger
 3. In the app, open the developer menu and select "Debug"
 
 ### Chrome DevTools
 
 1. In the app, open the developer menu
-2. Select "Debug JS Remotely"
-3. Chrome will open at `http://localhost:8081/debugger-ui/`
+2. Select "Open JS debugger"
+3. Chrome will open the devtools panel
 
 ### Native Debugging
 
 #### iOS
-1. Open `ios/DrachmaWallet.xcworkspace` in Xcode
-2. Set breakpoints in native code
+1. Run `npm run prebuild`
+2. Open `ios/DrachmaWallet.xcworkspace` in Xcode
 3. Run the app from Xcode
 
 #### Android
-1. Open `android/` in Android Studio
-2. Set breakpoints in native code
+1. Run `npm run prebuild`
+2. Open `android/` in Android Studio
 3. Run the app from Android Studio
 
 ## Troubleshooting

@@ -6,6 +6,7 @@
 
 import {secp256k1} from '@noble/secp256k1';
 import {Buffer} from 'buffer';
+import * as Random from 'expo-random';
 
 export class CryptoService {
   /**
@@ -90,17 +91,7 @@ export class CryptoService {
    * Generate secure random bytes
    */
   static randomBytes(length: number): Uint8Array {
-    const bytes = new Uint8Array(length);
-    // Use crypto.getRandomValues in browser or crypto.randomBytes in Node
-    if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-      crypto.getRandomValues(bytes);
-    } else {
-      // Fail fast if no secure random source is available
-      throw new Error(
-        'No secure random number generator available. Please ensure react-native-get-random-values is properly configured.'
-      );
-    }
-    return bytes;
+    return Random.getRandomBytes(length);
   }
 }
 
