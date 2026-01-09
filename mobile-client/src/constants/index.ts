@@ -66,6 +66,33 @@ export const ASSETS = {
 } as const;
 
 /**
+ * Local NFT Metadata (offline gallery)
+ */
+export const LOCAL_NFTS = [
+  {
+    id: 'nft-0001',
+    name: 'Parthenon Dawn',
+    tokenId: '0001',
+    collection: 'Genesis Collection',
+    description: 'Golden sunrise over the Parthenon, minted for early supporters.',
+  },
+  {
+    id: 'nft-0042',
+    name: 'Drachma Relic',
+    tokenId: '0042',
+    collection: 'Historical Series',
+    description: 'An illustrated relic representing the birth of the Drachma chain.',
+  },
+  {
+    id: 'nft-0100',
+    name: 'Obol Constellation',
+    tokenId: '0100',
+    collection: 'Celestial Archive',
+    description: 'A constellation map tied to the Obol staking cycle.',
+  },
+] as const;
+
+/**
  * Transaction Fee Tiers
  */
 export const FEE_TIERS = {
@@ -107,7 +134,7 @@ export const ERROR_MESSAGES = {
  */
 export const APP_CONFIG = {
   APP_NAME: 'Drachma Mobile Wallet',
-  APP_VERSION: '0.1.0',
+  APP_VERSION: '0.2.0',
   MIN_CONFIRMATIONS: 6,
   DEFAULT_TIMEOUT: 30000,
   MAX_RETRY_ATTEMPTS: 3,
@@ -119,7 +146,7 @@ export const APP_CONFIG = {
  * Wallet Configuration
  */
 export const WALLET_CONFIG = {
-  DERIVATION_PATH: "m/44'/0'/0'/0",
+  DERIVATION_PATH: "m/44'/9001'/0'/0",
   DEFAULT_ACCOUNT_INDEX: 0,
   MNEMONIC_STRENGTH: 256, // 24 words
   ADDRESS_PREFIX: 'drm',

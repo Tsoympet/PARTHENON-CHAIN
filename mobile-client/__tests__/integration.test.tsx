@@ -5,22 +5,9 @@
  * services, and the Redux store.
  */
 
-import React from 'react';
-import {render, fireEvent, waitFor} from '@testing-library/react-native';
-import {Provider} from 'react-redux';
-import {configureStore} from '@reduxjs/toolkit';
 import {WalletService} from '../src/services/wallet/WalletService';
 import {RPCClient} from '../src/services/rpc/RPCClient';
 import {SecureStorage} from '../src/services/storage/SecureStorage';
-import {walletReducer, networkReducer, miningReducer} from '../src/store/slices';
-import {HomeScreen} from '../src/screens/Home/HomeScreen';
-
-// Mock navigation
-const mockNavigation = {
-  navigate: jest.fn(),
-  goBack: jest.fn(),
-  setOptions: jest.fn(),
-};
 
 // Mock services
 jest.mock('../src/services/wallet/WalletService');
@@ -28,19 +15,10 @@ jest.mock('../src/services/rpc/RPCClient');
 jest.mock('../src/services/storage/SecureStorage');
 
 describe('Wallet Integration Tests', () => {
-  let store: any;
   let walletService: WalletService;
   let rpcClient: RPCClient;
 
   beforeEach(() => {
-    store = configureStore({
-      reducer: {
-        wallet: walletReducer,
-        network: networkReducer,
-        mining: miningReducer,
-      },
-    });
-
     walletService = new WalletService();
     rpcClient = new RPCClient({url: 'https://testnet.drachma.org'});
   });

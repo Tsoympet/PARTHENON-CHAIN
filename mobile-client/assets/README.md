@@ -13,9 +13,9 @@ assets/
 │   └── ui/                  # UI icons for wallet features
 │       ├── light/           # Light theme variants
 │       └── dark/            # Dark theme variants
-├── images/                  # App images and graphics (placeholder)
-├── fonts/                   # Custom fonts (placeholder)
-└── animations/              # Lottie animations (placeholder)
+├── images/                  # App images and graphics
+├── fonts/                   # Custom fonts
+└── animations/              # Lottie animations
 ```
 
 ## Icon Categories
@@ -31,7 +31,7 @@ assets/
 - **asset-obl.svg**: Obolos (OBL) token icon
 
 ### NFT Icons (`icons/nft/`)
-- **nft-default.svg**: Default NFT placeholder
+- **nft-default.svg**: Default NFT fallback
 - **nft-hero.svg**: Hero-themed NFT icon
 - **nft-monument.svg**: Monument-themed NFT icon
 - **nft-mythology.svg**: Mythology-themed NFT icon
@@ -94,17 +94,14 @@ import SendIcon from './assets/icons/ui/send.svg';
 <SvgXml xml={SendIcon} width={24} height={24} />
 ```
 
-### Using with react-native-vector-icons
+### Using with @expo/vector-icons
 
-For themed icons, dynamically load based on theme:
+For UI icons from the Expo icon set:
 
 ```typescript
-import { useColorScheme } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
-const theme = useColorScheme();
-const iconPath = theme === 'dark' 
-  ? './assets/icons/ui/dark/wallet.svg'
-  : './assets/icons/ui/light/wallet.svg';
+<Ionicons name="wallet-outline" size={24} color="#333" />
 ```
 
 ## Image Guidelines
@@ -118,9 +115,9 @@ const iconPath = theme === 'dark'
   - Provide @2x and @3x versions for different screen densities
   - Place in `images/` directory
   
-- **Fonts**: Custom fonts go in `fonts/` directory
-  - Include all required font weights
-  - Update `react-native.config.js` to link fonts
+  - **Fonts**: Custom fonts go in `fonts/` directory
+    - Include all required font weights
+    - Register fonts in `app.json` or via Expo config plugins
   
 - **Animations**: Lottie JSON files go in `animations/` directory
   - Use for onboarding, loading states, success/error states
@@ -129,7 +126,7 @@ const iconPath = theme === 'dark'
 
 1. **Icons**: Add to appropriate subdirectory under `icons/`
 2. **Images**: Add to `images/` with @2x and @3x variants
-3. **Fonts**: Add to `fonts/` and configure in project
+3. **Fonts**: Add to `fonts/` and update Expo config
 4. **Animations**: Add Lottie JSON to `animations/`
 
 ## Asset Optimization

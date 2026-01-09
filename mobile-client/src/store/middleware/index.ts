@@ -3,4 +3,4 @@
  */
 
 export {loggerMiddleware} from './logger';
-export {persistMiddleware, loadPersistedState} from './persist';
+export {persistConfig} from './persist';

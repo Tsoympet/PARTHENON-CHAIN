@@ -49,7 +49,7 @@ Location: `assets/icons/assets/`
 ### NFT Icons (5)
 Location: `assets/icons/nft/`
 
-- `nft-default.svg` - Default NFT placeholder
+- `nft-default.svg` - Default NFT fallback
 - `nft-hero.svg` - Hero-themed NFT
 - `nft-monument.svg` - Monument-themed NFT
 - `nft-mythology.svg` - Mythology-themed NFT

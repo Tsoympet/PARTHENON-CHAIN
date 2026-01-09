@@ -9,16 +9,14 @@ android/
 ├── app/
 │   └── src/
 │       └── main/
-│           ├── AndroidManifest.xml
-│           ├── java/
-│           └── res/
+│           └── AndroidManifest.xml
 ├── build.gradle
 └── gradle.properties
 ```
 
 ## Building
 
-To build the Android app:
+To build the Android app after running `expo prebuild`:
 
 ```bash
 cd android

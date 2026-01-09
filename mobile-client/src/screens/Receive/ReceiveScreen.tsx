@@ -3,22 +3,26 @@
  */
 
 import React from 'react';
-import {View, Text, StyleSheet, ScrollView, SafeAreaView} from 'react-native';
+import {Share, StyleSheet, ScrollView, SafeAreaView, Text, View} from 'react-native';
 import {useSelector} from 'react-redux';
+import * as Clipboard from 'expo-clipboard';
+import QRCode from 'react-native-qrcode-svg';
 import {RootState} from '@store';
 import {AddressDisplay, Button} from '@components';
 
 export const ReceiveScreen: React.FC = () => {
-  const {address} = useSelector((state: RootState) => state.wallet);
+  const {currentAddress} = useSelector((state: RootState) => state.wallet);
 
-  const handleCopyAddress = () => {
-    // TODO: Copy address to clipboard
-    console.log('Copy address:', address);
+  const handleCopyAddress = async () => {
+    if (!currentAddress) return;
+    await Clipboard.setStringAsync(currentAddress);
   };
 
-  const handleShare = () => {
-    // TODO: Share address
-    console.log('Share address:', address);
+  const handleShare = async () => {
+    if (!currentAddress) return;
+    await Share.share({
+      message: `My Drachma address: ${currentAddress}`,
+    });
   };
 
   return (
@@ -29,16 +33,13 @@ export const ReceiveScreen: React.FC = () => {
           Share your address to receive payments
         </Text>
 
-        {address && (
+        {currentAddress && (
           <>
             <View style={styles.qrContainer}>
-              {/* TODO: Add QR code component */}
-              <View style={styles.qrPlaceholder}>
-                <Text style={styles.qrText}>QR Code</Text>
-              </View>
+              <QRCode value={currentAddress} size={200} testID="qr-code" />
             </View>
 
-            <AddressDisplay address={address} onCopy={handleCopyAddress} />
+            <AddressDisplay address={currentAddress} onCopy={handleCopyAddress} />
 
             <Button
               title="Share Address"
@@ -77,20 +78,6 @@ const styles = StyleSheet.create({
   qrContainer: {
     alignItems: 'center',
     marginVertical: 24,
-  },
-  qrPlaceholder: {
-    width: 200,
-    height: 200,
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#DDD',
-  },
-  qrText: {
-    color: '#999',
-    fontSize: 16,
   },
   shareButton: {
     marginTop: 16,

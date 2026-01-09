@@ -3,23 +3,8 @@
  */
 
 import {createSlice, PayloadAction} from '@reduxjs/toolkit';
-
-export interface AssetBalance {
-  assetId: string;
-  symbol: string;
-  balance: number;
-  usdValue?: number;
-}
-
-export interface Transaction {
-  txid: string;
-  type: 'send' | 'receive';
-  amount: number;
-  assetId: string;
-  confirmations: number;
-  timestamp: number;
-  address: string;
-}
+import {AssetBalance} from '../../types/wallet';
+import {Transaction} from '../../types/transaction';
 
 interface WalletState {
   isInitialized: boolean;
@@ -33,7 +18,11 @@ interface WalletState {
 const initialState: WalletState = {
   isInitialized: false,
   currentAddress: null,
-  balances: [],
+  balances: [
+    {assetId: 'drm', symbol: 'DRM', name: 'Drachma', balance: 0, decimals: 8},
+    {assetId: 'obl', symbol: 'OBL', name: 'Obol', balance: 0, decimals: 8},
+    {assetId: 'tln', symbol: 'TLN', name: 'Talanton', balance: 0, decimals: 8},
+  ],
   transactions: [],
   isLoading: false,
   error: null,

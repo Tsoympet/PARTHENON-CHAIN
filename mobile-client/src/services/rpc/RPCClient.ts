@@ -135,6 +135,18 @@ export class RPCClient {
     return this.call('getblockchaininfo');
   }
 
+  async getBlockTemplate(): Promise<any> {
+    return this.call('getblocktemplate', [{rules: ['segwit']}]);
+  }
+
+  async submitBlockShare(payload: {
+    jobId: string;
+    nonce: number;
+    hashRate: number;
+  }): Promise<boolean> {
+    return this.call('submitblock', [payload]);
+  }
+
   async getStakingInfo(): Promise<any> {
     return this.call('getstakinginfo');
   }

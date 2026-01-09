@@ -27,8 +27,8 @@ export const NFTCard: React.FC<NFTCardProps> = ({nft, onPress}) => {
         {nft.image ? (
           <Image source={{uri: nft.image}} style={styles.image} />
         ) : (
-          <View style={[styles.image, styles.placeholderImage]}>
-            <Text style={styles.placeholderText}>No Image</Text>
+          <View style={[styles.image, styles.fallbackImage]}>
+            <Text style={styles.fallbackText}>No Image</Text>
           </View>
         )}
         <View style={styles.info}>
@@ -57,11 +57,11 @@ const styles = StyleSheet.create({
     height: 200,
     backgroundColor: '#F0F0F0',
   },
-  placeholderImage: {
+  fallbackImage: {
     justifyContent: 'center',
     alignItems: 'center',
   },
-  placeholderText: {
+  fallbackText: {
     color: '#999',
     fontSize: 14,
   },

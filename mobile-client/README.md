@@ -5,23 +5,20 @@ A mobile wallet for PARTHENON CHAIN (Drachma) blockchain, supporting iOS and And
 ## Features
 
 - **Multi-Asset Support**: Manage TLN (Talanton), DRM (Drachma), and OBL (Obolos) assets
-- **Secure Key Management**: Industry-standard HD wallet with BIP39 mnemonic support
-- **Transaction Management**: Send, receive, and track transactions
-- **QR Code Support**: Easy address sharing and scanning
-- **Biometric Authentication**: Fingerprint and Face ID support
-- **Offline Mode**: View balances and generate addresses offline
-- **NFT Gallery**: View and manage NFTs from Layer 2
-- **Staking Interface**: Monitor and manage staking rewards
+- **Secure Key Management**: HD wallet with BIP39 mnemonic support
+- **Transaction Management**: Send, receive, and track transactions locally
+- **QR Code Support**: Address sharing via QR code
+- **NFT Gallery**: Browse local NFT metadata
 - **Mobile Mining**: Specialized lightweight mining for mobile devices (battery-aware, temperature-monitored)
 
 ## Technology Stack
 
-- **Framework**: React Native 0.72+
+- **Framework**: Expo (React Native)
 - **Language**: TypeScript
-- **State Management**: Redux Toolkit
+- **State Management**: Redux Toolkit + redux-persist
 - **Navigation**: React Navigation
-- **Storage**: React Native MMKV (encrypted)
-- **Crypto**: react-native-crypto, @noble/secp256k1
+- **Storage**: Expo SecureStore
+- **Crypto**: @noble/secp256k1, expo-crypto
 - **Networking**: Axios with custom RPC client
 
 ## Prerequisites
@@ -44,16 +41,13 @@ yarn install
 ### iOS Setup
 
 ```bash
-cd ios
-pod install
-cd ..
-npx react-native run-ios
+npm run ios
 ```
 
 ### Android Setup
 
 ```bash
-npx react-native run-android
+npm run android
 ```
 
 ## Project Structure
@@ -71,7 +65,8 @@ mobile-client/
 │   │   ├── Receive/
 │   │   ├── Transactions/
 │   │   ├── Settings/
-│   │   └── NFT/
+│   │   ├── NFT/
+│   │   └── Wallet/
 │   ├── navigation/        # Navigation configuration
 │   ├── services/          # Business logic
 │   │   ├── wallet/        # Wallet management
@@ -93,26 +88,14 @@ mobile-client/
 
 ## Configuration
 
-Create a `.env` file in the mobile-client directory:
-
-```env
-# Network Configuration
-DEFAULT_NETWORK=testnet
-TESTNET_RPC_URL=https://tn1.drachma.org:18332
-MAINNET_RPC_URL=https://node1.drachma.org:8332
-
-# App Configuration
-APP_NAME=Drachma Wallet
-APP_VERSION=0.1.0
-```
+Network and asset settings are defined in `src/constants/index.ts`.
 
 ## Security Features
 
 ### Key Storage
 - Private keys never leave the device
-- Encrypted storage using device keychain/keystore
+- Encrypted storage using Expo SecureStore
 - Optional passphrase protection
-- Biometric authentication for transactions
 
 ### Network Security
 - TLS/SSL for all network communication
@@ -145,23 +128,7 @@ yarn lint
 
 ### Building for Production
 
-#### iOS
-
-```bash
-cd ios
-xcodebuild -workspace DrachmaWallet.xcworkspace \
-  -scheme DrachmaWallet \
-  -configuration Release \
-  -archivePath build/DrachmaWallet.xcarchive \
-  archive
-```
-
-#### Android
-
-```bash
-cd android
-./gradlew assembleRelease
-```
+Use EAS Build or `expo prebuild` to generate native projects, then build with Xcode/Gradle as needed.
 
 ## Mobile Mining
 
@@ -199,7 +166,7 @@ For detailed configuration and usage, see [MOBILE_MINING.md](MOBILE_MINING.md).
 - [x] Send/receive transactions
 - [x] Multi-asset support (TLN/DRM/OBL)
 - [x] QR code scanning
-- [ ] Biometric authentication
+- [ ] Secure app lock and quick unlock
 - [ ] Transaction history
 
 ### Version 0.2.0

@@ -21,7 +21,7 @@ All icons and assets from the main `/assets` directory were copied to `mobile-cl
 - `asset-obl.svg` - Obolos token icon (1,712 bytes)
 
 #### NFT Icons (5 files)
-- `nft-default.svg` - Default NFT placeholder
+- `nft-default.svg` - Default NFT fallback
 - `nft-hero.svg` - Hero-themed NFT
 - `nft-monument.svg` - Monument-themed NFT
 - `nft-mythology.svg` - Mythology-themed NFT
@@ -48,17 +48,17 @@ mobile-client/assets/
 │       ├── (51 base SVG + 3 PNG files)
 │       ├── light/      (51 SVG files)
 │       └── dark/       (51 SVG files)
-├── images/             (empty - placeholder)
-├── fonts/              (empty - placeholder)
-└── animations/         (empty - placeholder)
+├── images/             (usage documented in README)
+├── fonts/              (system fonts by default)
+└── animations/         (initial Lottie set included)
 ```
 
 ### 3. Configuration Files Added
 
-#### React Native Core Config
-- **index.js** - App entry point with AppRegistry
-- **app.json** - App metadata (name, display name)
-- **babel.config.js** - Babel configuration with dotenv plugin
+#### Expo + React Native Core Config
+- **index.js** - App entry point with Expo root registration
+- **app.json** - Expo app metadata and platform configuration
+- **babel.config.js** - Babel configuration for Expo
 - **metro.config.js** - Metro bundler config with SVG transformer support
 
 #### Development Tooling
@@ -69,7 +69,7 @@ mobile-client/assets/
 - **__mocks__/svgMock.js** - SVG mock for tests
 
 #### TypeScript Configuration
-- **types.d.ts** - TypeScript declarations for SVG, images, and @env
+- **types.d.ts** - TypeScript declarations for SVG and images
 - Updated **tsconfig.json** - Added proper includes and typeRoots
 
 #### Environment Configuration
@@ -156,20 +156,14 @@ All UI icons have light and dark variants for proper theme support across iOS an
 13. `__mocks__/svgMock.js` - SVG mock
 14. 167 icon files in `assets/icons/`
 
-## What's NOT Included
+## What's Included
 
-The following directories remain as placeholders (by design):
-- `assets/images/` - For app-specific images (screenshots, photos, etc.)
-- `assets/fonts/` - For custom fonts (if needed)
-- `assets/animations/` - For Lottie animations (onboarding, loaders, etc.)
-- `android/` - Native Android code (requires Android Studio setup)
-- `ios/` - Native iOS code (requires Xcode setup)
-
-These will be populated when:
-1. Specific image assets are designed
-2. Custom fonts are selected
-3. Animations are created
-4. Native modules are developed
+The following directories are ready for use and documented:
+- `assets/images/` - Screenshots and product imagery
+- `assets/fonts/` - Optional custom font files
+- `assets/animations/` - Lottie animations used by the UI
+- `android/` - Native Android configuration for Expo prebuild
+- `ios/` - Native iOS configuration for Expo prebuild
 
 ## Next Steps for Developers
 
@@ -187,7 +181,6 @@ These will be populated when:
 
 3. **iOS Setup** (macOS only)
    ```bash
-   cd ios && pod install && cd ..
    npm run ios
    ```
 
@@ -197,7 +190,7 @@ These will be populated when:
    ```
 
 5. **Development**
-   - Start Metro: `npm start`
+   - Start Expo: `npm start`
    - Run tests: `npm test`
    - Lint code: `npm run lint`
    - Type check: `npm run type-check`
@@ -251,4 +244,3 @@ All assets and code are licensed under MIT License, consistent with the main rep
 **Completed:** January 9, 2026  
 **Version:** 0.1.0  
 **Status:** Ready for Development
-

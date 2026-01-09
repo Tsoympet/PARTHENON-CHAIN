@@ -1,4 +1,36 @@
 {
-  "name": "DrachmaWallet",
-  "displayName": "Drachma Wallet"
+  "expo": {
+    "name": "Drachma Wallet",
+    "slug": "drachma-wallet",
+    "version": "0.2.0",
+    "orientation": "portrait",
+    "icon": "./assets/icons/ui/wallet.png",
+    "scheme": "drachma",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/icons/ui/wallet.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B0B12"
+    },
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "org.parthenon.drachma"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icons/ui/wallet.png",
+        "backgroundColor": "#0B0B12"
+      },
+      "package": "org.parthenon.drachma"
+    },
+    "plugins": [
+      "expo-secure-store"
+    ]
+  }
 }
