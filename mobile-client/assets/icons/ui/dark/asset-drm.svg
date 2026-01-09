@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" role="img" aria-label="DRM Drachma">
+  <defs>
+    <linearGradient id="silverDRMDark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#d8d8d8"/>
+      <stop offset="50%" stop-color="#b0b0b0"/>
+      <stop offset="100%" stop-color="#909090"/>
+    </linearGradient>
+  </defs>
+  <circle cx="12" cy="12" r="11" fill="#7c7c7c" stroke="#6c6c6c" stroke-width="0.6"/>
+  <circle cx="12" cy="12" r="9.2" fill="url(#silverDRMDark)" stroke="#c8c8c8" stroke-width="0.8"/>
+  <!-- Athena's owl - wisdom and vigilance -->
+  <g transform="translate(12, 10)">
+    <!-- Owl body -->
+    <ellipse cx="0" cy="1" rx="3.5" ry="4" fill="#4a4a4a" stroke="#2a2a2a" stroke-width="0.3"/>
+    <!-- Owl eyes (large, characteristic) -->
+    <circle cx="-1.2" cy="0.3" r="1.1" fill="#f0f0f0" stroke="#2a2a2a" stroke-width="0.3"/>
+    <circle cx="1.2" cy="0.3" r="1.1" fill="#f0f0f0" stroke="#2a2a2a" stroke-width="0.3"/>
+    <circle cx="-1.2" cy="0.3" r="0.5" fill="#1a1a1a"/>
+    <circle cx="1.2" cy="0.3" r="0.5" fill="#1a1a1a"/>
+    <!-- Beak -->
+    <path d="M -0.3 1.5 L 0 2.2 L 0.3 1.5 Z" fill="#3a3a3a"/>
+    <!-- Ear tufts -->
+    <path d="M -2.5 -1.5 L -2 -0.5" stroke="#2a2a2a" stroke-width="0.4" fill="none"/>
+    <path d="M 2.5 -1.5 L 2 -0.5" stroke="#2a2a2a" stroke-width="0.4" fill="none"/>
+  </g>
+  <!-- Olive branch accent (peace and prosperity) -->
+  <g transform="translate(18, 16)">
+    <path d="M -1 0 Q -0.5 -0.5 0 0 Q 0.5 0.5 1 0" stroke="#8bad33" stroke-width="0.4" fill="none"/>
+    <ellipse cx="-0.7" cy="-0.3" rx="0.3" ry="0.5" fill="#8bad33"/>
+    <ellipse cx="0.7" cy="0.3" rx="0.3" ry="0.5" fill="#8bad33"/>
+  </g>
+  <text x="12" y="21.5" font-family="'Noto Sans', 'Segoe UI', sans-serif" font-size="3" text-anchor="middle" fill="#1a1a1a" font-weight="600" letter-spacing="0.2">DRM</text>
+  <circle cx="12" cy="12" r="10.3" fill="none" stroke="#d8d8d8" stroke-width="0.4" stroke-dasharray="0.5 0.9"/>
+</svg>

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-label="memory"><g fill="none" stroke="#E5E7EB" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+<rect x="4" y="9" width="16" height="6" rx="1.5"/>
+<path d="M8 9v6"/>
+<path d="M12 9v6"/>
+<path d="M16 9v6"/>
+<path d="M6 15v3"/>
+<path d="M18 15v3"/>
+</g></svg>
