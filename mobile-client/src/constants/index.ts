@@ -154,7 +154,7 @@ export const UI_CONSTANTS = {
  * Regex Patterns
  */
 export const PATTERNS = {
-  ADDRESS: /^drm[0-9a-f]{40,}$/i,
+  ADDRESS: /^drm[0-9a-f]{40,64}$/i,
   PRIVATE_KEY: /^[0-9a-f]{64}$/i,
   TXID: /^[0-9a-f]{64}$/i,
   AMOUNT: /^\d+(\.\d{1,8})?$/,
