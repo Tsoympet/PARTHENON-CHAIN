@@ -346,6 +346,10 @@ if(DRACHMA_BUILD_TESTS)
     target_link_libraries(p2p_multinode_gtest PRIVATE drachma_layer2 GTest::gtest_main)
     gtest_discover_tests(p2p_multinode_gtest)
 
+    add_executable(p2p_seed_dedupe_gtest tests/net/p2p_seed_dedupe_gtest.cpp)
+    target_link_libraries(p2p_seed_dedupe_gtest PRIVATE drachma_layer2 GTest::gtest_main)
+    gtest_discover_tests(p2p_seed_dedupe_gtest)
+
     add_executable(bloom_filter_gtest tests/net/bloom_filter_gtest.cpp)
     target_link_libraries(bloom_filter_gtest PRIVATE drachma_layer2 GTest::gtest_main)
     gtest_discover_tests(bloom_filter_gtest)

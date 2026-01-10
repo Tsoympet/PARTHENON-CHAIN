@@ -194,7 +194,7 @@ std::vector<PeerInfo> P2PNetwork::Peers() const
 void P2PNetwork::AcceptLoop()
 {
     if (m_stopped) return;
-    auto peer = std::make_shared<PeerState>(m_io, PeerInfo{"", "", true});
+    auto peer = std::make_shared<PeerState>(m_io, PeerInfo{"", "", "", true});
     m_acceptor.async_accept(peer->socket, [this, peer](const boost::system::error_code& ec) {
         if (m_stopped) return;
         if (!ec) {
@@ -221,7 +221,8 @@ void P2PNetwork::ConnectSeeds()
         // Build hash set of connected addresses for O(1) lookup
         for (const auto& kv : m_peers) {
             if (kv.second) {
-                connectedAddrs.insert(kv.second->info.id);
+                const auto& info = kv.second->info;
+                connectedAddrs.insert(info.seed_id.empty() ? info.id : info.seed_id);
             }
         }
     }
@@ -234,7 +235,7 @@ void P2PNetwork::ConnectSeeds()
         auto host = addr.substr(0, colon);
         auto port = addr.substr(colon + 1);
         
-        auto peer = std::make_shared<PeerState>(m_io, PeerInfo{"", host, false});
+        auto peer = std::make_shared<PeerState>(m_io, PeerInfo{"", host, addr, false});
         auto resolver = std::make_shared<tcp::resolver>(m_io);
         resolver->async_resolve(host, port, [this, peer, resolver](const boost::system::error_code& ec, tcp::resolver::results_type res) {
             if (m_stopped || ec) return;
@@ -612,4 +613,3 @@ void P2PNetwork::ScheduleHeartbeat()
 }
 
 } // namespace net
-
