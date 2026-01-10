@@ -38,7 +38,7 @@ This guide covers running DRACHMA nodes and the desktop wallet on testnet/mainne
 - **Single node:**
   ```bash
   docker build -t drachma/base -f Dockerfile .
-  docker run --rm -p 19335:19335 -p 18332:18332 drachma/base ./drachmad --network testnet --rpcuser=user --rpcpassword=pass
+  docker run --rm -p 19333:19333 -p 18332:18332 drachma/base ./drachmad --network testnet --rpcuser=user --rpcpassword=pass
   ```
 - **Multi-node with monitoring:**
   ```bash
@@ -49,7 +49,7 @@ This guide covers running DRACHMA nodes and the desktop wallet on testnet/mainne
 
 ## Pre-flight checklist (security & reliability)
 - Run under a dedicated non-root user; avoid exposing RPC on public interfaces.
-- Open firewall only for the chosen P2P port (testnet 19335 / mainnet 9333) and SSH/VPN.
+- Open firewall only for the chosen P2P port (testnet 19333 / mainnet 9333) and SSH/VPN.
 - Use strong RPC credentials and, where possible, TLS termination in front of public endpoints.
 - Keep `checkpoints.json` current and monitor tip age with `scripts/sync-check.sh`.
 - Back up configs and wallets (if applicable) before upgrading. Use `scripts/upgrade-node.sh` for atomic replacements.
