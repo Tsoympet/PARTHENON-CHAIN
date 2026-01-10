@@ -2,10 +2,10 @@
 
 ## Title Options
 - DRACHMA v0.1.0-rc1 — Public Testnet and Signed Binaries
-- Launching DRACHMA Testnet: 42M Cap, Schnorr + PoW, and Open Wallets
+- Launching DRACHMA Testnet: 41M Cap, Schnorr + PoW, and Open Wallets
 
 ## One-liner
-A lean PoW chain with Schnorr signatures, 42M fixed supply, and production-ready testnet infrastructure.
+A lean PoW chain with Schnorr signatures, 41M fixed supply, and production-ready testnet infrastructure.
 
 ## Highlights
 - Signed binaries for Linux/macOS/Windows and reproducible builds
