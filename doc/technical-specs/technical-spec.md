@@ -61,7 +61,7 @@ Supply accumulates asymptotically toward ~42M but consensus validation enforces 
 
 - **Launch Statement:** Human-readable commitment encoded in the genesis coinbase, unspendable by consensus.
 - **Merkle Root:** `4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b` (testnet/mainnet share the same message with different timestamps/targets).
-- **Header Parameters:** version `0x1`, timestamp `1735689600`, bits `0x1d00ffff`, nonce `2084524493` (mainnet draft values; testnet may allow easier targets).
+- **Header Parameters:** version `0x1`, timestamp `1735689600`, bits `0x1e0fffff`, nonce `2084524493` (mainnet draft values; testnet may allow easier targets).
 - **Genesis Hash (mainnet draft):** `0x31fbff9618d6d72ecd673f6ef771a209f0b8ada3d7bb7030b867951a4f4bf521` derived from the above header.
 - **Validation:** Genesis is hardcoded for bootstrapping but subject to the same header validity and proof-of-work checks.
 
@@ -77,7 +77,7 @@ genesis_header_hex = (
     "0000000000000000000000000000000000000000000000000000000000000000"  # prev
     "4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"  # merkle
     "00000000"  # time (replace with mainnet/testnet)
-    "1d00ffff"  # bits
+    "1e0fffff"  # bits
     "7c2bac1d"  # nonce (replace with mainnet/testnet)
 )
 
