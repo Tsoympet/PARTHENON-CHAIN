@@ -91,14 +91,18 @@ For reproducible builds from source:
 ./scripts/reproducible-build.sh
 ```
 
-For Gitian deterministic builds:
+For Gitian deterministic builds (production-grade):
 ```bash
-# See contrib/gitian-descriptors/README.md
-cd gitian-builder
-./bin/gbuild ../PARTHENON-CHAIN/contrib/gitian-descriptors/gitian-linux.yml
+# Automated setup
+./scripts/gitian-setup.sh
+
+# Then build
+cd ~/gitian-builder
+./bin/gbuild --commit parthenon-chain=v0.1.0 \
+    ../PARTHENON-CHAIN/contrib/gitian-descriptors/gitian-linux.yml
 ```
 
-See [Reproducible Builds Guide](doc/reproducible-builds.md) and [Gitian Building](contrib/gitian-descriptors/README.md) for details.
+See [Reproducible Builds Guide](doc/reproducible-builds.md), [Gitian Complete Guide](doc/GITIAN-BUILD-GUIDE.md), and [Gitian Building](contrib/gitian-descriptors/README.md) for details.
 
 ---
 
@@ -335,12 +339,30 @@ The Layer 3 desktop wallet is testnet-ready. Representative views are available 
 - **Dashboard and sync status:** launch `./build/layer3-app/drachma-wallet --connect 127.0.0.1:9333` and use the built-in “Demo Mode” under **Help → Demo Screens** to generate on-demand previews.
 - **Send flow with custom fee selection:** the same demo menu exports a markdown report (`doc/assets/ui-snapshots.md`) describing the send dialog, fee slider, and QR rendering for sharing without embedding binary images in the repository.
 
-## Internal UI Icon System
+## Icon Assets
 
-- Location: `/assets/ui-icons/` (with light/dark variants) supplies the unified icon set consumed by the Qt wallet. Icons are loaded at runtime; nothing is hardcoded or embedded in binaries.
-- Coverage: wallet & funds (wallet/receive/send/balance/address-book/qr), transactions (tx-in/out/pending/confirmed/failed/mempool/history), assets (asset-tln/asset-drm/asset-obl), staking (staking/active/inactive/rewards/lock/unlock/validator), mining (mining/hash/block/difficulty), network (network/peers/sync/synced/warning/error/info/shield), and system (settings/security/key/backup/restore/disk/cpu/memory/log).
-- Core vs asset vs UI icons: **core icons** (e.g., splash/app logo) brand the application, **asset icons** represent specific tokens (DRM/OBL/TLN) where appropriate, while **UI icons** are neutral controls and status glyphs reused across menus, tabs, dialogs, and balance/staking/mining/network indicators.
-- NFT icons live under `/assets/nft-icons/` and are selected dynamically by `canon_category` with a fallback to `nft-default.svg`; the wallet loads them at runtime and never embeds TLN symbols.
+PARTHENON CHAIN includes comprehensive icon assets based on Classical Greek design principles.
+
+### Professional Icons (Production Ready)
+- **Core Icons:** High-quality application, splash, and tray icons featuring Parthenon architecture
+  - `app-icon-pro.svg` (256x256) - Detailed app icon with marble columns and bronze accents
+  - `splash-icon-pro.svg` (512x512) - Monumental splash screen with effects
+  - `tray-icon-pro.svg` (64x64) - Minimalist system tray icon
+- **Asset Icons:** Professional coin designs for TLN (Bronze), DRM (Silver), OBL (Aegean Blue)
+  - Each 128x128 with Classical typography and Greek decorative patterns
+- **Theme:** Marble, Bronze, Silver, Obsidian - reflecting timeless value and order
+
+### Icon System
+- **Location:** `/assets/` with core-icons, icons, ui-icons, and nft-icons subdirectories
+- **Coverage:** 172+ icons including wallet, transactions, assets, staking, mining, network, and system functions
+- **Runtime Loading:** All icons loaded at runtime; nothing hardcoded in binaries
+- **Documentation:** See [Professional Assets Guide](doc/PROFESSIONAL-ASSETS-GUIDE.md) for usage and customization
+
+**Icon Highlights:**
+- Core icons brand the application with Parthenon architecture
+- Asset icons use historically-appropriate metallic themes (Bronze/Silver/Blue)
+- UI icons provide neutral, functional glyphs
+- NFT icons selected dynamically by category with smart fallbacks
 
 ---
 

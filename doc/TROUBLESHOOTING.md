@@ -524,11 +524,13 @@ If your issue isn't covered here:
 
 ### GUI Assets
 
-**Status:** Incomplete (AUDIT.md)
+**Status:** Functional placeholders in place (AUDIT.md)
 
-- Some icons missing
+- Core icons: Functional placeholder SVGs available (app-icon, tray-icon, splash-icon)
+- Asset icons: Basic placeholders for TLN/DRM/OBL
+- Production-ready professional icons recommended before mainnet launch
 - Release-ready installers in development
-- Functional for testing purposes
+- Fully functional for testnet purposes
 
 ---
 
