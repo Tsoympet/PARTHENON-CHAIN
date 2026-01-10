@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- OBL (Obolos) - Aegean Blue themed professional icon -->
+  
+  <defs>
+    <radialGradient id="oblBlue" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" style="stop-color:#6BA8CC;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#4A90B8;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2A5A7A;stop-opacity:1" />
+    </radialGradient>
+    
+    <filter id="coinShadow">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+      <feOffset dx="2" dy="2" result="offsetblur"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.4"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Coin background -->
+  <circle cx="64" cy="64" r="56" fill="url(#oblBlue)" filter="url(#coinShadow)"/>
+  <circle cx="64" cy="64" r="56" fill="none" stroke="#1A3A5A" stroke-width="2" opacity="0.6"/>
+  <circle cx="64" cy="64" r="50" fill="none" stroke="#8BC8E8" stroke-width="1" opacity="0.8"/>
+  
+  <!-- Decorative ring pattern -->
+  <g opacity="0.3" stroke="#1A3A5A" stroke-width="1" fill="none">
+    <circle cx="64" cy="64" r="45"/>
+    <circle cx="64" cy="64" r="42"/>
+  </g>
+  
+  <!-- OBL text in classical style -->
+  <text x="64" y="72" font-family="Georgia, serif" font-size="36" font-weight="bold" 
+        text-anchor="middle" fill="#FFFFFF" opacity="0.95">
+    OBL
+  </text>
+  
+  <!-- Obolos subtitle -->
+  <text x="64" y="90" font-family="Georgia, serif" font-size="10" 
+        text-anchor="middle" fill="#FFFFFF" opacity="0.7" letter-spacing="1">
+    OBOLOS
+  </text>
+  
+  <!-- Greek pattern detail -->
+  <g opacity="0.2">
+    <path d="M 38 30 L 43 30 L 43 25 L 48 25 L 48 30 L 53 30" stroke="#FFFFFF" stroke-width="2" fill="none"/>
+    <path d="M 75 30 L 80 30 L 80 25 L 85 25 L 85 30 L 90 30" stroke="#FFFFFF" stroke-width="2" fill="none"/>
+  </g>
+  
+  <!-- Wave pattern (Aegean sea) -->
+  <g opacity="0.15" stroke="#FFFFFF" stroke-width="2" fill="none">
+    <path d="M 40 35 Q 45 33 50 35 T 60 35 T 70 35 T 80 35 T 88 35"/>
+  </g>
+</svg>

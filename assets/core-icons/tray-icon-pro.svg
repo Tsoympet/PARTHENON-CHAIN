@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <!-- PARTHENON CHAIN Professional Tray Icon -->
+  <!-- Minimalist design for system tray -->
+  
+  <defs>
+    <linearGradient id="trayMarble" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F5F5F0;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#D4D4C8;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="trayBronze" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#D4AF37;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#CD7F32;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Simple Parthenon silhouette for tray -->
+  <g transform="translate(32, 32)">
+    <!-- Columns (simplified, 3 columns) -->
+    <rect x="-16" y="5" width="4" height="16" fill="url(#trayMarble)"/>
+    <rect x="-2" y="5" width="4" height="16" fill="url(#trayMarble)"/>
+    <rect x="12" y="5" width="4" height="16" fill="url(#trayMarble)"/>
+    
+    <!-- Top triangle (pediment) -->
+    <path d="M -20 5 L 0 -8 L 20 5 Z" fill="url(#trayBronze)"/>
+    
+    <!-- Base -->
+    <rect x="-20" y="21" width="40" height="3" fill="url(#trayMarble)"/>
+  </g>
+</svg>

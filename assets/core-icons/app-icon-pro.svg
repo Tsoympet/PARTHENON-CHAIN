@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <!-- PARTHENON CHAIN Professional App Icon -->
+  <!-- Theme: Classical Greece - Marble, Bronze, Silver, Obsidian -->
+  
+  <defs>
+    <!-- Marble gradient for columns -->
+    <linearGradient id="marbleGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FAFAF8;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#E8E8E0;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#D4D4C8;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Bronze gradient for accents -->
+    <linearGradient id="bronzeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#CD7F32;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#B87333;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#996515;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Silver gradient for highlights -->
+    <linearGradient id="silverGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#E8E8E8;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#C0C0C0;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#A8A8A8;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Obsidian background -->
+    <radialGradient id="obsidianGradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#2C2C2E;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1C1C1E;stop-opacity:1" />
+    </radialGradient>
+    
+    <!-- Shadow for depth -->
+    <filter id="columnShadow">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+      <feOffset dx="2" dy="3" result="offsetblur"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.3"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background circle - Obsidian -->
+  <circle cx="128" cy="128" r="118" fill="url(#obsidianGradient)"/>
+  <circle cx="128" cy="128" r="118" fill="none" stroke="url(#bronzeGradient)" stroke-width="4"/>
+  
+  <!-- Parthenon structure -->
+  <g transform="translate(128, 128)" filter="url(#columnShadow)">
+    <!-- Base platform (stylobate) -->
+    <rect x="-85" y="60" width="170" height="8" fill="url(#marbleGradient)" rx="2"/>
+    <rect x="-85" y="68" width="170" height="4" fill="url(#silverGradient)" opacity="0.5"/>
+    
+    <!-- Columns (5 Doric columns) -->
+    <g id="columns">
+      <!-- Column 1 -->
+      <g transform="translate(-68, 0)">
+        <rect x="-6" y="15" width="12" height="45" fill="url(#marbleGradient)" rx="1"/>
+        <rect x="-7" y="12" width="14" height="5" fill="url(#silverGradient)"/>
+        <rect x="-7" y="58" width="14" height="5" fill="url(#silverGradient)"/>
+      </g>
+      
+      <!-- Column 2 -->
+      <g transform="translate(-34, 0)">
+        <rect x="-6" y="15" width="12" height="45" fill="url(#marbleGradient)" rx="1"/>
+        <rect x="-7" y="12" width="14" height="5" fill="url(#silverGradient)"/>
+        <rect x="-7" y="58" width="14" height="5" fill="url(#silverGradient)"/>
+      </g>
+      
+      <!-- Column 3 (Center) -->
+      <g transform="translate(0, 0)">
+        <rect x="-6" y="15" width="12" height="45" fill="url(#marbleGradient)" rx="1"/>
+        <rect x="-7" y="12" width="14" height="5" fill="url(#silverGradient)"/>
+        <rect x="-7" y="58" width="14" height="5" fill="url(#silverGradient)"/>
+      </g>
+      
+      <!-- Column 4 -->
+      <g transform="translate(34, 0)">
+        <rect x="-6" y="15" width="12" height="45" fill="url(#marbleGradient)" rx="1"/>
+        <rect x="-7" y="12" width="14" height="5" fill="url(#silverGradient)"/>
+        <rect x="-7" y="58" width="14" height="5" fill="url(#silverGradient)"/>
+      </g>
+      
+      <!-- Column 5 -->
+      <g transform="translate(68, 0)">
+        <rect x="-6" y="15" width="12" height="45" fill="url(#marbleGradient)" rx="1"/>
+        <rect x="-7" y="12" width="14" height="5" fill="url(#silverGradient)"/>
+        <rect x="-7" y="58" width="14" height="5" fill="url(#silverGradient)"/>
+      </g>
+    </g>
+    
+    <!-- Entablature (top structure) -->
+    <rect x="-88" y="7" width="176" height="6" fill="url(#marbleGradient)"/>
+    
+    <!-- Pediment (triangular top) - Bronze accent -->
+    <path d="M -90 7 L 0 -30 L 90 7 Z" fill="url(#bronzeGradient)" opacity="0.9"/>
+    
+    <!-- Frieze detail (decorative band) -->
+    <rect x="-88" y="3" width="176" height="4" fill="url(#silverGradient)" opacity="0.6"/>
+    
+    <!-- Geometric pattern in pediment -->
+    <g opacity="0.3">
+      <line x1="-60" y1="-10" x2="-40" y2="-10" stroke="#FAFAF8" stroke-width="2"/>
+      <line x1="40" y1="-10" x2="60" y2="-10" stroke="#FAFAF8" stroke-width="2"/>
+      <circle cx="0" cy="-15" r="4" fill="#FAFAF8"/>
+    </g>
+  </g>
+  
+  <!-- Chain/Blockchain element - subtle -->
+  <g opacity="0.15" stroke="url(#silverGradient)" stroke-width="2" fill="none">
+    <circle cx="60" cy="60" r="10"/>
+    <circle cx="80" cy="60" r="10"/>
+    <line x1="70" y1="60" x2="70" y2="60" stroke-width="3"/>
+  </g>
+  
+  <!-- Text label -->
+  <text x="128" y="235" font-family="Georgia, serif" font-size="18" font-weight="bold" 
+        text-anchor="middle" fill="url(#silverGradient)" letter-spacing="2">
+    PARTHENON
+  </text>
+</svg>

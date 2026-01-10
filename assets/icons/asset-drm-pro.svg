@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- DRM (Drachma) - Silver themed professional icon -->
+  
+  <defs>
+    <radialGradient id="drmSilver" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" style="stop-color:#F0F0F0;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#C0C0C0;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#A0A0A0;stop-opacity:1" />
+    </radialGradient>
+    
+    <filter id="coinShadow">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+      <feOffset dx="2" dy="2" result="offsetblur"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.4"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Coin background -->
+  <circle cx="64" cy="64" r="56" fill="url(#drmSilver)" filter="url(#coinShadow)"/>
+  <circle cx="64" cy="64" r="56" fill="none" stroke="#808080" stroke-width="2" opacity="0.6"/>
+  <circle cx="64" cy="64" r="50" fill="none" stroke="#E8E8E8" stroke-width="1" opacity="0.8"/>
+  
+  <!-- Decorative ring pattern -->
+  <g opacity="0.3" stroke="#606060" stroke-width="1" fill="none">
+    <circle cx="64" cy="64" r="45"/>
+    <circle cx="64" cy="64" r="42"/>
+  </g>
+  
+  <!-- DRM text in classical style -->
+  <text x="64" y="72" font-family="Georgia, serif" font-size="34" font-weight="bold" 
+        text-anchor="middle" fill="#2C2C2C" opacity="0.9">
+    DRM
+  </text>
+  
+  <!-- Drachma subtitle -->
+  <text x="64" y="90" font-family="Georgia, serif" font-size="10" 
+        text-anchor="middle" fill="#2C2C2C" opacity="0.6" letter-spacing="1">
+    DRACHMA
+  </text>
+  
+  <!-- Greek pattern detail -->
+  <g opacity="0.2">
+    <path d="M 38 30 L 43 30 L 43 25 L 48 25 L 48 30 L 53 30" stroke="#2C2C2C" stroke-width="2" fill="none"/>
+    <path d="M 75 30 L 80 30 L 80 25 L 85 25 L 85 30 L 90 30" stroke="#2C2C2C" stroke-width="2" fill="none"/>
+  </g>
+  
+  <!-- Owl silhouette (Athena's symbol) -->
+  <g opacity="0.15" fill="#2C2C2C">
+    <circle cx="64" cy="45" r="3"/>
+    <ellipse cx="64" cy="48" rx="5" ry="7"/>
+  </g>
+</svg>
