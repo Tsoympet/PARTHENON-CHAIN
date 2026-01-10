@@ -4,6 +4,7 @@
 #include <boost/beast/version.hpp>
 #include <algorithm>
 #include <chrono>
+#include <cstdio>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
@@ -161,6 +162,48 @@ inline std::string EncodeHex(const std::vector<uint8_t>& data) {
     return out;
 }
 
+std::string JsonEscape(const std::string& input)
+{
+    std::string out;
+    out.reserve(input.size());
+    for (unsigned char c : input) {
+        switch (c) {
+            case '\"':
+                out.append("\\\"");
+                break;
+            case '\\':
+                out.append("\\\\");
+                break;
+            case '\b':
+                out.append("\\b");
+                break;
+            case '\f':
+                out.append("\\f");
+                break;
+            case '\n':
+                out.append("\\n");
+                break;
+            case '\r':
+                out.append("\\r");
+                break;
+            case '\t':
+                out.append("\\t");
+                break;
+            default:
+                if (c < 0x20) {
+                    char buffer[7];
+                    std::snprintf(buffer, sizeof(buffer), "\\u%04x", c);
+                    out.append(buffer);
+                } else {
+                    out.push_back(static_cast<char>(c));
+                }
+                break;
+        }
+    }
+    return out;
+}
+} // namespace
+
 std::string FormatExecResult(const sidechain::wasm::ExecutionResult& res)
 {
     std::stringstream ss;
@@ -169,12 +212,11 @@ std::string FormatExecResult(const sidechain::wasm::ExecutionResult& res)
        << ",\"state_writes\":" << res.state_writes
        << ",\"output\":\"" << EncodeHex(res.output) << "\"";
     if (!res.error.empty()) {
-        ss << ",\"error\":\"" << res.error << "\"";
+        ss << ",\"error\":\"" << JsonEscape(res.error) << "\"";
     }
     ss << "}";
     return ss.str();
 }
-} // namespace
 
 static Block DeserializeBlock(const std::vector<uint8_t>& buf)
 {

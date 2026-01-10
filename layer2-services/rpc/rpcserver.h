@@ -20,6 +20,8 @@
 
 namespace rpc {
 
+std::string FormatExecResult(const sidechain::wasm::ExecutionResult& res);
+
 class RPCServer {
 public:
     using Handler = std::function<std::string(const std::string&)>;

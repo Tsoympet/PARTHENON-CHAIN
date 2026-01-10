@@ -1,10 +1,13 @@
 #include <gtest/gtest.h>
 #include <boost/beast/http.hpp>
 #include <boost/beast/core.hpp>
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 #include <chrono>
 #include <thread>
 #include <filesystem>
 #include <memory>
+#include <sstream>
 
 #include "../../layer2-services/rpc/rpcserver.h"
 #include "../../layer2-services/policy/policy.h"
@@ -440,4 +443,19 @@ TEST(RPCFailurePaths, WalletDisabledAndMalformedParameters)
         "{\"method\":\"deploy_contract\",\"params\":\"module=guard;asset=1;gas=invalid;code=00\"}");
     EXPECT_EQ(malformedParams.result(), http::status::internal_server_error);
     EXPECT_NE(malformedParams.body().find("error"), std::string::npos);
+}
+
+TEST(RPCJsonFormatting, EscapesErrorStrings)
+{
+    sidechain::wasm::ExecutionResult result;
+    result.success = false;
+    result.gas_used = 0;
+    result.state_writes = 0;
+    result.error = "bad \"quote\"\nline";
+
+    const auto json = rpc::FormatExecResult(result);
+    std::stringstream ss(json);
+    boost::property_tree::ptree pt;
+    EXPECT_NO_THROW(boost::property_tree::read_json(ss, pt));
+    EXPECT_EQ(pt.get<std::string>("error"), result.error);
 }
