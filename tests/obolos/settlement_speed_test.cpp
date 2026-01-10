@@ -36,9 +36,9 @@ TEST_F(SettlementSpeedTest, CheckpointCreationLatency) {
 
 // Test transaction finality latency
 TEST_F(SettlementSpeedTest, TransactionFinalityLatency) {
-    // Target: Transaction finality should be achieved in < 5 seconds
-    // In practice, this is bounded by block time (60s) and checkpoint interval (5 blocks)
-    // This test verifies the overhead beyond block confirmation is minimal
+    // Target: Transaction finality latency is bounded by block time (60s)
+    // and checkpoint interval (5 blocks), rather than a fixed sub-5s promise.
+    // This test measures the protocol-independent overhead beyond block/commit timing.
     
     auto start = high_resolution_clock::now();
     
