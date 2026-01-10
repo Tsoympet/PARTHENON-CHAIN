@@ -2,9 +2,11 @@
 // Tests for sub-5 second finality target
 
 #include <gtest/gtest.h>
+#include <algorithm>
 #include <chrono>
-#include "../../layer1-core/consensus/params.h"
+#include <cmath>
 #include "../../layer1-core/tx/transaction.h"
+#include "mock_obolos_components.h"
 
 namespace {
 
@@ -12,9 +14,6 @@ using namespace std::chrono;
 
 class SettlementSpeedTest : public ::testing::Test {
 protected:
-    void SetUp() override {
-        // Setup test environment
-    }
 };
 
 // Test finality checkpoint creation timing
@@ -23,11 +22,14 @@ TEST_F(SettlementSpeedTest, CheckpointCreationLatency) {
     auto start = high_resolution_clock::now();
     
     // Simulate checkpoint creation
-    // TODO: Implement actual checkpoint creation logic
+    auto checkpoint = obolos_test::MakeCheckpoint(
+        100, obolos_test::MakeHashFromSeed(100));
     
     auto end = high_resolution_clock::now();
     auto duration = duration_cast<milliseconds>(end - start);
     
+    EXPECT_EQ(checkpoint.height, 100u);
+    EXPECT_EQ(checkpoint.block_hash, obolos_test::MakeHashFromSeed(100));
     EXPECT_LT(duration.count(), 100) 
         << "Checkpoint creation took " << duration.count() << "ms, expected < 100ms";
 }
@@ -41,11 +43,15 @@ TEST_F(SettlementSpeedTest, TransactionFinalityLatency) {
     auto start = high_resolution_clock::now();
     
     // Simulate transaction submission to finality
-    // TODO: Implement actual finality path
+    auto tx = obolos_test::MakeFakeTransaction(42);
+    auto receipt = obolos_test::MakeReceipt(tx, 250);
     
     auto end = high_resolution_clock::now();
     auto finality_overhead = duration_cast<milliseconds>(end - start);
     
+    EXPECT_EQ(receipt.tx_id, tx.GetHash());
+    EXPECT_EQ(receipt.finality_height, 250u);
+    EXPECT_EQ(receipt.status, "finalized");
     EXPECT_LT(finality_overhead.count(), 100) 
         << "Finality overhead " << finality_overhead.count() << "ms, expected < 100ms";
 }
@@ -56,11 +62,14 @@ TEST_F(SettlementSpeedTest, ReceiptGenerationSpeed) {
     auto start = high_resolution_clock::now();
     
     // Simulate receipt generation
-    // TODO: Implement actual receipt generation
+    auto tx = obolos_test::MakeFakeTransaction(7);
+    auto receipt = obolos_test::MakeReceipt(tx, 111);
     
     auto end = high_resolution_clock::now();
     auto duration = duration_cast<milliseconds>(end - start);
     
+    EXPECT_EQ(receipt.tx_id, tx.GetHash());
+    EXPECT_EQ(receipt.finality_height, 111u);
     EXPECT_LT(duration.count(), 50) 
         << "Receipt generation took " << duration.count() << "ms, expected < 50ms";
 }
@@ -71,11 +80,14 @@ TEST_F(SettlementSpeedTest, AccountQuerySpeed) {
     auto start = high_resolution_clock::now();
     
     // Simulate account query
-    // TODO: Implement actual account query
+    auto account = obolos_test::MakeAccountQuery("account-1", 5000, 12);
     
     auto end = high_resolution_clock::now();
     auto duration = duration_cast<milliseconds>(end - start);
     
+    EXPECT_EQ(account.account_id, "account-1");
+    EXPECT_EQ(account.balance, 5000u);
+    EXPECT_EQ(account.nonce, 12u);
     EXPECT_LT(duration.count(), 10) 
         << "Account query took " << duration.count() << "ms, expected < 10ms";
 }
@@ -88,16 +100,21 @@ TEST_F(SettlementSpeedTest, PaymentThroughputStress) {
     
     auto start = high_resolution_clock::now();
     
+    uint256 last_hash{};
     for (int i = 0; i < NUM_TRANSACTIONS; ++i) {
         // Simulate transaction processing
-        // TODO: Implement actual transaction processing
+        auto tx = obolos_test::MakeFakeTransaction(static_cast<uint32_t>(i));
+        last_hash = tx.GetHash();
     }
     
     auto end = high_resolution_clock::now();
     auto duration = duration_cast<milliseconds>(end - start);
     
-    double actual_tps = (NUM_TRANSACTIONS * 1000.0) / duration.count();
+    auto elapsed_ms = std::max<int64_t>(duration.count(), 1);
+    double actual_tps = (NUM_TRANSACTIONS * 1000.0) / elapsed_ms;
     
+    EXPECT_EQ(last_hash,
+              obolos_test::MakeFakeTransaction(NUM_TRANSACTIONS - 1).GetHash());
     EXPECT_GE(actual_tps, TARGET_TPS) 
         << "Achieved " << actual_tps << " TPS, expected >= " << TARGET_TPS << " TPS";
 }
@@ -112,10 +129,14 @@ TEST_F(SettlementSpeedTest, DeterministicFinalityTiming) {
         auto start = high_resolution_clock::now();
         
         // Simulate finality check
-        // TODO: Implement actual finality check
+        auto tx = obolos_test::MakeFakeTransaction(static_cast<uint32_t>(run));
+        auto receipt = obolos_test::MakeReceipt(tx, 300);
+        volatile uint8_t sink = receipt.tx_id[0];
+        (void)sink;
         
         auto end = high_resolution_clock::now();
-        timings.push_back(duration_cast<microseconds>(end - start).count());
+        auto elapsed = duration_cast<microseconds>(end - start).count();
+        timings.push_back(std::max<int64_t>(elapsed, 1));
     }
     
     // Calculate variance
