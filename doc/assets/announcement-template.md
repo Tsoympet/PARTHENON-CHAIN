@@ -21,7 +21,7 @@ A lean PoW chain with Schnorr signatures, 41M fixed supply, and production-ready
 
 ## Links
 - GitHub: https://github.com/Tsoympet/PARTHENON-CHAIN
-- Docs: https://github.com/Tsoympet/PARTHENON-CHAIN/tree/work/docs
+- Docs: https://github.com/Tsoympet/PARTHENON-CHAIN/tree/work/doc
 - Faucet: https://faucet.testnet.drachma.example (replace with live endpoint)
 - Explorer: https://explorer.testnet.drachma.example (replace with live endpoint)
 
