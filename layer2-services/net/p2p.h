@@ -22,6 +22,7 @@ struct Message {
 };
 
 struct PeerInfo {
+    std::string id;      // address:port (address may be an IP or hostname)
     std::string id;      // resolved host:port
     std::string address; // ip string
     std::string seed_id; // original seed host:port
